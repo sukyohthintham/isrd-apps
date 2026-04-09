@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏷️ Barcode Label Printer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f11;
+    --surface: #1a1a1f;
+    --surface2: #222229;
+    --border: #2e2e38;
+    --accent: #f5c842;
+    --accent2: #42c8f5;
+    --red: #f54242;
+    --green: #42f5a4;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --label-w: 50mm;
+    --label-h: 25mm;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text); }
+  .header-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    border: none; cursor: pointer; font-family: inherit;
+    font-weight: 600; border-radius: 6px; transition: all .15s;
+    display: flex; align-items: center; gap: 7px; white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent); color: #111;
+    padding: 9px 18px; font-size: 14px;
+  }
+  .btn-primary:hover { background: #ffd84d; transform: translateY(-1px); }
+  .btn-ghost {
+    background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+    padding: 9px 16px; font-size: 14px;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger {
+    background: transparent; color: var(--red); border: 1px solid var(--red);
+    padding: 8px 14px; font-size: 13px;
+  }
+  .btn-danger:hover { background: var(--red); color: #fff; }
+  .btn-print {
+    background: var(--green); color: #0a1f15;
+    padding: 10px 22px; font-size: 15px; font-weight: 700;
+  }
+  .btn-print:hover { background: #5fffc0; transform: translateY(-1px); }
+
+  /* ─── LAYOUT ─── */
+  .app { display: flex; height: calc(100vh - 57px); }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: 320px; min-width: 300px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 600;
+    letter-spacing: .5px; text-transform: uppercase;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .badge {
+    background: var(--accent); color: #111;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+  }
+
+  /* ─── IMPORT ZONE ─── */
+  .import-zone {
+    margin: 14px 16px;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 18px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .import-zone:hover, .import-zone.drag { border-color: var(--accent); background: rgba(245,200,66,.04); }
+  .import-zone .icon { font-size: 28px; margin-bottom: 6px; }
+  .import-zone p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .import-zone strong { color: var(--text); }
+  #fileInput { display: none; }
+
+  /* ─── MANUAL ADD ─── */
+  .manual-form {
+    margin: 0 16px 10px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .manual-form input {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 10px; border-radius: 6px;
+    font-family: inherit; font-size: 13px;
+    transition: border-color .15s;
+  }
+  .manual-form input:focus { outline: none; border-color: var(--accent); }
+  .manual-form input::placeholder { color: var(--muted); }
+  .manual-form input.full { grid-column: 1/-1; }
+  .manual-form .btn { grid-column: 1/-1; justify-content: center; padding: 9px; font-size: 13px; }
+
+  /* ─── PRODUCT LIST ─── */
+  .product-list { flex: 1; overflow-y: auto; padding: 8px 10px 16px; }
+  .product-list::-webkit-scrollbar { width: 4px; }
+  .product-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .product-item {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+    transition: border-color .15s; cursor: pointer;
+  }
+  .product-item:hover { border-color: var(--accent2); }
+  .product-item.selected { border-color: var(--accent); }
+  .product-info { flex: 1; min-width: 0; }
+  .product-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-sku { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .product-price { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .qty-ctrl { display: flex; align-items: center; gap: 6px; }
+  .qty-btn {
+    width: 22px; height: 22px; border-radius: 4px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .12s;
+  }
+  .qty-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .qty-val { font-size: 13px; font-weight: 600; min-width: 22px; text-align: center; }
+  .del-btn {
+    width: 22px; height: 22px; background: none; border: none;
+    color: var(--muted); cursor: pointer; font-size: 15px;
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  }
+  .del-btn:hover { color: var(--red); background: rgba(245,66,66,.08); }
+
+  /* ─── MAIN PREVIEW ─── */
+  .main { flex: 1; overflow-y: auto; background: var(--bg); }
+  .main::-webkit-scrollbar { width: 6px; }
+  .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .preview-toolbar {
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .preview-info { font-size: 13px; color: var(--muted); }
+  .preview-info strong { color: var(--text); }
+
+  .label-grid {
+    padding: 24px;
+    display: flex; flex-wrap: wrap; gap: 16px;
+  }
+
+  /* ─── LABEL (screen preview) ─── */
+  .label-card {
+    background: #fff;
+    border-radius: 6px;
+    width: 189px; /* 50mm at 96dpi */
+    height: 95px;  /* 25mm at 96dpi */
+    padding: 6px 8px 4px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .label-card:hover { transform: scale(1.03); box-shadow: 0 4px 20px rgba(245,200,66,.25); }
+  .label-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 2px;
+  }
+  .label-name {
+    font-size: 8.5px; font-weight: 700; color: #111;
+    line-height: 1.2; max-width: 120px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .label-price-box { text-align: right; }
+  .label-price { font-size: 12px; font-weight: 800; color: #111; line-height: 1; }
+  .label-baht { font-size: 7px; color: #555; }
+  .label-barcode { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .label-barcode svg { max-width: 100%; max-height: 100%; }
+  .label-sku { font-size: 7px; color: #333; text-align: center; margin-top: 1px; font-family: 'IBM Plex Mono', monospace; }
+  .copy-badge {
+    position: absolute; top: 3px; right: 3px;
+    background: rgba(245,200,66,.15);
+    border: 1px solid rgba(245,200,66,.4);
+    color: #b89000; font-size: 8px; font-weight: 700;
+    padding: 1px 4px; border-radius: 3px;
+  }
+
+  /* ─── EMPTY STATE ─── */
+  .empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 60vh; gap: 12px; color: var(--muted);
+  }
+  .empty .big { font-size: 56px; }
+  .empty p { font-size: 15px; }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--green); color: #0a2015;
+    padding: 10px 18px; border-radius: 8px;
+    font-weight: 600; font-size: 14px;
+    transform: translateY(80px); opacity: 0;
+    transition: all .3s; z-index: 9999;
+    box-shadow: 0 4px 20px rgba(66,245,164,.3);
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ─── PRINT STYLES ─── */
+  @media print {
+    /* Page = exactly one label (50mm wide × 25mm tall thermal roll) */
+    @page {
+      size: 50mm 25mm;
+      margin: 0;
+    }
+
+    html, body {
+      width: 50mm;
+      height: 25mm;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    header, .sidebar, .preview-toolbar, .app { display: none !important; }
+
+    /* Each label gets its own page */
+    .print-container {
+      display: block !important;
+    }
+
+    .label-card {
+      display: flex !important;
+      flex-direction: column;
+      width: 50mm !important;
+      height: 25mm !important;
+      padding: 1.5mm 2mm 1mm !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      margin: 0 !important;
+      page-break-after: always;
+      page-break-inside: avoid;
+      break-after: page;
+      transform: none !important;
+      cursor: default;
+      background: #fff !important;
+      position: relative !important;
+      overflow: hidden !important;
+    }
+    .label-card:last-child {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .label-card[data-selected="false"] { display: none !important; }
+    .label-top { margin-bottom: 0.5mm !important; }
+    .label-name { font-size: 6pt !important; max-width: 32mm !important; }
+    .label-price { font-size: 9pt !important; }
+    .label-baht { font-size: 5pt !important; }
+    .label-barcode { flex: 1 !important; }
+    .label-barcode svg { width: 100% !important; height: auto !important; max-height: 11mm !important; }
+    .label-sku { font-size: 5pt !important; margin-top: 0 !important; }
+    .copy-badge { display: none !important; }
+    .empty { display: none !important; }
+  }
+
+  /* Print container (hidden on screen, shown on print) */
+  .print-container { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏷️ Barcode<span>Printer</span></div>
+  <div style="font-size:12px;color:var(--muted);">Code128 · 50×25mm · Thermal</div>
+  <div id="fbStatus" style="display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 12px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);">
+    <span id="fbDot" style="width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0;"></span>
+    <span id="fbText" style="color:var(--muted);">กำลังเชื่อมต่อ...</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="clearAll()">🗑 ล้างทั้งหมด</button>
+    <button class="btn btn-ghost" onclick="clearSession()" title="ล้างเฉพาะหน้าจอนี้ ไม่กระทบเครื่องอื่น" style="font-size:12px;">📋 ล้างหน้าจอนี้</button>
+    <button class="btn btn-print" onclick="printLabels()">🖨 พิมพ์ทั้งหมด</button>
+  </div>
+</header>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      รายการสินค้า
+      <span class="badge" id="countBadge">0</span>
+    </div>
+
+    <!-- Import -->
+    <div class="import-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+      <div class="icon">📂</div>
+      <p><strong>อัปโหลด Excel / CSV</strong><br>คลิกหรือลากไฟล์มาวาง<br><span style="font-size:11px">.xlsx, .xls, .csv</span></p>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
+
+    <div style="padding:0 16px 8px;font-size:11px;color:var(--muted);text-align:center">
+      คอลัมน์ที่รองรับ: <strong style="color:var(--text)">sku, name, price, qty</strong>
+    </div>
+
+    <!-- Manual Add -->
+    <div class="manual-form">
+      <input type="text" id="mSku" placeholder="รหัส SKU" class="full">
+      <input type="text" id="mName" placeholder="ชื่อสินค้า" class="full">
+      <input type="number" id="mPrice" placeholder="ราคา (฿)">
+      <input type="number" id="mQty" placeholder="จำนวน" value="1" min="1">
+      <input type="text" id="mLot" placeholder="Lot (ไม่บังคับ)" class="full">
+      <button class="btn btn-primary" onclick="addManual()">＋ เพิ่มสินค้า</button>
+    </div>
+
+    <!-- List -->
+    <div class="product-list" id="productList"></div>
+  </aside>
+
+  <!-- MAIN PREVIEW -->
+  <main class="main">
+    <div class="preview-toolbar">
+      <div class="preview-info">แสดงตัวอย่าง: <strong id="labelCount">0</strong> ป้าย</div>
+      <button class="btn btn-ghost" onclick="selectAll()" style="font-size:12px">เลือกทั้งหมด</button>
+      <button class="btn btn-ghost" onclick="deselectAll()" style="font-size:12px">ยกเลิกเลือก</button>
+      <div style="margin-left:auto;font-size:12px;color:var(--muted)">คลิกป้ายเพื่อเลือก/ยกเลิก</div>
+    </div>
+    <div class="label-grid" id="labelGrid">
+      <div class="empty">
+        <div class="big">🏷️</div>
+        <p>เพิ่มสินค้าหรืออัปโหลดไฟล์ Excel/CSV</p>
+        <p style="font-size:13px">แล้วกด <strong style="color:var(--accent)">🖨 พิมพ์</strong> เพื่อปริ้น Barcode</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let products = [];
+let labelCounter = 0;
+let db = null;
+let fbRef = null;
+let isFirebaseReady = false;
+
+// ─── FIREBASE INIT ───
+const firebaseConfig = {
+  apiKey: "AIzaSyApHXH3htRZg2LU1W-4Rk4MK1GPKed3YUw",
+  authDomain: "leave-system-ac0c6.firebaseapp.com",
+  databaseURL: "https://leave-system-ac0c6-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "leave-system-ac0c6",
+  storageBucket: "leave-system-ac0c6.firebasestorage.app",
+  messagingSenderId: "132231572130",
+  appId: "1:132231572130:web:53f45516a0d6caa84c05fb"
+};
+
+function setFbStatus(state) {
+  var dot  = document.getElementById('fbDot');
+  var text = document.getElementById('fbText');
+  if (!dot || !text) return;
+  if (state === 'connected')   { dot.style.background='#42f5a4'; text.style.color='#42f5a4'; text.textContent='● Live Sync'; }
+  else if (state === 'error')  { dot.style.background='#f54242'; text.style.color='#f54242'; text.textContent='✕ ออฟไลน์'; }
+  else                         { dot.style.background='#f5c842'; text.style.color='#f5c842'; text.textContent='⟳ กำลังเชื่อมต่อ...'; }
+}
+
+function initFirebase() {
+  setFbStatus('connecting');
+  // Dynamic load — same pattern as production tracking app (works from file:// too)
+  var s1 = document.createElement('script');
+  s1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+  s1.onload = function() {
+    var s2 = document.createElement('script');
+    s2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+    s2.onload = function() {
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        fbRef = db.ref('barcode_products');
+
+        // Monitor connection state
+        db.ref('.info/connected').on('value', function(snap) {
+          if (snap.val() === true) setFbStatus('connected');
+          else setFbStatus('error');
+        });
+
+        // Listen for real-time changes from Firebase
+        fbRef.on('value', function(snap) {
+          var data = snap.val();
+          products = [];
+          labelCounter = 0;
+          if (data) {
+            Object.values(data).forEach(function(p) {
+              if (p.id > labelCounter) labelCounter = p.id;
+              products.push(p);
+            });
+            products.sort(function(a, b) { return a.id - b.id; });
+          }
+          renderAll();
+        }, function(err) {
+          console.error('Firebase read error:', err);
+          setFbStatus('error');
+          toast('Firebase Rules: ' + err.message, 'err');
+        });
+
+        isFirebaseReady = true;
+
+        // Auto-warn if still offline after 8s
+        setTimeout(function() {
+          var dot = document.getElementById('fbDot');
+          if (dot && dot.style.background !== 'rgb(66, 245, 164)') {
+            toast('⚠ ยังเชื่อมต่อ Firebase ไม่ได้ — เช็ค Rules ใน Firebase Console', 'err');
+          }
+        }, 8000);
+
+      } catch(e) {
+        console.error('Firebase init error:', e);
+        setFbStatus('error');
+        toast('Firebase init error: ' + e.message, 'err');
+      }
+    };
+    s2.onerror = function() { setFbStatus('error'); toast('โหลด Firebase SDK ไม่ได้ — เช็คอินเทอร์เน็ต', 'err'); };
+    document.head.appendChild(s2);
+  };
+  s1.onerror = function() { setFbStatus('error'); toast('โหลด Firebase SDK ไม่ได้ — เช็คอินเทอร์เน็ต', 'err'); };
+  document.head.appendChild(s1);
+}
+
+// ─── FIREBASE WRITE ───
+function fbSaveProduct(p) {
+  if (!isFirebaseReady) return;
+  fbRef.child(String(p.id)).set(p).catch(e => toast('บันทึกไม่ได้: ' + e.message, 'err'));
+}
+
+function fbRemoveProduct(id) {
+  if (!isFirebaseReady) return;
+  fbRef.child(String(id)).remove().catch(e => toast('ลบไม่ได้: ' + e.message, 'err'));
+}
+
+function fbUpdateQty(id, qty) {
+  if (!isFirebaseReady) return;
+  fbRef.child(String(id) + '/qty').set(qty).catch(e => {});
+}
+
+function fbClearAll() {
+  if (!isFirebaseReady) return;
+  fbRef.set(null).catch(e => toast('ล้างไม่ได้: ' + e.message, 'err'));
+}
+
+// ─── ADD PRODUCT ───
+function addProduct({ sku, name, price, qty = 1, lot = '' }) {
+  const id = ++labelCounter;
+  const p = { id, sku: sku || `SKU-${id}`, name: name || `สินค้า ${id}`, price: +price || 0, qty: +qty || 1, lot: lot || '' };
+  fbSaveProduct(p);
+  // Firebase listener will update products[] and re-render automatically
+}
+
+function addManual() {
+  const sku   = document.getElementById('mSku').value.trim();
+  const name  = document.getElementById('mName').value.trim();
+  const price = document.getElementById('mPrice').value;
+  const qty   = document.getElementById('mQty').value;
+  const lot   = document.getElementById('mLot').value.trim();
+  if (!name && !sku) { toast('กรุณาใส่ชื่อหรือรหัสสินค้า', 'err'); return; }
+  addProduct({ sku, name, price, qty, lot });
+  document.getElementById('mSku').value = '';
+  document.getElementById('mName').value = '';
+  document.getElementById('mPrice').value = '';
+  document.getElementById('mQty').value = '1';
+  document.getElementById('mLot').value = '';
+  toast('เพิ่มสินค้าแล้ว — กำลัง Sync... ✅');
+}
+
+// ─── RENDER ───
+function renderAll() {
+  renderSidebar();
+  renderGrid();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('productList');
+  document.getElementById('countBadge').textContent = products.length;
+  if (!products.length) { list.innerHTML = ''; return; }
+  list.innerHTML = products.map(p => `
+    <div class="product-item" id="pi-${p.id}">
+      <div class="product-info">
+        <div class="product-name" title="${p.name}">${p.name}</div>
+        <div class="product-sku">${p.sku}${p.lot ? ' · <span style="color:var(--accent2)">Lot: '+p.lot+'</span>' : ''}</div>
+      </div>
+      <div class="product-price">${p.price}฿</div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty(${p.id},-1)">−</button>
+        <span class="qty-val">${p.qty}</span>
+        <button class="qty-btn" onclick="changeQty(${p.id},1)">+</button>
+      </div>
+      <button class="del-btn" onclick="removeProduct(${p.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function renderGrid() {
+  const grid = document.getElementById('labelGrid');
+  const allLabels = getExpandedLabels();
+  document.getElementById('labelCount').textContent = allLabels.length;
+
+  if (!allLabels.length) {
+    grid.innerHTML = `<div class="empty"><div class="big">🏷️</div><p>เพิ่มสินค้าหรืออัปโหลดไฟล์ Excel/CSV</p><p style="font-size:13px">แล้วกด <strong style="color:var(--accent)">🖨 พิมพ์</strong> เพื่อปริ้น Barcode</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = allLabels.map((p, i) => `
+    <div class="label-card" id="lc-${i}" onclick="toggleLabel(${i})" data-selected="true">
+      ${p.qty > 1 ? `<div class="copy-badge">×${p.copyNum}/${p.qty}</div>` : ''}
+      <div class="label-top">
+        <div class="label-name">${p.name}</div>
+        <div class="label-price-box">
+          <div class="label-price">${p.price}</div>
+          <div class="label-baht">บาท</div>
+        </div>
+      </div>
+      <div class="label-sku" style="font-size:6px;text-align:center;font-family:monospace;margin:1px 0;">${p.sku}</div>
+      <div class="label-barcode">
+        <svg id="bc-${i}"></svg>
+      </div>
+      <div class="label-sku" style="font-size:6px;text-align:center;font-family:monospace;color:#555;">${p.lot ? 'Lot: '+p.lot : ''}</div>
+    </div>
+  `).join('');
+
+  // Generate barcodes after DOM update
+  requestAnimationFrame(() => {
+    allLabels.forEach((p, i) => {
+      try {
+        JsBarcode(`#bc-${i}`, p.sku, {
+          format: 'CODE128',
+          width: 1.2, height: 28,
+          displayValue: false,
+          margin: 0
+        });
+      } catch (e) {
+        // fallback for invalid barcode chars
+        try {
+          JsBarcode(`#bc-${i}`, 'INVALID', { format: 'CODE128', width:1.2, height:28, displayValue:false, margin:0 });
+        } catch(_) {}
+      }
+    });
+  });
+}
+
+function getExpandedLabels() {
+  const labels = [];
+  products.forEach(p => {
+    for (let i = 1; i <= p.qty; i++) {
+      labels.push({ ...p, copyNum: i });
+    }
+  });
+  return labels;
+}
+
+// ─── INTERACTIONS ───
+function toggleLabel(idx) {
+  const el = document.getElementById(`lc-${idx}`);
+  const sel = el.dataset.selected === 'true';
+  el.dataset.selected = !sel;
+  el.style.opacity = sel ? '0.35' : '1';
+}
+
+function selectAll() {
+  document.querySelectorAll('.label-card').forEach(el => {
+    el.dataset.selected = 'true'; el.style.opacity = '1';
+  });
+}
+
+function deselectAll() {
+  document.querySelectorAll('.label-card').forEach(el => {
+    el.dataset.selected = 'false'; el.style.opacity = '0.35';
+  });
+}
+
+function changeQty(id, delta) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const newQty = Math.max(1, p.qty + delta);
+  fbUpdateQty(id, newQty);
+}
+
+function removeProduct(id) {
+  fbRemoveProduct(id);
+}
+
+function clearAll() {
+  if (products.length && !confirm('ล้างสินค้าทั้งหมด? (ทุกเครื่องจะถูกล้างด้วย)')) return;
+  fbClearAll();
+  toast('ล้างทั้งหมดแล้ว 🗑');
+}
+
+function clearSession() {
+  // Clear only this screen without affecting Firebase
+  products = [];
+  labelCounter = 0;
+  if (fbRef) fbRef.off(); // stop listening
+  renderAll();
+  // Re-listen after 100ms
+  setTimeout(() => {
+    if (fbRef) fbRef.on('value', snap => {
+      const data = snap.val();
+      products = [];
+      labelCounter = 0;
+      if (data) {
+        Object.values(data).forEach(p => {
+          if (p.id > labelCounter) labelCounter = p.id;
+          products.push(p);
+        });
+        products.sort((a, b) => a.id - b.id);
+      }
+      renderAll();
+    });
+  }, 100);
+}
+
+// ─── PRINT ───
+function printLabels() {
+  const selected = Array.from(document.querySelectorAll('.label-card[data-selected="true"]'));
+  if (!selected.length) { toast('ไม่มีป้ายที่เลือก', 'err'); return; }
+
+  // Build print HTML with one label per page
+  const labelPages = selected.map(card => {
+    const name  = card.querySelector('.label-name').textContent.trim();
+    const price = card.querySelector('.label-price').textContent.trim();
+    const skuRaw = card.querySelector('.label-sku').textContent.trim();
+    // Split sku and lot (stored as 'SKU | Lot: XXX')
+    const [sku, lotPart] = skuRaw.split(' | Lot: ');
+    const lot = lotPart || '';
+    return { name, price, sku: sku.trim(), lot: lot.trim() };
+  });
+
+  const win = window.open('', '_blank', 'width=400,height=300');
+  /*
+   * EasyPrint driver paper = "Barcode 25×50" = 25mm wide × 50mm tall (portrait).
+   * The physical label sticker = 50mm wide × 25mm tall.
+   * So the printer rotates output 90°. We must counter-rotate content -90°.
+   *
+   * Strategy:
+   *   @page size = 25mm × 50mm  (matches driver paper exactly)
+   *   .page wrapper = 25mm × 50mm
+   *   .label inner = 50mm × 25mm, rotated -90deg, translated to fit inside .page
+   *   Result: content appears landscape on the portrait page → prints correctly.
+   */
+  win.document.write(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"><\/script>
+<style>
+  @page {
+    size: 25mm 50mm;   /* portrait = driver's "Barcode 25×50" */
+    margin: 0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 25mm; background: #fff; }
+
+  .page {
+    width: 25mm;
+    height: 50mm;
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+    position: relative;
+  }
+  .page:last-child { page-break-after: avoid; break-after: avoid; }
+
+  /* 50×25mm content rotated -90° inside 25×50mm page */
+  .label {
+    width: 50mm;
+    height: 25mm;
+    position: absolute;
+    top: 50mm;
+    left: 0;
+    transform-origin: top left;
+    transform: rotate(-90deg);
+    padding: 1.2mm 1.5mm 1mm;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    font-family: Arial, sans-serif;
+  }
+
+  /* Row 1: ชื่อสินค้า (ซ้าย) + ราคา (ขวา) */
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-shrink: 0;
+  }
+  .name {
+    font-size: 7pt;
+    font-weight: 700;
+    color: #000;
+    max-width: 33mm;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .price-box { text-align: right; flex-shrink: 0; margin-left: 1mm; }
+  .price { font-size: 11pt; font-weight: 900; color: #000; line-height: 1; }
+  .baht  { font-size: 5pt; color: #444; text-align: right; }
+
+  /* Row 2: SKU (รหัสสินค้า) เหนือ barcode */
+  .sku-top {
+    font-size: 6pt;
+    font-weight: 700;
+    color: #000;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.4pt;
+    margin-top: 0.5mm;
+    flex-shrink: 0;
+  }
+
+  /* Row 3: Barcode */
+  .bc {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 0 0.5mm;
+    background: #fff;
+  }
+  .bc svg { width: 100%; max-height: 12mm; display: block; }
+
+  /* Row 4: Lot ใต้ barcode */
+  .lot-row {
+    font-size: 6pt;
+    font-weight: 600;
+    color: #222;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    margin-top: 0.3mm;
+    flex-shrink: 0;
+  }
+</style>
+</head><body>
+${labelPages.map((p, i) => `
+<div class="page">
+  <div class="label">
+    <div class="top">
+      <div class="name">${escHtml(p.name)}</div>
+      <div class="price-box">
+        <div class="price">${escHtml(p.price)}</div>
+        <div class="baht">บาท</div>
+      </div>
+    </div>
+    <div class="sku-top">${escHtml(p.sku)}</div>
+    <div class="bc"><svg id="bc${i}"></svg></div>
+    <div class="lot-row">${p.lot ? 'Lot: '+escHtml(p.lot) : ''}</div>
+  </div>
+</div>`).join('')}
+<script>
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+window.onload = function() {
+  ${labelPages.map((p, i) => `
+  try {
+    JsBarcode('#bc${i}', ${JSON.stringify(p.sku)}, {
+      format: 'CODE128',
+      width: 3.0,
+      height: 50,
+      displayValue: false,
+      margin: 8
+    });
+  } catch(e) {}
+  `).join('')}
+  setTimeout(function(){ window.print(); }, 600);
+};
+<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── FILE IMPORT ───
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  readFile(file);
+  e.target.value = '';
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.add('drag');
+}
+function handleDragLeave() {
+  document.getElementById('dropZone').classList.remove('drag');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+}
+
+function readFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  if (ext === 'csv') {
+    reader.onload = e => parseCSV(e.target.result);
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.onload = e => parseXLSX(e.target.result);
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g,''));
+  let count = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g,''));
+    if (!vals.length) continue;
+    const row = {};
+    headers.forEach((h, idx) => row[h] = vals[idx] || '');
+    const p = mapRow(row);
+    if (p) { addProduct(p); count++; }
+  }
+  toast(`นำเข้า ${count} รายการจาก CSV ✅`);
+}
+
+function parseXLSX(buf) {
+  const wb = XLSX.read(buf, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  let count = 0;
+  data.forEach(row => {
+    const norm = {};
+    Object.keys(row).forEach(k => norm[k.toLowerCase().trim().replace(/\s+/g,'')] = row[k]);
+    const p = mapRow(norm);
+    if (p) { addProduct(p); count++; }
+  });
+  toast(`นำเข้า ${count} รายการจาก Excel ✅`);
+}
+
+function mapRow(row) {
+  // Support multiple column name variants
+  const sku   = row.sku || row.รหัส || row.รหัสสินค้า || row.code || row.barcode || '';
+  const name  = row.name || row.ชื่อ || row.ชื่อสินค้า || row.productname || row.item || '';
+  const price = row.price || row.ราคา || row.ราคาสินค้า || 0;
+  const qty   = row.qty || row.จำนวน || row.quantity || row.amount || 1;
+  const lot   = row.lot || row.Lot || row.LOT || row.ล็อต || row.ล็อต || '';
+  if (!sku && !name) return null;
+  return { sku: String(sku).trim(), name: String(name).trim(), price: +price || 0, qty: +qty || 1, lot: String(lot).trim() };
+}
+
+// ─── TOAST ───
+function toast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type === 'err' ? 'var(--red)' : 'var(--green)';
+  t.style.color = type === 'err' ? '#fff' : '#0a2015';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── INIT ───
+initFirebase();
+</script>
+</body>
+</html>

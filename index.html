@@ -2337,8 +2337,8 @@ function initApp(){
   initBOMPage();
   initCSSections();
   var today=new Date().toISOString().split('T')[0];
-  if(!document.getElementById('bdate').value)document.getElementById('bdate').value=today;
-  if(!document.getElementById('bupdate').value)document.getElementById('bupdate').value=today;
+  var bdateEl=document.getElementById('bdate'); if(bdateEl && !bdateEl.value) bdateEl.value=today;
+  var bupdateEl=document.getElementById('bupdate'); if(bupdateEl && !bupdateEl.value) bupdateEl.value=today;
 }
 
 </script>

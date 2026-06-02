@@ -2183,7 +2183,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513o';
+var APP_VERSION = '20260513p';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -5976,14 +5976,23 @@ function renderTrackSummary(){
     /* ── หา Plan Month จาก Tracking ── */
     var planMonth = rm; /* default = สมมุติว่าตรง ถ้าหา tracking ไม่เจอ */
     var sku = (ib.sku||'').trim();
+    var po = (ib.po||'').trim();
     var model = (ib.model||'').trim();
     var color = (ib.color||'').trim();
     var matched = null;
-    if(sku){
+    /* 1. แม่นสุด: PO + SKU ตรงกัน (ระบุ record ได้ unique กัน SKU ซ้ำข้าม PO) */
+    if(po && sku){
+      for(var tp=0;tp<DATA.length;tp++){
+        if((DATA[tp].po||'').trim()===po && (DATA[tp].sku||'').trim()===sku){ matched=DATA[tp]; break; }
+      }
+    }
+    /* 2. รองลงมา: SKU อย่างเดียว */
+    if(!matched && sku){
       for(var ti=0;ti<DATA.length;ti++){
         if((DATA[ti].sku||'').trim()===sku){ matched=DATA[ti]; break; }
       }
     }
+    /* 3. สุดท้าย: model + color */
     if(!matched){
       for(var tj=0;tj<DATA.length;tj++){
         if((DATA[tj].model||'').trim()===model && (DATA[tj].color||'').trim()===color){ matched=DATA[tj]; break; }
@@ -6325,12 +6334,21 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
     /* หา plan month จาก Tracking */
     var pm = rm;
     var sku = (ib.sku||'').trim();
+    var po = (ib.po||'').trim();
     var matched = null;
-    if(sku){
+    /* 1. แม่นสุด: PO + SKU */
+    if(po && sku){
+      for(var tp=0;tp<DATA.length;tp++){
+        if((DATA[tp].po||'').trim()===po && (DATA[tp].sku||'').trim()===sku){ matched=DATA[tp]; break; }
+      }
+    }
+    /* 2. SKU อย่างเดียว */
+    if(!matched && sku){
       for(var ti=0;ti<DATA.length;ti++){
         if((DATA[ti].sku||'').trim()===sku){ matched=DATA[ti]; break; }
       }
     }
+    /* 3. model + color */
     if(!matched){
       for(var tj=0;tj<DATA.length;tj++){
         if((DATA[tj].model||'').trim()===(ib.model||'').trim() && (DATA[tj].color||'').trim()===(ib.color||'').trim()){

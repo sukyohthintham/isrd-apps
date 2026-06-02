@@ -2133,7 +2133,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513b';
+var APP_VERSION = '20260513c';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -5867,67 +5867,83 @@ function rebuildPodFilter(){
    แสดงสรุปจำนวน SKU + Qty ตาม Month / Brand
    ของ filtered records ปัจจุบัน (เปลี่ยนตาม filter)
    ───────────────────────────────────────────────────────────── */
+/* ── State สำหรับ Tracking Summary drill-down ── */
+var _trackSummaryMonth = null; /* null = brand รวม / M1-M12 = filter brand ของเดือนนั้น */
+
 function renderTrackSummary(){
   var box = document.getElementById('track-summary');
   if(!box) return;
 
-  /* รวมข้อมูล */
+  /* ══ AGGREGATE DATA ══════════════════════════════════════
+     - Plan + SKU count: จาก Tracking (filtered)
+     - Actual qty: จาก IB_DATA โดยตรง (เพราะ SKU ใน Inbound อาจไม่ match Tracking)
+     ─────────────────────────────────────────────────────── */
   var totalSku = filtered.length;
   var totalQty = 0;
-  var totalActual = 0;
   var byMonth = {};
   var byBrand = {};
+  var byMonthBrand = {}; /* { "M5": { "Nineties New": {sku, qty, actual}, ... } } */
+
+  /* ── Plan + SKU count จาก Tracking ── */
   filtered.forEach(function(x){
     var qty = parseInt(x.total)||0;
     totalQty += qty;
-    var actual = getActualQty(x) || 0;
-    totalActual += actual;
-    /* By Month */
     var m = getDisplayMonth(x) || 'ไม่ระบุ';
-    if(!byMonth[m]) byMonth[m] = {sku:0, qty:0, actual:0};
-    byMonth[m].sku++;
-    byMonth[m].qty += qty;
-    byMonth[m].actual += actual;
-    /* By Brand */
     var b = getDisplayBrand(x) || 'ไม่ระบุ';
+    if(!byMonth[m]) byMonth[m] = {sku:0, qty:0, actual:0};
+    byMonth[m].sku++; byMonth[m].qty += qty;
     if(!byBrand[b]) byBrand[b] = {sku:0, qty:0, actual:0};
-    byBrand[b].sku++;
-    byBrand[b].qty += qty;
-    byBrand[b].actual += actual;
+    byBrand[b].sku++; byBrand[b].qty += qty;
+    if(!byMonthBrand[m]) byMonthBrand[m] = {};
+    if(!byMonthBrand[m][b]) byMonthBrand[m][b] = {sku:0, qty:0, actual:0};
+    byMonthBrand[m][b].sku++; byMonthBrand[m][b].qty += qty;
   });
 
-  /* sort months: M1 → M12 */
+  /* ── Actual จาก IB_DATA โดยตรง ── */
+  var totalActual = 0;
+  (typeof IB_DATA !== 'undefined' ? IB_DATA : []).forEach(function(ib){
+    if(!ib || !ib.model) return;
+    var actual = parseInt(ib.actualQty)||0;
+    if(actual <= 0) return;
+    totalActual += actual;
+    var m = normalizeMonth(ib.month||'') || ib.month || 'ไม่ระบุ';
+    var b = (ib.brand||'').trim() || 'ไม่ระบุ';
+    if(!byMonth[m]) byMonth[m] = {sku:0, qty:0, actual:0};
+    byMonth[m].actual += actual;
+    if(!byBrand[b]) byBrand[b] = {sku:0, qty:0, actual:0};
+    byBrand[b].actual += actual;
+    if(!byMonthBrand[m]) byMonthBrand[m] = {};
+    if(!byMonthBrand[m][b]) byMonthBrand[m][b] = {sku:0, qty:0, actual:0};
+    byMonthBrand[m][b].actual += actual;
+  });
+
+  /* sort M1 → M12 */
   var monthKeys = Object.keys(byMonth).sort(function(a,b){
     var na = parseInt((a.match(/M(\d+)/)||[0,999])[1]);
     var nb = parseInt((b.match(/M(\d+)/)||[0,999])[1]);
     return na - nb;
   });
-  /* sort brands: count desc */
-  var brandKeys = Object.keys(byBrand).sort(function(a,b){
-    return byBrand[b].sku - byBrand[a].sku;
-  });
+  var brandKeys = Object.keys(byBrand).sort(function(a,b){ return byBrand[b].sku - byBrand[a].sku; });
 
-  /* helper สร้าง card — compact pattern */
   function _miniCard(opts){
-    /* opts: {label, color, icon, sku, plan, actual} */
     var pct = opts.plan > 0 ? Math.round(opts.actual/opts.plan*100) : 0;
     var pctColor = pct >= 100 ? '#10b981' : (pct >= 90 ? '#f59e0b' : (pct > 0 ? '#ef4444' : '#94a3b8'));
     var bg = opts.color + '12';
     var br = opts.color + '35';
-    return '<div style="background:'+bg+';border:1px solid '+br+';border-left:3px solid '+opts.color+';border-radius:8px;padding:8px 10px;min-width:0">'+
-      /* header */
+    var activeRing = opts.active ? 'box-shadow:0 0 0 2px '+opts.color+',0 4px 12px '+opts.color+'40;transform:translateY(-1px);' : '';
+    var clickProp = opts.onClick ? 'cursor:pointer;' : '';
+    var clickAttr = opts.onClick ? ' onclick="'+opts.onClick+'"' : '';
+    return '<div'+clickAttr+' style="background:'+bg+';border:1px solid '+br+';border-left:3px solid '+opts.color+';border-radius:8px;padding:8px 10px;min-width:0;transition:all 0.15s;'+activeRing+clickProp+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:5px">'+
-        '<div style="font-size:10px;font-weight:700;color:'+opts.color+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(opts.label)+'">'+opts.icon+' '+esc(opts.label)+'</div>'+
+        '<div style="font-size:10px;font-weight:700;color:'+opts.color+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(opts.label)+(opts.onClick?' — คลิกเพื่อดู Brand':'')+'">'+opts.icon+' '+esc(opts.label)+'</div>'+
         '<div style="font-size:10px;color:var(--text3);font-family:ui-monospace,monospace;flex-shrink:0">'+opts.sku+' SKU</div>'+
       '</div>'+
-      /* plan vs actual rows */
       '<div style="display:grid;grid-template-columns:auto 1fr;gap:2px 6px;font-size:10px;line-height:1.4">'+
         '<div style="color:var(--text3)">Plan:</div>'+
         '<div style="font-family:ui-monospace,monospace;color:var(--text);font-weight:600;text-align:right">'+opts.plan.toLocaleString()+'</div>'+
         '<div style="color:var(--text3)">รับจริง:</div>'+
         '<div style="font-family:ui-monospace,monospace;color:'+pctColor+';font-weight:700;text-align:right">'+opts.actual.toLocaleString()+'</div>'+
       '</div>'+
-      /* % bar */
       '<div style="margin-top:5px;display:flex;align-items:center;gap:5px">'+
         '<div style="flex:1;height:4px;background:'+opts.color+'20;border-radius:2px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+pctColor+';transition:width 0.3s"></div></div>'+
         '<div style="font-size:10px;font-weight:700;color:'+pctColor+';font-family:ui-monospace,monospace;min-width:32px;text-align:right">'+pct+'%</div>'+
@@ -5935,10 +5951,11 @@ function renderTrackSummary(){
     '</div>';
   }
 
-  /* helper card สำหรับ Total — gradient */
   function _heroCard(){
     var pct = totalQty > 0 ? Math.round(totalActual/totalQty*100) : 0;
-    return '<div style="background:linear-gradient(135deg,#3b82f6,#1e40af);color:#fff;border-radius:8px;padding:10px 12px;box-shadow:0 2px 8px rgba(59,130,246,0.25);min-width:0">'+
+    var activeAll = _trackSummaryMonth === null;
+    var activeStyle = activeAll ? '' : 'opacity:0.85;';
+    return '<div onclick="window._setTrackSummaryMonth(null)" style="background:linear-gradient(135deg,#3b82f6,#1e40af);color:#fff;border-radius:8px;padding:10px 12px;box-shadow:0 2px 8px rgba(59,130,246,0.25);min-width:0;cursor:pointer;'+activeStyle+'transition:all 0.15s" title="คลิกเพื่อแสดง Brand รวม">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:5px">'+
         '<div style="font-size:10px;font-weight:700;opacity:0.95;text-transform:uppercase;letter-spacing:0.3px">📊 รวมทั้งหมด</div>'+
         '<div style="font-size:10px;opacity:0.85;font-family:ui-monospace,monospace">'+totalSku.toLocaleString()+' SKU</div>'+
@@ -5956,40 +5973,71 @@ function renderTrackSummary(){
     '</div>';
   }
 
-  /* ── ROW 1: Total + Months ── */
+  /* ── ROW 1: Total + Months (clickable) ── */
   var html = _heroCard();
   var monthColors = ['#10b981','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#f43f5e','#f97316','#f59e0b','#eab308'];
   monthKeys.forEach(function(m){
     var idx = parseInt((m.match(/M(\d+)/)||[0,1])[1]) - 1;
     var c = monthColors[idx % 12] || '#6b7280';
     var b = byMonth[m];
-    html += _miniCard({label:m, icon:'📅', color:c, sku:b.sku, plan:b.qty, actual:b.actual});
+    html += _miniCard({
+      label:m, icon:'📅', color:c,
+      sku:b.sku, plan:b.qty, actual:b.actual,
+      active: _trackSummaryMonth === m,
+      onClick: "window._setTrackSummaryMonth('"+m.replace(/'/g,"\\'")+"')"
+    });
   });
   box.innerHTML = html;
 
-  /* ── ROW 2: Brands (ถ้ามีหลาย brand) ── */
-  if(brandKeys.length > 1){
-    if(!document.getElementById('track-summary-brands')){
-      var brandBox = document.createElement('div');
-      brandBox.id = 'track-summary-brands';
-      brandBox.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:14px';
-      box.parentNode.insertBefore(brandBox, box.nextSibling);
-    }
-    var brandBox = document.getElementById('track-summary-brands');
-    var brandColors = ['#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#6366f1','#84cc16'];
+  /* ── ROW 2: Brand Header + Cards (drill-down) ── */
+  if(!document.getElementById('track-summary-brands-header')){
+    var hdr = document.createElement('div');
+    hdr.id = 'track-summary-brands-header';
+    hdr.style.cssText = 'font-size:11px;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+    box.parentNode.insertBefore(hdr, box.nextSibling);
+  }
+  if(!document.getElementById('track-summary-brands')){
+    var brandBox = document.createElement('div');
+    brandBox.id = 'track-summary-brands';
+    brandBox.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:14px';
+    box.parentNode.insertBefore(brandBox, document.getElementById('track-summary-brands-header').nextSibling);
+  }
+  var hdrEl = document.getElementById('track-summary-brands-header');
+  var brandBoxEl = document.getElementById('track-summary-brands');
+  var brandColors = ['#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#6366f1','#84cc16'];
+
+  var scopeKeys, scopeData;
+  if(_trackSummaryMonth && byMonthBrand[_trackSummaryMonth]){
+    scopeData = byMonthBrand[_trackSummaryMonth];
+    scopeKeys = Object.keys(scopeData).sort(function(a,b){ return scopeData[b].sku - scopeData[a].sku; });
+    hdrEl.innerHTML = '<span style="font-weight:600;color:var(--text)">🏷️ Brand ใน '+esc(_trackSummaryMonth)+'</span>'+
+      '<span style="color:var(--text3)">— '+scopeKeys.length+' brand</span>'+
+      '<button onclick="window._setTrackSummaryMonth(null)" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:10px;cursor:pointer;color:var(--text2);margin-left:auto">✕ ดูภาพรวมทั้งหมด</button>';
+  } else {
+    scopeData = byBrand;
+    scopeKeys = brandKeys;
+    hdrEl.innerHTML = '<span style="font-weight:600;color:var(--text)">🏷️ Brand รวมทั้งหมด</span>'+
+      '<span style="color:var(--text3)">— '+scopeKeys.length+' brand · คลิกที่เดือนด้านบนเพื่อดูแยกเดือน</span>';
+  }
+
+  if(!scopeKeys.length){
+    brandBoxEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;grid-column:1/-1">ไม่มีข้อมูล Brand</div>';
+  } else {
     var bhtml = '';
-    brandKeys.slice(0, 8).forEach(function(b, i){
+    scopeKeys.slice(0, 12).forEach(function(b, i){
       var c = brandColors[i % 8];
-      var d = byBrand[b];
+      var d = scopeData[b];
       var labelShort = b.length > 14 ? b.substr(0,12)+'…' : b;
       bhtml += _miniCard({label:labelShort, icon:'🏷️', color:c, sku:d.sku, plan:d.qty, actual:d.actual});
     });
-    brandBox.innerHTML = bhtml;
-  } else {
-    var br = document.getElementById('track-summary-brands');
-    if(br) br.innerHTML = '';
+    brandBoxEl.innerHTML = bhtml;
   }
 }
+
+window._setTrackSummaryMonth = function(m){
+  _trackSummaryMonth = m;
+  renderTrackSummary();
+};
 
 function renderTable(){
   /* render summary cards ก่อน */

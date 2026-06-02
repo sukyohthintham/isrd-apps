@@ -2181,7 +2181,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513g';
+var APP_VERSION = '20260513h';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -5917,6 +5917,7 @@ function rebuildPodFilter(){
    ───────────────────────────────────────────────────────────── */
 /* ── State สำหรับ Tracking Summary drill-down ── */
 var _trackSummaryMonth = null; /* null = brand รวม / M1-M12 = filter brand ของเดือนนั้น */
+var _trackSummaryPlanMode = 'original'; /* 'original' = เดือนตั้งครั้งแรก / 'current' = เดือนล่าสุด (หลัง slip) */
 
 function renderTrackSummary(){
   var box = document.getElementById('track-summary');
@@ -5985,8 +5986,14 @@ function renderTrackSummary(){
       }
     }
     if(matched){
-      /* ใช้ originalMonth ถ้ามี (ตอนตั้ง plan แรก) — ไม่งั้นใช้ month ปัจจุบัน */
-      planMonth = normalizeMonth(matched.originalMonth || matched.month || '') || planMonth;
+      /* ── เลือก plan month ตาม mode ── */
+      if(_trackSummaryPlanMode === 'current'){
+        /* เดือนปัจจุบัน (หลัง slip) — ใช้ month ล่าสุด */
+        planMonth = normalizeMonth(matched.month || matched.originalMonth || '') || planMonth;
+      } else {
+        /* เดือนเดิม (ก่อน slip) — ใช้ originalMonth */
+        planMonth = normalizeMonth(matched.originalMonth || matched.month || '') || planMonth;
+      }
     }
     if(!byReceivePlan[rm]) byReceivePlan[rm] = {};
     if(!byReceivePlan[rm][planMonth]) byReceivePlan[rm][planMonth] = {_total:0, _brands:{}};
@@ -6104,10 +6111,26 @@ function renderTrackSummary(){
     Object.keys(allBrandsInFlow).sort(function(a,b){ return allBrandsInFlow[b]-allBrandsInFlow[a]; })
       .forEach(function(b, i){ bColorMap[b] = brandPaletteForFlow[i % 8]; });
 
+    /* ── Plan Mode Toggle UI ── */
+    var isOriginal = _trackSummaryPlanMode === 'original';
+    var modeLabel = isOriginal ? '🗓️ เดือนเดิม (ก่อน slip)' : '📌 เดือนปัจจุบัน (หลัง slip)';
+    var modeColor = isOriginal ? '#8b5cf6' : '#0ea5e9';
+    var modeHint = isOriginal
+      ? 'เดือนที่ตั้งครั้งแรก — เห็น slip history'
+      : 'เดือนล่าสุดใน Tracking — ไม่สนใจ slip';
+
     var flowHtml = '<div style="background:'+rmColor+'08;border:1px solid '+rmColor+'30;border-left:3px solid '+rmColor+';border-radius:10px;padding:12px 14px">'+
-      '<div style="font-size:11px;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+      '<div style="font-size:11px;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
         '<span style="font-weight:700;color:'+rmColor+';font-size:12px">📥 รับจริงใน '+esc(_trackSummaryMonth)+' ไหลมาจากแผนเดือนไหน</span>'+
         '<span style="color:var(--text3)">— รวม '+totalFlow.toLocaleString()+' ชิ้น</span>'+
+        /* Toggle button */
+        '<div style="margin-left:auto;display:flex;align-items:center;gap:6px">'+
+          '<span style="color:var(--text3);font-size:10px">มุมมอง:</span>'+
+          '<button onclick="window._toggleTrackPlanMode()" style="background:'+modeColor+'15;border:1px solid '+modeColor+'50;color:'+modeColor+';font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="'+modeHint+' — คลิกเพื่อสลับ">'+
+            modeLabel+
+            '<span style="font-size:9px;opacity:0.7">⇄</span>'+
+          '</button>'+
+        '</div>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">';
 
@@ -6228,6 +6251,11 @@ window._setTrackSummaryMonth = function(m){
   renderTrackSummary();
 };
 
+window._toggleTrackPlanMode = function(){
+  _trackSummaryPlanMode = (_trackSummaryPlanMode === 'original') ? 'current' : 'original';
+  renderTrackSummary();
+};
+
 /* ══ DRILL-DOWN MODAL: คลิกตัวเลข Brand → แสดง raw Inbound records ══ */
 var _drillData = []; /* เก็บ records ปัจจุบันสำหรับ export */
 var _drillContext = {}; /* {receiveMonth, planMonth, brand} */
@@ -6262,7 +6290,11 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
       }
     }
     if(matched){
-      pm = normalizeMonth(matched.originalMonth || matched.month || '') || pm;
+      if(_trackSummaryPlanMode === 'current'){
+        pm = normalizeMonth(matched.month || matched.originalMonth || '') || pm;
+      } else {
+        pm = normalizeMonth(matched.originalMonth || matched.month || '') || pm;
+      }
     }
     if(pm !== planMonth) return;
     /* match ทั้งหมด → เก็บ */

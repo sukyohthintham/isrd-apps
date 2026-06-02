@@ -1981,36 +1981,47 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <!-- ══ DRILL-DOWN MODAL: Raw Data per Brand×PlanMonth×ReceiveMonth ══ -->
-<div class="overlay" id="drill-modal" style="display:none">
-  <div class="modal" style="max-width:1100px;width:95vw">
-    <div class="mhead">
-      <h3 id="drill-title">📋 Raw Data</h3>
-      <button class="closebtn" onclick="closeDrillModal()">✕</button>
+<div id="drill-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:14px;width:1100px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden">
+    <!-- HEADER -->
+    <div style="padding:18px 22px 12px 22px;border-bottom:1px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="flex:1;min-width:0">
+          <h3 id="drill-title" style="margin:0;font-size:15px;font-weight:700;color:var(--text);line-height:1.4">📋 Raw Data</h3>
+          <div id="drill-subtitle" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
+        </div>
+        <button onclick="closeDrillModal()" style="background:none;border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer;color:var(--text2);flex-shrink:0">✕</button>
+      </div>
     </div>
-    <div id="drill-subtitle" style="font-size:11px;color:var(--text2);margin:0 0 8px 0"></div>
-    <div id="drill-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px"></div>
-    <div style="max-height:55vh;overflow:auto;border:1px solid var(--border);border-radius:8px">
-      <table class="dt" style="width:100%">
-        <thead style="position:sticky;top:0;z-index:5;background:var(--bg2)"><tr>
-          <th style="width:80px">วันที่รับ</th>
-          <th style="width:120px">SKU</th>
-          <th style="width:100px">PO</th>
-          <th style="min-width:180px">Model / Color</th>
-          <th style="width:90px">Brand</th>
-          <th style="width:60px;text-align:right">Plan</th>
-          <th style="width:60px;text-align:right">รับจริง</th>
-          <th style="width:50px;text-align:center">% รับ</th>
-          <th style="width:90px">Vendor</th>
-          <th style="min-width:140px">หมายเหตุ</th>
-        </tr></thead>
-        <tbody id="drill-tbody"></tbody>
-      </table>
+    <!-- BODY: Summary + Table -->
+    <div style="padding:14px 22px;overflow:auto;flex:1;display:flex;flex-direction:column;min-height:0">
+      <!-- Summary cards -->
+      <div id="drill-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px;flex-shrink:0"></div>
+      <!-- Table -->
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:auto;flex:1;min-height:200px">
+        <table class="dt" style="width:100%;margin:0">
+          <thead style="position:sticky;top:0;z-index:5;background:var(--bg2)"><tr>
+            <th style="width:80px;white-space:nowrap">วันที่รับ</th>
+            <th style="width:120px">SKU</th>
+            <th style="width:100px">PO</th>
+            <th style="min-width:180px">Model / Color</th>
+            <th style="width:90px">Brand</th>
+            <th style="width:60px;text-align:right">Plan</th>
+            <th style="width:60px;text-align:right">รับจริง</th>
+            <th style="width:50px;text-align:center">% รับ</th>
+            <th style="width:90px">Vendor</th>
+            <th style="min-width:140px">หมายเหตุ</th>
+          </tr></thead>
+          <tbody id="drill-tbody"></tbody>
+        </table>
+      </div>
     </div>
-    <div style="display:flex;justify-content:space-between;gap:10px;margin-top:12px;align-items:center">
+    <!-- FOOTER -->
+    <div style="padding:12px 22px;border-top:1px solid var(--border);background:var(--bg2);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-shrink:0">
       <div id="drill-count" style="font-size:11px;color:var(--text2)"></div>
       <div style="display:flex;gap:8px">
-        <button onclick="exportDrillData()" class="sbtn" style="background:#1d6f42;color:#fff;font-size:12px;padding:6px 12px;border-radius:8px;border:none;cursor:pointer">📥 Export Excel</button>
-        <button onclick="closeDrillModal()" class="sbtn" style="background:var(--bg2);color:var(--text);font-size:12px;padding:6px 14px;border-radius:8px;border:1px solid var(--border);cursor:pointer">ปิด</button>
+        <button onclick="exportDrillData()" style="background:#1d6f42;color:#fff;font-size:12px;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:600">📥 Export Excel</button>
+        <button onclick="closeDrillModal()" style="background:var(--card-bg);color:var(--text);font-size:12px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);cursor:pointer">ปิด</button>
       </div>
     </div>
   </div>
@@ -2170,7 +2181,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513f';
+var APP_VERSION = '20260513g';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 

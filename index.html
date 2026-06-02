@@ -2183,7 +2183,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513n';
+var APP_VERSION = '20260513o';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6135,6 +6135,53 @@ function renderTrackSummary(){
         '</div>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">';
+
+    /* ══ Card สรุป "Plan รวมของเดือนนี้" — ตกรอบ(มาช้า) + ตรงเวลา, แยกมาก่อนแผน ══ */
+    (function(){
+      var recvN0 = parseInt((_trackSummaryMonth.match(/M(\d+)/)||[0,0])[1]);
+      if(!recvN0) return;
+      var sumLate = 0, sumOnTime = 0, sumEarly = 0;
+      var lateBreakdown = []; /* [{pm, qty}] ของที่ plan < เดือนนี้ */
+      planKeys.forEach(function(pm){
+        var n = parseInt((pm.match(/M(\d+)/)||[0,0])[1]);
+        var q = rmData[pm]._total;
+        if(!n) return;
+        if(n < recvN0){ sumLate += q; lateBreakdown.push({pm:pm, qty:q}); }
+        else if(n === recvN0){ sumOnTime += q; }
+        else { sumEarly += q; }
+      });
+      var planTotal = sumLate + sumOnTime; /* ของที่ "ควรเป็นงานเดือนนี้" = ตกรอบ + ตรงเวลา */
+      var rmC = rmColor;
+      var lateRows = lateBreakdown.sort(function(a,b){
+        return parseInt((a.pm.match(/M(\d+)/)||[0,0])[1]) - parseInt((b.pm.match(/M(\d+)/)||[0,0])[1]);
+      }).map(function(x){
+        return '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2)">'+
+          '<span>ตกรอบจาก '+esc(x.pm)+'</span>'+
+          '<span style="font-family:ui-monospace,monospace;font-weight:600;color:#f59e0b">'+x.qty.toLocaleString()+'</span></div>';
+      }).join('');
+      flowHtml += '<div style="background:linear-gradient(135deg,'+rmC+'12,'+rmC+'04);border:1.5px solid '+rmC+';border-radius:8px;padding:10px 12px;grid-column:1/-1">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<div>'+
+            '<div style="font-size:11px;font-weight:700;color:'+rmC+'">📦 ภาระงานรวมของ '+esc(_trackSummaryMonth)+' (ตกรอบ + ตรงเวลา)</div>'+
+            '<div style="font-size:9px;color:var(--text3)">ของที่ควรเป็นงานเดือนนี้ — ไม่รวมของมาก่อนแผน</div>'+
+          '</div>'+
+          '<div style="text-align:right">'+
+            '<div style="font-size:24px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+planTotal.toLocaleString()+'</div>'+
+            '<div style="font-size:9px;color:var(--text3)">รวมเข้า '+esc(_trackSummaryMonth)+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed '+rmC+'40;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px">'+
+          lateRows+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2)">'+
+            '<span>ตรงเวลา '+esc(_trackSummaryMonth)+'</span>'+
+            '<span style="font-family:ui-monospace,monospace;font-weight:600;color:#10b981">'+sumOnTime.toLocaleString()+'</span></div>'+
+        '</div>'+
+        (sumEarly > 0 ?
+          '<div style="margin-top:6px;font-size:9px;color:#3b82f6;background:#3b82f615;padding:3px 8px;border-radius:5px;display:inline-block">'+
+            '🚀 มาก่อนแผน (เดือนหน้าเข้าเร็ว) อีก '+sumEarly.toLocaleString()+' ชิ้น — แสดงแยกในการ์ดด้านล่าง'+
+          '</div>' : '')+
+      '</div>';
+    })();
 
     planKeys.forEach(function(pm){
       var pmEntry = rmData[pm];

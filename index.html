@@ -534,6 +534,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <button id="delete-all-track-btn" onclick="deleteAllTracking()" class="sbtn no-print" style="display:none;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:6px 12px;font-size:12px;border-radius:8px">🗑️ ลบทั้งหมด</button>
           <button id="sync-brand-btn" onclick="syncAllTrackingBrand()" class="sbtn no-print" style="background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;padding:6px 12px;font-size:12px;border-radius:8px" title="Sync Brand จาก Master สินค้า">🔄 Sync Brand</button>
           <button id="sync-type-btn" onclick="syncMissingMfgType()" class="sbtn no-print" style="background:#fef9c3;color:#713f12;border:1px solid #fde68a;padding:6px 12px;font-size:12px;border-radius:8px" title="Auto-detect Type TH/CN">🔄 Auto Type</button>
+          <button onclick="resetOriginalMonth()" class="sbtn no-print" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:6px 12px;font-size:12px;border-radius:8px" title="ล้าง originalMonth ให้ตรงกับ month ปัจจุบัน (ลบ slip history ที่ผิด)">🔧 Fix Plan Month</button>
           <button class="sbtn sbtn-green sbtn-sm no-print" id="track-export-btn">⬇ Export</button>
           <span class="fcnt" id="tcnt"></span>
         </div>
@@ -2009,6 +2010,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
             <th style="width:60px;text-align:right">Plan</th>
             <th style="width:60px;text-align:right">รับจริง</th>
             <th style="width:50px;text-align:center">% รับ</th>
+            <th style="width:100px;background:#fef3c7" title="month ปัจจุบัน → originalMonth ใน Tracking">Track Plan<div style="font-size:9px;color:#92400e;font-weight:400">(now → orig)</div></th>
             <th style="width:90px">Vendor</th>
             <th style="min-width:140px">หมายเหตุ</th>
           </tr></thead>
@@ -2181,7 +2183,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513h';
+var APP_VERSION = '20260513i';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6358,7 +6360,7 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
   var tbody = document.getElementById('drill-tbody');
   if(tbody){
     if(rows.length === 0){
-      tbody.innerHTML = '<tr><td colspan="10" style="padding:30px;text-align:center;color:var(--text3)">ไม่พบข้อมูล</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" style="padding:30px;text-align:center;color:var(--text3)">ไม่พบข้อมูล</td></tr>';
     } else {
       tbody.innerHTML = rows.map(function(r){
         var ib = r.ib;
@@ -6367,6 +6369,19 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
         var p = pq>0 ? Math.round(aq/pq*100) : 0;
         var pColor = p>=100?'#10b981':(p>=90?'#f59e0b':'#ef4444');
         var sku = ib.sku || (r.tracking ? r.tracking.sku||'' : '') || '';
+        /* แสดง month / originalMonth ของ Tracking ที่ match (เพื่อ debug) */
+        var trackMonth = r.tracking ? (normalizeMonth(r.tracking.month||'') || '—') : '—';
+        var trackOrig = r.tracking ? (normalizeMonth(r.tracking.originalMonth||'') || trackMonth) : '—';
+        var trackHtml = '<span style="color:#0ea5e9;font-weight:600">'+esc(trackMonth)+'</span>';
+        if(r.tracking && trackOrig !== trackMonth && trackOrig !== '—'){
+          /* มี slip — แสดง month → originalMonth */
+          trackHtml = '<span style="color:#0ea5e9;font-weight:600">'+esc(trackMonth)+'</span>'+
+            '<span style="color:var(--text3);font-size:9px;margin:0 3px">→</span>'+
+            '<span style="color:#8b5cf6;font-weight:600">'+esc(trackOrig)+'</span>';
+        }
+        if(!r.tracking){
+          trackHtml = '<span style="color:var(--red);font-size:10px" title="ไม่พบใน Tracking — ใช้เดือน Inbound แทน">⚠ no-match</span>';
+        }
         return '<tr>'+
           '<td style="font-size:11px">'+esc(ib.date||'—')+'</td>'+
           '<td style="font-family:ui-monospace,monospace;font-size:10px;color:var(--text3)">'+esc(sku||'—')+'</td>'+
@@ -6376,6 +6391,7 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
           '<td style="font-family:ui-monospace,monospace;text-align:right;color:var(--text2)">'+pq.toLocaleString()+'</td>'+
           '<td style="font-family:ui-monospace,monospace;text-align:right;color:#3b82f6;font-weight:600">'+aq.toLocaleString()+'</td>'+
           '<td style="text-align:center;color:'+pColor+';font-weight:700;font-size:11px">'+p+'%</td>'+
+          '<td style="font-size:11px;background:#fffbeb;text-align:center" title="now → originalMonth">'+trackHtml+'</td>'+
           '<td style="font-size:11px;color:var(--text2)">'+esc(ib.vendor||'—')+'</td>'+
           '<td style="font-size:11px;color:var(--text3)">'+esc(ib.note||'—')+'</td>'+
         '</tr>';
@@ -6392,6 +6408,47 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
 window.closeDrillModal = function(){
   var m = document.getElementById('drill-modal');
   if(m) m.style.display = 'none';
+};
+
+/* ══ FIX PLAN MONTH — ล้าง originalMonth ที่ผิด ══
+   หลังเรียก: ทุก Tracking record จะมี originalMonth = month ปัจจุบัน
+   ใช้เมื่อ slip history ผิดเพราะ legacy data หรือ migration */
+window.resetOriginalMonth = function(){
+  var mismatchCount = 0;
+  var totalCount = DATA.length;
+  /* นับก่อน confirm */
+  DATA.forEach(function(d){
+    var cur = normalizeMonth(d.month||'');
+    var orig = normalizeMonth(d.originalMonth||'');
+    if(orig && cur && orig !== cur) mismatchCount++;
+  });
+  if(mismatchCount === 0){
+    showToast('ไม่มี record ที่ originalMonth ต่างจาก month ปัจจุบัน','var(--blue)');
+    return;
+  }
+  var msg = '⚠️ ตรวจพบ '+mismatchCount+' record (จาก '+totalCount+') ที่ originalMonth ต่างจาก month\n\n'+
+    'การกด OK จะ:\n'+
+    '• Set originalMonth = month ปัจจุบัน ทุก record\n'+
+    '• ล้าง slipCount = 0\n'+
+    '• ล้าง slipHistory = []\n\n'+
+    'หลังจากนี้ Plan-Month Flow จะแสดงเดือนตามที่อยู่ใน Tracking ปัจจุบัน\n\n'+
+    'ดำเนินการต่อ?';
+  if(!confirm(msg)) return;
+  /* ล้างทั้งหมด */
+  var fixedCount = 0;
+  DATA.forEach(function(d){
+    var cur = normalizeMonth(d.month||'') || d.month || '';
+    if(cur){
+      if(d.originalMonth && d.originalMonth !== cur){ fixedCount++; }
+      d.originalMonth = cur;
+      d.slipCount = 0;
+      d.slipHistory = [];
+    }
+  });
+  fbPushTrackingDebounced();
+  if(typeof renderTable==='function') renderTable();
+  showToast('✓ Fix '+fixedCount+' record เรียบร้อย','var(--green)');
+  actLog('fix','tracking','Reset Plan Month: '+fixedCount+' records',{detail:''});
 };
 
 window.exportDrillData = function(){

@@ -2183,7 +2183,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513r';
+var APP_VERSION = '20260513s';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -4227,6 +4227,17 @@ var _MONTH_MAP = {
   'DEC':12,'DECEMBER':12,'ธันวาคม':12,'ธ.ค.':12,'ธค':12,
 };
 
+/* ══ จัดกลุ่ม Brand ย่อย → Brand หลัก (Nineties New/Basic/Hero → Nineties) ══ */
+function brandGroupMain(brand){
+  var b = (brand||'').trim();
+  if(!b) return 'อื่นๆ';
+  var bl = b.toLowerCase();
+  if(bl.indexOf('nineties')===0) return 'Nineties';
+  if(bl.indexOf('so.on')===0 || bl.indexOf('soon')===0) return 'SOON';
+  if(bl==='nine brand' || bl==='nine') return 'Nine';
+  return b; /* ถ้าไม่เข้า pattern → คงชื่อเดิม (ไม่ยุบเป็น 'อื่นๆ' กันข้อมูลหาย) */
+}
+
 /* ══ MATCH INBOUND → TRACKING (ตัวกลาง ใช้ทั้งการ์ด flow + drill modal) ══
    หา tracking record ที่ตรงกับ inbound record หนึ่ง — สำคัญตอน SKU ซ้ำหลายใบหลายเดือน
    ลำดับความแม่น: PO+SKU > SKU(เลือกใบที่รับแล้ว/เดือนใกล้สุด) > model+color
@@ -5974,6 +5985,7 @@ function rebuildPodFilter(){
 /* ── State สำหรับ Tracking Summary drill-down ── */
 var _trackSummaryMonth = null; /* null = brand รวม / M1-M12 = filter brand ของเดือนนั้น */
 var _trackSummaryPlanMode = 'current'; /* ยึด month (MONTH Plan เข้า) = Raw Data เสมอ */
+var _trackBrandGrouped = false; /* false = แยก sub-brand / true = รวมเป็น brand หลัก */
 
 function renderTrackSummary(){
   var box = document.getElementById('track-summary');
@@ -6039,8 +6051,10 @@ function renderTrackSummary(){
     if(!byReceivePlan[rm]) byReceivePlan[rm] = {};
     if(!byReceivePlan[rm][planMonth]) byReceivePlan[rm][planMonth] = {_total:0, _brands:{}};
     byReceivePlan[rm][planMonth]._total += actual;
-    if(!byReceivePlan[rm][planMonth]._brands[b]) byReceivePlan[rm][planMonth]._brands[b] = 0;
-    byReceivePlan[rm][planMonth]._brands[b] += actual;
+    /* brand key: ถ้าเปิด toggle รวม → ใช้ brand หลัก (Nineties/SOON), ไม่งั้นใช้ sub-brand เดิม */
+    var bKey = _trackBrandGrouped ? brandGroupMain(b) : b;
+    if(!byReceivePlan[rm][planMonth]._brands[bKey]) byReceivePlan[rm][planMonth]._brands[bKey] = 0;
+    byReceivePlan[rm][planMonth]._brands[bKey] += actual;
   });
 
   /* sort M1 → M12 */
@@ -6166,6 +6180,10 @@ function renderTrackSummary(){
         '<span style="color:var(--text3)">— รวม '+totalFlow.toLocaleString()+' ชิ้น</span>'+
         /* Toggle button */
         '<div style="margin-left:auto;display:flex;align-items:center;gap:6px">'+
+          '<button onclick="window._toggleTrackBrandGroup()" style="background:'+(_trackBrandGrouped?'#10b981':'#94a3b8')+'15;border:1px solid '+(_trackBrandGrouped?'#10b981':'#94a3b8')+'50;color:'+(_trackBrandGrouped?'#10b981':'#64748b')+';font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="สลับระหว่างดูแบรนด์ย่อย กับ รวมแบรนด์หลัก (Nineties/SOON)">'+
+            (_trackBrandGrouped ? '🧩 รวมแบรนด์หลัก' : '🔖 แบรนด์ย่อย')+
+            '<span style="font-size:9px;opacity:0.7">⇄</span>'+
+          '</button>'+
           '<span style="color:var(--text3);font-size:10px">มุมมอง:</span>'+
           '<button onclick="window._toggleTrackPlanMode()" style="background:'+modeColor+'15;border:1px solid '+modeColor+'50;color:'+modeColor+';font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="'+modeHint+' — คลิกเพื่อสลับ">'+
             modeLabel+
@@ -6342,6 +6360,11 @@ window._toggleTrackPlanMode = function(){
   renderTrackSummary();
 };
 
+window._toggleTrackBrandGroup = function(){
+  _trackBrandGrouped = !_trackBrandGrouped;
+  renderTrackSummary();
+};
+
 /* ══ DRILL-DOWN MODAL: คลิกตัวเลข Brand → แสดง raw Inbound records ══ */
 var _drillData = []; /* เก็บ records ปัจจุบันสำหรับ export */
 var _drillContext = {}; /* {receiveMonth, planMonth, brand} */
@@ -6356,9 +6379,10 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
     /* receive month match */
     var rm = normalizeMonth(ib.month||'') || ib.month || 'ไม่ระบุ';
     if(rm !== receiveMonth) return;
-    /* brand match */
+    /* brand match — ถ้าการ์ดเปิดโหมดรวมแบรนด์หลัก ให้เทียบที่ระดับ brand หลัก */
     var b = (ib.brand||'').trim() || 'ไม่ระบุ';
-    if(b !== brand) return;
+    var bCompare = _trackBrandGrouped ? brandGroupMain(b) : b;
+    if(bCompare !== brand) return;
     /* หา plan month จาก Tracking (ใช้ helper กลางตัวเดียวกับการ์ด flow) */
     var pm = rm;
     var matched = _matchTracking(ib, rm);

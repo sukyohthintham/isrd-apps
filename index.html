@@ -2086,6 +2086,7 @@ var PERMISSIONS = {
   'sync-brand':          ['Super Admin','Admin','Merchandiser','Warehouse','Nineties Team','SO.ON Team'],
   'sync-type':           ['Super Admin','Admin','Merchandiser','Warehouse','Nineties Team','SO.ON Team'],
   'import-tracking':     ['Super Admin','Admin','Merchandiser'],
+  'edit-po':             ['Super Admin','Admin'], /* แก้ PO ในฟอร์มบันทึกรับ — เฉพาะ Admin (PO เป็น key จับคู่ ห้ามแก้มั่ว) */
 };
 
 function hasPerm(key){
@@ -2198,7 +2199,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513y';
+var APP_VERSION = '20260513z';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -2946,6 +2947,22 @@ function openIbModal(idx){
     var ibCsE = document.getElementById('ib-cost-sheet');if(ibCsE) ibCsE.value=d.costSheet||'';
     document.getElementById('ib-note').value = d.note||'';
   }
+  /* ── ล็อก PO ไม่ให้แก้ ยกเว้น Admin (PO เป็น key จับคู่ inbound↔tracking) ── */
+  var poInput = document.getElementById('ib-po');
+  if(poInput){
+    var canEditPo = (typeof hasPerm==='function') && hasPerm('edit-po');
+    poInput.readOnly = !canEditPo;
+    if(canEditPo){
+      poInput.style.background = 'var(--input-bg)';
+      poInput.style.cursor = '';
+      poInput.title = '';
+    } else {
+      poInput.style.background = 'var(--hover)';
+      poInput.style.cursor = 'not-allowed';
+      poInput.style.color = 'var(--text3)';
+      poInput.title = '🔒 PO ถูกล็อก — แก้ได้เฉพาะ Admin (PO เป็นรหัสจับคู่กับ Tracking)';
+    }
+  }
   document.getElementById('ib-modal').style.display = 'flex';
 }
 
@@ -2963,6 +2980,10 @@ function saveIbRecord(){
   var poField  = document.getElementById('ib-po');
   var skuFinal = (skuField && skuField.value.trim()) ? skuField.value.trim() : skuVal;
   var poFinal  = poField ? poField.value.trim() : '';
+  /* ── กัน bypass: ถ้าไม่มีสิทธิ์ edit-po และกำลังแก้ของเดิม → คง PO เดิมไว้เสมอ ── */
+  if(typeof hasPerm==='function' && !hasPerm('edit-po') && ibEditIdx >= 0 && IB_DATA[ibEditIdx]){
+    poFinal = IB_DATA[ibEditIdx].po || poFinal;
+  }
   var obj = {
     date: _fmtDate(document.getElementById('ib-date').value),
     sku: skuFinal,

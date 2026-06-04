@@ -2183,7 +2183,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513t';
+var APP_VERSION = '20260513u';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6102,6 +6102,23 @@ function renderTrackSummary(){
   });
   var brandKeys = Object.keys(byBrand).sort(function(a,b){ return byBrand[b].sku - byBrand[a].sku; });
 
+  /* ══ PLAN ACCURACY ต่อเดือน — "แผนเข้าเดือนนั้นสำเร็จกี่ %" ══
+     ตัวเศษ = Actual ของ SKU ที่ (Plan เข้าเดือนนั้น) และ (รับจริงเดือนนั้น) = ตรงเวลาแท้ๆ
+              = byReceivePlan[m][m]._total (เดือน plan == เดือนรับ)
+     ตัวส่วน = Plan QTY รวมของ SKU ที่ Plan เข้าเดือนนั้นทั้งหมด (รวมที่ยังไม่มา) = byMonth[m].qty
+     *ไม่รวมของตกรอบ* (Plan เดือนอื่นที่มาเดือนนี้) เพราะนั่นไม่ใช่แผนของเดือนนี้ */
+  function _planAccuracy(m){
+    var planQty = (byMonth[m] && byMonth[m].qty) || 0;
+    var onTimeActual = (byReceivePlan[m] && byReceivePlan[m][m] && byReceivePlan[m][m]._total) || 0;
+    if(planQty <= 0) return null;
+    return {
+      pct: Math.round(onTimeActual/planQty*100),
+      onTime: onTimeActual,
+      planQty: planQty,
+      pending: Math.max(0, planQty - onTimeActual)
+    };
+  }
+
   function _miniCard(opts){
     var pct = opts.plan > 0 ? Math.round(opts.actual/opts.plan*100) : 0;
     var pctColor = pct >= 100 ? '#10b981' : (pct >= 90 ? '#f59e0b' : (pct > 0 ? '#ef4444' : '#94a3b8'));
@@ -6125,6 +6142,15 @@ function renderTrackSummary(){
         '<div style="flex:1;height:4px;background:'+opts.color+'20;border-radius:2px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+pctColor+';transition:width 0.3s"></div></div>'+
         '<div style="font-size:10px;font-weight:700;color:'+pctColor+';font-family:ui-monospace,monospace;min-width:32px;text-align:right">'+pct+'%</div>'+
       '</div>'+
+      (opts.planAcc ? (function(){
+        var pa = opts.planAcc;
+        var paColor = pa.pct >= 90 ? '#10b981' : (pa.pct >= 70 ? '#f59e0b' : '#ef4444');
+        return '<div style="margin-top:4px;padding-top:4px;border-top:1px dashed '+opts.color+'25;display:flex;justify-content:space-between;align-items:center" '+
+          'title="แผนเข้า '+esc(opts.label)+' สำเร็จกี่ % = ของที่ Plan เดือนนี้และมาตรงเดือน ('+pa.onTime.toLocaleString()+') / Plan ทั้งหมด ('+pa.planQty.toLocaleString()+') — ไม่รวมตัวตกรอบ">'+
+          '<span style="font-size:9px;color:var(--text3)">🎯 แผนสำเร็จ</span>'+
+          '<span style="font-size:11px;font-weight:800;color:'+paColor+';font-family:ui-monospace,monospace">'+pa.pct+'%</span>'+
+        '</div>';
+      })() : '')+
     '</div>';
   }
 
@@ -6160,6 +6186,7 @@ function renderTrackSummary(){
     html += _miniCard({
       label:m, icon:'📅', color:c,
       sku:b.sku, plan:b.qty, actual:b.actual,
+      planAcc: _planAccuracy(m),
       active: _trackSummaryMonth === m,
       onClick: "window._setTrackSummaryMonth('"+m.replace(/'/g,"\\'")+"')"
     });
@@ -6246,6 +6273,19 @@ function renderTrackSummary(){
       });
       var planTotal = sumLate + sumOnTime; /* ของที่ "ควรเป็นงานเดือนนี้" = ตกรอบ + ตรงเวลา */
       var rmC = rmColor;
+      /* Plan Accuracy: แผนเข้าเดือนนี้สำเร็จกี่ % = ตรงเวลา / Plan ทั้งหมดของเดือนนี้ (รวมยังไม่มา) */
+      var acc = _planAccuracy(_trackSummaryMonth);
+      var accHtml = '';
+      if(acc){
+        var accColor = acc.pct >= 90 ? '#10b981' : (acc.pct >= 70 ? '#f59e0b' : '#ef4444');
+        accHtml = '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding:0 8px">'+
+            '<div style="font-size:9px;color:var(--text3);font-weight:600">% แผนสำเร็จ</div>'+
+            '<div style="font-size:26px;font-weight:800;color:'+accColor+';font-family:ui-monospace,monospace;line-height:1">'+acc.pct+'%</div>'+
+            '<div style="font-size:9px;color:var(--text3)" title="ของที่ Plan เข้า '+esc(_trackSummaryMonth)+' และมาตรงเดือน '+acc.onTime.toLocaleString()+' / Plan ทั้งหมด '+acc.planQty.toLocaleString()+'">'+
+              acc.onTime.toLocaleString()+' / '+acc.planQty.toLocaleString()+'</div>'+
+          '</div>'+
+          '<div style="width:1px;align-self:stretch;background:'+rmC+'30;flex-shrink:0"></div>';
+      }
       var lateRows = lateBreakdown.sort(function(a,b){
         return parseInt((a.pm.match(/M(\d+)/)||[0,0])[1]) - parseInt((b.pm.match(/M(\d+)/)||[0,0])[1]);
       }).map(function(x){
@@ -6263,6 +6303,8 @@ function renderTrackSummary(){
         '</div>'+
         /* เส้นคั่น */
         '<div style="width:1px;align-self:stretch;background:'+rmC+'30;flex-shrink:0"></div>'+
+        /* % แผนสำเร็จ (Plan Accuracy) */
+        accHtml+
         /* ขวา: breakdown chips แนวนอน */
         '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1">'+
           lateRows+

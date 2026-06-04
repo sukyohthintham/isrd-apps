@@ -2199,7 +2199,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513aa';
+var APP_VERSION = '20260513ab';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -2249,19 +2249,49 @@ function checkAppVersion(){
       console.log('[App] version initialized on Firebase:', APP_VERSION);
       return;
     }
-    if(remote === APP_VERSION){
-      console.log('[App] up-to-date:', APP_VERSION);
+    /* แยก base version ออกจาก suffix timestamp (force-update ใส่ "-<ts>" ต่อท้าย) */
+    var remoteBase = remote.split('-')[0];
+    var localBase  = APP_VERSION.split('-')[0];
+
+    if(remoteBase === localBase){
+      /* base ตรงกัน = ไฟล์เป็น version เดียวกันแล้ว → ไม่ต้อง reload
+         ถ้า remote มี suffix ค้าง (จาก force-update เก่า) → ล้างให้สะอาด กัน loop */
+      if(remote !== localBase){
+        fbDB.ref(FB_PATH+'/_app_version').set(localBase);
+        console.log('[App] cleaned stale version suffix on Firebase →', localBase);
+      } else {
+        console.log('[App] up-to-date:', APP_VERSION);
+      }
       return;
     }
-    if(remote > APP_VERSION){
-      /* remote ใหม่กว่า → แจ้งเตือน + reload */
-      console.log('[App] new version available:', remote, '(current:', APP_VERSION+')');
+    if(remoteBase > localBase){
+      /* remote base ใหม่กว่าจริง → แจ้งเตือน + reload (ครั้งเดียว กันวน) */
+      if(sessionStorage.getItem('_lastReloadVer') === remoteBase){
+        console.log('[App] already reloaded for', remoteBase, '— skip to prevent loop');
+        return;
+      }
+      sessionStorage.setItem('_lastReloadVer', remoteBase);
+      console.log('[App] new version available:', remoteBase, '(current:', localBase+')');
       _showUpdateBanner();
     } else {
-      /* local ใหม่กว่า → push ขึ้น (กรณี admin upgrade) */
-      fbDB.ref(FB_PATH+'/_app_version').set(APP_VERSION);
-      console.log('[App] pushed local version to Firebase:', APP_VERSION);
+      /* local base ใหม่กว่า → push ขึ้น (กรณี admin upgrade) */
+      fbDB.ref(FB_PATH+'/_app_version').set(localBase);
+      console.log('[App] pushed local version to Firebase:', localBase);
     }
+  });
+
+  /* แยก listener สำหรับ force-reload trigger (admin สั่ง reload ทุกเครื่อง) */
+  fbDB.ref(FB_PATH+'/_force_reload').on('value', function(snap){
+    var ts = (snap.val()||'').toString();
+    if(!ts) return;
+    /* reload ครั้งเดียวต่อ trigger — จำ ts ล่าสุดที่ reload ไปแล้ว กันวน */
+    var last = sessionStorage.getItem('_lastForceReload');
+    if(last === ts){ return; } /* เคย reload สำหรับ trigger นี้แล้ว ข้าม */
+    sessionStorage.setItem('_lastForceReload', ts);
+    /* ถ้าเพิ่งเปิดหน้า (first load) อย่าเด้ง banner — แค่จำ ts ไว้ */
+    if(!window._appReady){ return; }
+    console.log('[App] force-reload triggered by admin:', ts);
+    _showUpdateBanner();
   });
 }
 
@@ -2269,9 +2299,8 @@ function checkAppVersion(){
 function forceUpdateAllClients(){
   if(!fbDB){ showToast('Firebase ยังไม่เชื่อมต่อ','var(--red)'); return; }
   if(!confirm('Force update ทุกเครื่องที่เปิดอยู่?\nทุกคนจะถูก reload ใน 5 วินาที')) return;
-  /* trigger โดยใส่ timestamp suffix → ต่างจากเดิมแน่นอน */
-  var ver = APP_VERSION + '-' + Date.now();
-  fbDB.ref(FB_PATH+'/_app_version').set(ver).then(function(){
+  /* ใช้ trigger แยก (_force_reload = timestamp) ไม่ปนกับ version → กัน reload loop */
+  fbDB.ref(FB_PATH+'/_force_reload').set(Date.now()).then(function(){
     showToast('✓ Push update สำเร็จ — ทุกเครื่องจะ reload ภายใน 5 วินาที','var(--green)');
   });
 }
@@ -10868,6 +10897,9 @@ function initApp(){
   initDashboard();
   /* initCSSections ต้องเรียกหลัง Firebase sync เพื่อให้ csState ถูก populate */
   /* ไม่เรียกที่นี่ — จะเรียกใน navTo('costsheet') แทน */
+  /* mark ว่าแอปพร้อมแล้ว — หลังจากนี้ถ้า admin สั่ง force-reload ค่อยเด้ง banner
+     (กันเด้งตอน first load ที่ listener fire ครั้งแรก) */
+  setTimeout(function(){ window._appReady = true; }, 3000);
 }
 
 

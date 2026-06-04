@@ -506,6 +506,10 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
 
         <div class="fbar">
           <input class="fsch" id="tsearch" placeholder="ค้นหา Model, Vendor, Tracking...">
+          <select class="fsel" id="tbrandmain" onchange="applyFilters()">
+            <option value="">ทุก Brand</option>
+            <option>Nineties</option><option>SOON</option><option>Nine</option>
+          </select>
           <select class="fsel" id="tbrand">
             <option value="">ทุก Category</option>
             <option>Nineties New</option><option>Nineties Hero</option>
@@ -545,7 +549,8 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
   <th>Model</th>
   <th style="min-width:60px">Color</th>
   <th style="width:75px">Type</th>
-  <th style="min-width:90px">Brand</th>
+  <th style="width:75px" title="Brand หลัก (คำนวณจาก Category)">Brand</th>
+  <th style="min-width:90px" title="Category สินค้า (Nineties New, SOON Hero ฯลฯ)">Category</th>
   <th style="width:90px" title="Month ที่ Plan ให้เข้าคลัง">Month<div style="font-size:9px;color:var(--text3);font-weight:400">(Plan เข้า)</div></th>
   <th style="width:50px">Qty</th>
   <th style="width:55px" title="จำนวนที่รับจริงจาก Actual Inbound">รับจริง</th>
@@ -1468,6 +1473,11 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
               <option>Nineties New</option><option>Nineties Hero</option>
               <option>SO.ON Hero</option><option>SO.ON New</option>
             </select>
+            <select class="fsel" id="ib-recv-status" onchange="renderIbTable()" title="กรองตามสถานะการรับเข้าคลัง">
+              <option value="received">✅ รับเข้าคลังแล้ว</option>
+              <option value="pending">⏳ ยังไม่รับ</option>
+              <option value="all">ทั้งหมด</option>
+            </select>
             <select class="fsel" id="ib-month" onchange="renderIbTable()">
               <option value="">ทุกเดือน</option>
               <option>M1</option><option>M2</option><option>M3</option>
@@ -1482,7 +1492,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <div class="twrap">
             <table class="dt">
               <thead><tr>
-                <th>วันที่รับ</th><th>SKU</th><th>PO</th><th>Model / Color</th><th>Brand</th>
+                <th>วันที่รับ</th><th>SKU</th><th>PO</th><th>Model / Color</th><th style="width:70px">Brand</th><th>Category</th>
                 <th>Plan QTY</th><th>รับจริง QTY</th><th>% รับ</th>
                 <th style="width:80px" title="ต้นทุนที่จ่ายจริง">ต้นทุน฿<div style="font-size:9px;color:var(--text3);font-weight:400">(จ่ายจริง)</div></th>
                 <th style="width:80px;background:#fef3c7" title="ต้นทุนประมาณการจาก Cost Sheet (BOM)">Cost Sheet<div style="font-size:9px;color:#92400e;font-weight:400">(BOM)</div></th>
@@ -2183,7 +2193,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513w';
+var APP_VERSION = '20260513x';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -3058,9 +3068,43 @@ function exportInbound(){
   showToast('✓ Export '+rows.length+' รายการเรียบร้อย','var(--green)');
 }
 function renderIbTable(){
+  var recvStatus = (document.getElementById('ib-recv-status')||{value:'received'}).value;
   var list = _getFilteredInbound();
-  document.getElementById('ib-count').textContent = list.length + ' รายการ';
-  document.getElementById('ib-tbody').innerHTML = list.length ? list.map(function(d,i){
+
+  /* ── สถานะ "ยังไม่รับ" / "ทั้งหมด" → ดึง Order จาก Tracking ที่ยังไม่มี inbound มาแสดงด้วย ── */
+  var pendingRows = [];
+  if(recvStatus === 'pending' || recvStatus === 'all'){
+    var q  = (document.getElementById('ib-search')?document.getElementById('ib-search').value:'').toLowerCase().trim();
+    var br = document.getElementById('ib-brand') ? document.getElementById('ib-brand').value : '';
+    var mo = document.getElementById('ib-month') ? document.getElementById('ib-month').value : '';
+    (DATA||[]).forEach(function(d){
+      /* เช็คว่า order นี้ (PO+SKU) รับเข้าคลังแล้วหรือยัง */
+      var dPodN = (d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+      var dSku  = (d.sku||'').trim();
+      var received = IB_DATA.some(function(ib){
+        var ibPoN = (ib.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+        var ibSku = (ib.sku||'').trim();
+        if(dPodN && ibPoN) return ibPoN===dPodN && (!dSku||!ibSku||ibSku===dSku);
+        if(dSku && ibSku) return ibSku===dSku;
+        return ib.model===d.model && ib.color===d.color;
+      });
+      if(received) return; /* รับแล้ว ข้าม (อยู่ใน list ปกติแล้ว) */
+      /* apply filter เดียวกัน */
+      if(br && d.brand !== br) return;
+      if(mo && normalizeMonth(d.month||'') !== normalizeMonth(mo)) return;
+      if(q){
+        var hay = ((d.sku||'')+' '+(d.pod||d.po||'')+' '+(d.model||'')+' '+(d.color||'')+
+                   ' '+(d.vendor||'')+' '+(d.brand||'')).toLowerCase();
+        if(hay.indexOf(q) === -1) return;
+      }
+      pendingRows.push(d);
+    });
+  }
+
+  /* ถ้าเลือก "ยังไม่รับ" → ไม่แสดง received list */
+  if(recvStatus === 'pending') list = [];
+
+  var receivedHtml = list.map(function(d,i){
     var ri = IB_DATA.indexOf(d);
     var pct = d.planQty > 0 ? Math.round(d.actualQty/d.planQty*100) : 100;
     var pctColor = pct >= 100 ? 'var(--green)' : pct >= 80 ? 'var(--amber)' : 'var(--red)';
@@ -3069,6 +3113,7 @@ function renderIbTable(){
       (function(){ var sk=d.sku||(DATA.find(function(t){return t.model===d.model&&t.color===d.color;})||{}).sku||''; return '<td style="font-family:ui-monospace,monospace;font-size:10px;color:var(--text3)">'+esc(sk||'—')+'</td>'; })()+
       '<td style="font-size:11px;color:var(--text2)">'+(d.po||'—')+'</td>'+
       '<td style="font-weight:500">'+esc(d.model)+'<span style="display:block;font-size:10px;color:var(--text3)">'+esc(d.color)+'</span></td>'+
+      '<td style="text-align:center"><span style="font-size:10px;font-weight:700;color:var(--text2);background:var(--hover);border-radius:4px;padding:2px 6px">'+esc(brandGroupMain(d.brand))+'</span></td>'+
       '<td>'+bchip(d.brand)+'</td>'+
       '<td style="font-family:ui-monospace;color:var(--text2)">'+(d.planQty||0)+'</td>'+
       '<td style="font-family:ui-monospace;color:var(--blue);font-weight:600">'+(d.actualQty||0)+'</td>'+
@@ -3101,7 +3146,42 @@ function renderIbTable(){
         '<button class="delbtn" onclick="deleteIbRecord('+ri+')" title="ลบ">✕</button>'+
       '</td>'+
     '</tr>';
-  }).join('') : '<tr><td colspan="14" style="padding:30px;text-align:center;color:var(--text3)">ยังไม่มีรายการรับสินค้า</td></tr>';
+  }).join('');
+
+  /* แถว "ยังไม่รับ" — order จาก Tracking ที่ยังไม่มี inbound */
+  var pendingHtml = pendingRows.map(function(d){
+    var ti = DATA.indexOf(d);
+    return '<tr style="background:#fffbeb">'+
+      '<td style="font-size:11px;color:var(--text3)">—</td>'+
+      '<td style="font-family:ui-monospace,monospace;font-size:10px;color:var(--text3)">'+esc(d.sku||'—')+'</td>'+
+      '<td style="font-size:11px;color:var(--text2)">'+(d.pod||d.po||'—')+'</td>'+
+      '<td style="font-weight:500">'+esc(d.model)+'<span style="display:block;font-size:10px;color:var(--text3)">'+esc(d.color)+'</span></td>'+
+      '<td style="text-align:center"><span style="font-size:10px;font-weight:700;color:var(--text2);background:var(--hover);border-radius:4px;padding:2px 6px">'+esc(brandGroupMain(d.brand))+'</span></td>'+
+      '<td>'+bchip(d.brand)+'</td>'+
+      '<td style="font-family:ui-monospace;color:var(--text2)">'+(d.total||d.qty||0)+'</td>'+
+      '<td style="text-align:center"><span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700">⏳ ยังไม่รับ</span></td>'+
+      '<td style="text-align:center;color:var(--text3)">—</td>'+
+      '<td style="color:var(--text3)">—</td>'+
+      '<td style="background:#fffbeb;color:var(--text3)">—</td>'+
+      '<td style="font-size:11px;color:var(--text2)">'+(d.vendor||'—')+'</td>'+
+      '<td style="font-family:ui-monospace,monospace;font-size:11px;text-align:center">'+(function(){
+        var m = normalizeMonth(d.month||'');
+        return m ? '<span style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:4px;padding:2px 6px;font-weight:600">'+m+'</span>' : '<span style="color:var(--text3)">—</span>';
+      }())+'</td>'+
+      '<td style="font-size:11px;color:var(--text3)">'+(d.status||'—')+'</td>'+
+      '<td style="white-space:nowrap"><button class="delbtn" onclick="openIbModal(-1)" style="color:var(--green);font-size:13px" title="บันทึกรับสินค้านี้">+รับ</button></td>'+
+    '</tr>';
+  }).join('');
+
+  var totalCount = list.length + pendingRows.length;
+  var countLabel = totalCount + ' รายการ';
+  if(recvStatus === 'pending') countLabel = pendingRows.length + ' รายการ (ยังไม่รับ)';
+  else if(recvStatus === 'all') countLabel = totalCount + ' รายการ (รับแล้ว '+list.length+' · ยังไม่รับ '+pendingRows.length+')';
+  else countLabel = list.length + ' รายการ (รับแล้ว)';
+  document.getElementById('ib-count').textContent = countLabel;
+
+  var allHtml = receivedHtml + pendingHtml;
+  document.getElementById('ib-tbody').innerHTML = allHtml || '<tr><td colspan="15" style="padding:30px;text-align:center;color:var(--text3)">ไม่มีรายการ</td></tr>';
 }
 
 window.deleteIbRecord = function(idx){
@@ -4182,7 +4262,7 @@ function rebuildBrandFilter(){
   var brands = [];
   DATA.forEach(function(d){ if(d.brand && brands.indexOf(d.brand)<0) brands.push(d.brand); });
   brands.sort();
-  sel.innerHTML = '<option value="">ทุกแบรนด์</option>' +
+  sel.innerHTML = '<option value="">ทุก Category</option>' +
     brands.map(function(b){ return '<option'+(b===cur?' selected':'')+'>'+b+'</option>'; }).join('');
 }
 
@@ -5973,6 +6053,7 @@ function applyFilters(){
   rebuildVendorFilter();
   rebuildPodFilter();
   var q=(document.getElementById('tsearch').value||'').toLowerCase();
+  var bm=(document.getElementById('tbrandmain')||{value:''}).value;
   var b=document.getElementById('tbrand').value;
   var st=document.getElementById('tstatus').value;
   var mo=document.getElementById('tmonth').value;
@@ -5981,6 +6062,7 @@ function applyFilters(){
   var vd=(document.getElementById('tvendor')||{value:''}).value;
   var pd=(document.getElementById('tpod')||{value:''}).value;
   filtered=DATA.filter(function(x){
+    if(bm&&brandGroupMain(getDisplayBrand(x))!==bm)return false;
     if(b&&x.brand!==b)return false;
     if(st&&(x.status||'').trim()!==st.trim())return false;
     if(mo&&x.month!==mo)return false;
@@ -6688,6 +6770,7 @@ function renderTable(){
     return'<tr><td>'+th+'</td><td style="font-weight:500;white-space:nowrap;cursor:pointer" onclick="openDetail('+ri+')" title="ดูรายละเอียดสินค้า">'+(x.sku?'<span style="display:block;font-size:9px;color:var(--text3);font-family:ui-monospace">'+esc(x.sku)+'</span>':'')+'<span style="color:var(--blue);text-decoration:underline">'+x.model+'</span>'+(x.note?'<span style="display:block;font-size:10px;color:var(--text3);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+x.note+'">\uD83D\uDCDD '+x.note+'</span>':'')+(x.editedBy?'<span style="display:block;font-size:9px;color:var(--text3)">✏ '+(function(){ var u=USERS.find(function(u){return u.user===x.editedBy||u.name===x.editedBy;}); return u?u.name:x.editedBy; }())+(x.editedAt?' · '+new Date(x.editedAt).toLocaleDateString('th-TH'):'')+'</span>':'')+'</td>'+
       '<td style="font-size:11px;color:var(--text2)">'+x.color+'</td>'+
       '<td style="text-align:center;white-space:nowrap">'+(function(){ var _t=getDisplayMfgType(x); return _t==='TH'?'<span style="display:inline-flex;align-items:center;gap:2px;background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;white-space:nowrap" title="'+(x.mfgType?'':'auto')+'">🇹🇭 TH</span>':_t==='CN'?'<span style="display:inline-flex;align-items:center;gap:2px;background:#fef9c3;color:#713f12;border:1px solid #fde68a;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;white-space:nowrap" title="'+(x.mfgType?'':'auto')+'">🇨🇳 CN</span>':'<span style="color:var(--text3);font-size:11px">—</span>'; }())+'</td>'+
+      '<td style="text-align:center"><span style="font-size:10px;font-weight:700;color:var(--text2);background:var(--hover);border-radius:4px;padding:2px 6px">'+esc(brandGroupMain(getDisplayBrand(x)))+'</span></td>'+
       '<td>'+bchip(getDisplayBrand(x))+'</td>'+
       '<td style="text-align:center;font-size:11px;font-family:ui-monospace,monospace;color:var(--text2);padding:6px">'+(function(){
         var m = getDisplayMonth(x);
@@ -7018,7 +7101,7 @@ window._confirmSlipPlan = function(idx){
   showToast('✓ ขยับ Plan จาก '+oldMonth+' → '+newMonth+' แล้ว','var(--blue)');
 };
 
-['tsearch','tbrand','tstatus','tmonth','tuser','tvendor','tpod'].forEach(function(id){var el=document.getElementById(id); if(el) el.oninput=el.onchange=applyFilters;});
+['tsearch','tbrandmain','tbrand','tstatus','tmonth','tuser','tvendor','tpod'].forEach(function(id){var el=document.getElementById(id); if(el) el.oninput=el.onchange=applyFilters;});
 document.getElementById('pgprev').onclick=function(){curPage--;renderTable();window.scrollTo({top:0,behavior:'smooth'});};
 document.getElementById('pgnext').onclick=function(){curPage++;renderTable();window.scrollTo({top:0,behavior:'smooth'});};
 (function(){

@@ -2199,7 +2199,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513ad';
+var APP_VERSION = '20260513ae';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6271,6 +6271,26 @@ function renderTrackSummary(){
   });
   var brandKeys = Object.keys(byBrand).sort(function(a,b){ return byBrand[b].sku - byBrand[a].sku; });
 
+  /* ══ byPlanMonth — ยึด "เดือน Plan" เป็นหลัก (วิธีเดียวกับ Pivot ของพี่หนึ่ง) ══
+     วน tracking ที่ Plan=m (ไม่ Cancel) → sum รับจริง (getActualQty PO+SKU aware)
+     ตอบ: "แผนเดือนนี้ได้ของมาแล้วเท่าไร แยกรายแบรนด์" — ตรงกับ Report ที่ตรวจมา
+     ต่างจาก byReceivePlan ที่ยึด "เดือนรับ" (ของที่เข้าคลังเดือนนั้น มาจากแผนไหน) */
+  var byPlanMonth = {};
+  (filtered||[]).forEach(function(x){
+    if(isCancelled(x)) return;
+    var pm = getDisplayMonth(x) || normalizeMonth(x.month||'') || 'ไม่ระบุ';
+    var b  = (x.brand||'').trim() || 'ไม่ระบุ';
+    var bKey = _trackBrandGrouped ? brandGroupMain(b) : b;
+    var plan = parseInt(x.total)||0;
+    var act  = getActualQty(x); if(act===null) act = 0;
+    if(!byPlanMonth[pm]) byPlanMonth[pm] = {_plan:0, _recv:0, _brands:{}};
+    byPlanMonth[pm]._plan += plan;
+    byPlanMonth[pm]._recv += act;
+    if(!byPlanMonth[pm]._brands[bKey]) byPlanMonth[pm]._brands[bKey] = {plan:0, recv:0};
+    byPlanMonth[pm]._brands[bKey].plan += plan;
+    byPlanMonth[pm]._brands[bKey].recv += act;
+  });
+
   /* ══ PLAN ACCURACY ต่อเดือน — "แผนเข้าเดือนนั้นสำเร็จกี่ %" ══
      ตัวเศษ = Actual ของ SKU ที่ (Plan เข้าเดือนนั้น) และ (รับจริงเดือนนั้น) = ตรงเวลาแท้ๆ
               = byReceivePlan[m][m]._total (เดือน plan == เดือนรับ)
@@ -6557,6 +6577,46 @@ function renderTrackSummary(){
               '<b style="font-family:ui-monospace,monospace;color:var(--text3);margin-left:auto">'+notYet.toLocaleString()+'</b></div>':'')+
           '</div>'+
         '</div>'+
+      '</div>';
+    })();
+
+    /* ══ การ์ด "แผน M5 รับมาแล้ว แยกรายแบรนด์" — ยึดเดือน Plan (ตรง Pivot ที่พี่หนึ่งตรวจ) ══ */
+    (function(){
+      var m = _trackSummaryMonth;
+      var pmData = byPlanMonth[m];
+      if(!pmData) return;
+      var brands = pmData._brands||{};
+      var bkeys = Object.keys(brands).sort(function(a,b){ return brands[b].recv - brands[a].recv; });
+      var planTot = pmData._plan, recvTot = pmData._recv;
+      var pctTot = planTot>0 ? Math.round(recvTot/planTot*100) : 0;
+      var rows = bkeys.map(function(bk){
+        var bd = brands[bk];
+        var p = bd.plan, r = bd.recv;
+        var pc = p>0 ? Math.round(r/p*100) : 0;
+        var pcColor = pc>=90?'#10b981':(pc>=70?'#f59e0b':'#ef4444');
+        var dotColor = (typeof bchipColor==='function') ? bchipColor(bk) : '#6366f1';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'+
+          '<span style="width:9px;height:9px;border-radius:50%;background:'+dotColor+';flex-shrink:0"></span>'+
+          '<span style="font-size:11px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
+          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text3);min-width:55px;text-align:right">'+p.toLocaleString()+'</span>'+
+          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;min-width:55px;text-align:right">'+r.toLocaleString()+'</span>'+
+          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:'+pcColor+';font-weight:700;min-width:42px;text-align:right">'+pc+'%</span>'+
+        '</div>';
+      }).join('');
+      var totPctColor = pctTot>=90?'#10b981':(pctTot>=70?'#f59e0b':'#ef4444');
+      flowHtml += '<div style="grid-column:1/-1;background:var(--card,#fff);border:1.5px solid #3b82f6;border-radius:10px;padding:12px 16px">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">'+
+          '<span style="font-weight:700;color:#3b82f6;font-size:12px">📥 แผน '+esc(m)+' รับมาแล้ว แยกรายแบรนด์ <span style="font-size:10px;color:var(--text3);font-weight:400">(ยึดเดือน Plan — ตรงกับ Report/Pivot)</span></span>'+
+          '<span style="font-size:11px;color:var(--text3)">รวม <b style="color:#3b82f6;font-family:ui-monospace,monospace;font-size:14px">'+recvTot.toLocaleString()+'</b> / '+planTot.toLocaleString()+' = <b style="color:'+totPctColor+'">'+pctTot+'%</b></span>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:2px solid var(--border);font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">'+
+          '<span style="width:9px;flex-shrink:0"></span>'+
+          '<span style="flex:1">Category</span>'+
+          '<span style="min-width:55px;text-align:right">Plan</span>'+
+          '<span style="min-width:55px;text-align:right">รับจริง</span>'+
+          '<span style="min-width:42px;text-align:right">%</span>'+
+        '</div>'+
+        rows+
       '</div>';
     })();
 

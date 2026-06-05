@@ -2199,7 +2199,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513ae';
+var APP_VERSION = '20260513af';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6420,268 +6420,58 @@ function renderTrackSummary(){
   }
   var flowBoxEl = document.getElementById('track-summary-flow');
 
-  if(_trackSummaryMonth && byReceivePlan[_trackSummaryMonth]){
-    var rmData = byReceivePlan[_trackSummaryMonth];
-    /* sort by plan month: M1 → M12 */
-    var planKeys = Object.keys(rmData).sort(function(a,b){
-      var na = parseInt((a.match(/M(\d+)/)||[0,999])[1]);
-      var nb = parseInt((b.match(/M(\d+)/)||[0,999])[1]);
-      return na - nb;
-    });
-    var totalFlow = 0;
-    planKeys.forEach(function(pm){ totalFlow += rmData[pm]._total; });
+  if(_trackSummaryMonth && byPlanMonth[_trackSummaryMonth]){
+    /* ══ การ์ดเดียว: ยึดเดือน Plan (ตรง Pivot/Report) — Plan/รับจริง/% รายแบรนด์ ══ */
+    var pmData = byPlanMonth[_trackSummaryMonth] || {_plan:0,_recv:0,_brands:{}};
+    var planTot = pmData._plan, recvTot = pmData._recv;
+    var pctTot = planTot>0 ? Math.round(recvTot/planTot*100) : 0;
+    var rmIdx2 = parseInt((_trackSummaryMonth.match(/M(\\d+)/)||[0,1])[1]) - 1;
+    var rmCol = monthColors[rmIdx2 % 12] || '#6b7280';
+    var totPctCol = pctTot>=100?'#10b981':(pctTot>=80?'#f59e0b':'#ef4444');
 
-    /* หาสีของ receive month (M5) */
-    var rmIdx = parseInt((_trackSummaryMonth.match(/M(\d+)/)||[0,1])[1]) - 1;
-    var rmColor = monthColors[rmIdx % 12] || '#6b7280';
+    var brandRows = Object.keys(pmData._brands).sort(function(a,b){ return pmData._brands[b].recv - pmData._brands[a].recv; }).map(function(bk){
+      var bd = pmData._brands[bk];
+      var pc = bd.plan>0 ? Math.round(bd.recv/bd.plan*100) : 0;
+      var pcCol = pc>=100?'#10b981':(pc>=80?'#f59e0b':(pc>=50?'#f97316':'#ef4444'));
+      var dot = (typeof bchipColor==='function') ? bchipColor(bk) : '#6366f1';
+      var over = bd.recv > bd.plan;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'+
+        '<span style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0"></span>'+
+        '<span style="font-size:12px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text3);min-width:58px;text-align:right">'+bd.plan.toLocaleString()+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;min-width:58px;text-align:right"'+(over?' title="รับเกิน Plan"':'')+'>'+bd.recv.toLocaleString()+(over?' <span style=\'color:#10b981;font-size:9px\'>▲</span>':'')+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+pcCol+';font-weight:700;min-width:46px;text-align:right">'+pc+'%</span>'+
+      '</div>';
+    }).join('');
 
-    /* ── brand color map (consistent across cards) ── */
-    var bColorMap = {};
-    var brandPaletteForFlow = ['#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#6366f1','#84cc16'];
-    var allBrandsInFlow = {};
-    planKeys.forEach(function(pm){
-      Object.keys(rmData[pm]._brands||{}).forEach(function(b){ allBrandsInFlow[b] = (allBrandsInFlow[b]||0) + rmData[pm]._brands[b]; });
-    });
-    Object.keys(allBrandsInFlow).sort(function(a,b){ return allBrandsInFlow[b]-allBrandsInFlow[a]; })
-      .forEach(function(b, i){ bColorMap[b] = brandPaletteForFlow[i % 8]; });
-
-    /* ── Plan Mode Toggle UI ── */
-    var isOriginal = _trackSummaryPlanMode === 'original';
-    var modeLabel = isOriginal ? '🗓️ Plan เดิม (ก่อน slip)' : '📌 Plan ปัจจุบัน (หลัง slip)';
-    var modeColor = isOriginal ? '#8b5cf6' : '#0ea5e9';
-    var modeHint = isOriginal
-      ? 'เดือนที่ตั้งครั้งแรก — เห็น slip history'
-      : 'เดือนล่าสุดใน Tracking — ไม่สนใจ slip';
-
-    var flowHtml = '<div style="background:'+rmColor+'08;border:1px solid '+rmColor+'30;border-left:3px solid '+rmColor+';border-radius:10px;padding:12px 14px">'+
-      '<div style="font-size:11px;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-        '<span style="font-weight:700;color:'+rmColor+';font-size:12px">📥 รับจริงใน '+esc(_trackSummaryMonth)+' มาจาก Plan เดือนไหน</span>'+
-        '<span style="color:var(--text3)">— รวม '+totalFlow.toLocaleString()+' ชิ้น</span>'+
-        /* Toggle button */
-        '<div style="margin-left:auto;display:flex;align-items:center;gap:6px">'+
-          '<button onclick="window._toggleTrackBrandGroup()" style="background:'+(_trackBrandGrouped?'#10b981':'#94a3b8')+'15;border:1px solid '+(_trackBrandGrouped?'#10b981':'#94a3b8')+'50;color:'+(_trackBrandGrouped?'#10b981':'#64748b')+';font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="สลับระหว่างดูแบรนด์ย่อย กับ รวมแบรนด์หลัก (Nineties/SOON)">'+
-            (_trackBrandGrouped ? '🧩 รวมแบรนด์หลัก' : '🔖 แบรนด์ย่อย')+
-            '<span style="font-size:9px;opacity:0.7">⇄</span>'+
-          '</button>'+
-          '<span style="color:var(--text3);font-size:10px">มุมมอง:</span>'+
-          '<button onclick="window._toggleTrackPlanMode()" style="background:'+modeColor+'15;border:1px solid '+modeColor+'50;color:'+modeColor+';font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px" title="'+modeHint+' — คลิกเพื่อสลับ">'+
-            modeLabel+
-            '<span style="font-size:9px;opacity:0.7">⇄</span>'+
-          '</button>'+
-        '</div>'+
+    var flowHtml = '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid '+rmCol+';border-radius:12px;padding:16px 18px;max-width:560px">'+
+      /* หัว + toggle */
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
+        '<span style="font-weight:700;color:'+rmCol+';font-size:13px">📥 รับจาก Plan '+esc(_trackSummaryMonth)+'</span>'+
+        '<button onclick="window._toggleTrackBrandGroup()" style="background:'+(_trackBrandGrouped?'#10b981':'#94a3b8')+'15;border:1px solid '+(_trackBrandGrouped?'#10b981':'#94a3b8')+'50;color:'+(_trackBrandGrouped?'#10b981':'#64748b')+';font-size:10px;padding:3px 9px;border-radius:6px;cursor:pointer;font-weight:600" title="สลับ แบรนด์ย่อย / รวมแบรนด์หลัก">'+
+          (_trackBrandGrouped ? '🧩 รวมแบรนด์หลัก' : '🔖 แบรนด์ย่อย')+' ⇄</button>'+
       '</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">';
-
-    /* ══ Card สรุป "Plan รวมของเดือนนี้" — ตกรอบ(มาช้า) + ตรงเวลา, แยกมาก่อนแผน ══ */
-    (function(){
-      var recvN0 = parseInt((_trackSummaryMonth.match(/M(\d+)/)||[0,0])[1]);
-      if(!recvN0) return;
-      var sumLate = 0, sumOnTime = 0, sumEarly = 0;
-      var lateBreakdown = []; /* [{pm, qty}] ของที่ plan < เดือนนี้ */
-      planKeys.forEach(function(pm){
-        var n = parseInt((pm.match(/M(\d+)/)||[0,0])[1]);
-        var q = rmData[pm]._total;
-        if(!n) return;
-        if(n < recvN0){ sumLate += q; lateBreakdown.push({pm:pm, qty:q}); }
-        else if(n === recvN0){ sumOnTime += q; }
-        else { sumEarly += q; }
-      });
-      var planTotal = sumLate + sumOnTime; /* ของที่ "ควรเป็นงานเดือนนี้" = ตกรอบ + ตรงเวลา */
-      var rmC = rmColor;
-      /* Plan Accuracy: แผนเข้าเดือนนี้สำเร็จกี่ % = ตรงเวลา / Plan ทั้งหมดของเดือนนี้ (รวมยังไม่มา) */
-      var acc = _planAccuracy(_trackSummaryMonth);
-      var accHtml = '';
-      if(acc){
-        var accColor = acc.pct >= 90 ? '#10b981' : (acc.pct >= 70 ? '#f59e0b' : '#ef4444');
-        accHtml = '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding:0 8px">'+
-            '<div style="font-size:9px;color:var(--text3);font-weight:600">% แผนสำเร็จ</div>'+
-            '<div style="font-size:26px;font-weight:800;color:'+accColor+';font-family:ui-monospace,monospace;line-height:1">'+acc.pct+'%</div>'+
-            '<div style="font-size:9px;color:var(--text3)" title="ของที่ Plan เข้า '+esc(_trackSummaryMonth)+' และมาตรงเดือน '+acc.onTime.toLocaleString()+' / Plan ทั้งหมด '+acc.planQty.toLocaleString()+'">'+
-              acc.onTime.toLocaleString()+' / '+acc.planQty.toLocaleString()+'</div>'+
-          '</div>'+
-          '<div style="width:1px;align-self:stretch;background:'+rmC+'30;flex-shrink:0"></div>';
-      }
-      var lateRows = lateBreakdown.sort(function(a,b){
-        return parseInt((a.pm.match(/M(\d+)/)||[0,0])[1]) - parseInt((b.pm.match(/M(\d+)/)||[0,0])[1]);
-      }).map(function(x){
-        return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);background:#f59e0b12;padding:2px 8px;border-radius:5px">'+
-          'ตกรอบ '+esc(x.pm)+' <b style="font-family:ui-monospace,monospace;color:#f59e0b">'+x.qty.toLocaleString()+'</b></span>';
-      }).join('');
-      flowHtml += '<div style="background:linear-gradient(135deg,'+rmC+'12,'+rmC+'04);border:1.5px solid '+rmC+';border-radius:10px;padding:12px 16px;grid-column:1/-1;display:flex;align-items:center;gap:18px;flex-wrap:wrap">'+
-        /* ซ้าย: ยอดรวมใหญ่ */
-        '<div style="display:flex;align-items:baseline;gap:10px;flex-shrink:0">'+
-          '<div>'+
-            '<div style="font-size:11px;font-weight:700;color:'+rmC+'">📦 ภาระงานรวม '+esc(_trackSummaryMonth)+'</div>'+
-            '<div style="font-size:9px;color:var(--text3)">ตกรอบ + ตรงเวลา</div>'+
-          '</div>'+
-          '<div style="font-size:26px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+planTotal.toLocaleString()+'</div>'+
-        '</div>'+
-        /* เส้นคั่น */
-        '<div style="width:1px;align-self:stretch;background:'+rmC+'30;flex-shrink:0"></div>'+
-        /* % แผนสำเร็จ (Plan Accuracy) */
-        accHtml+
-        /* ขวา: breakdown chips แนวนอน */
-        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1">'+
-          lateRows+
-          '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);background:#10b98112;padding:2px 8px;border-radius:5px">'+
-            'ตรงเวลา '+esc(_trackSummaryMonth)+' <b style="font-family:ui-monospace,monospace;color:#10b981">'+sumOnTime.toLocaleString()+'</b></span>'+
-          (sumEarly > 0 ?
-            '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#3b82f6;background:#3b82f612;padding:2px 8px;border-radius:5px" title="ของเดือนหน้าเข้าเร็ว — แยกในการ์ดด้านล่าง ไม่นับในยอดรวม">'+
-              '🚀 มาก่อนแผน <b style="font-family:ui-monospace,monospace">'+sumEarly.toLocaleString()+'</b></span>' : '')+
-        '</div>'+
-      '</div>';
-    })();
-
-    /* ══ กล่องอธิบาย 2 มุม + ส่วนต่าง (แก้ปัญหางง) ══ */
-    (function(){
-      var m = _trackSummaryMonth;
-      var pr = _planReceived(m);   /* แผนรับมาแล้วทั้งหมด (ทุกเดือน) — ตรง Pivot */
-      var acc = _planAccuracy(m);  /* ตรงเวลา */
-      if(!pr || !acc) return;
-      var plan = pr.planQty;
-      var recvAll = pr.received;      /* 17,579 */
-      var onTime = acc.onTime;        /* 15,589 */
-      var late = recvAll - onTime;    /* มาช้า รับเดือนอื่น */
-      var notYet = Math.max(0, plan - recvAll); /* ยังไม่มาเลย */
-      flowHtml += '<div style="grid-column:1/-1;background:var(--card2,#f8fafc);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:12px">'+
-        '<div style="font-weight:700;color:var(--text);margin-bottom:8px">📖 อ่านตัวเลขแผน '+esc(m)+' ยังไง (Plan '+plan.toLocaleString()+' ชิ้น ไม่รวม Cancel)</div>'+
-        /* มุมที่ 1 */
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">'+
-          '<span style="background:#3b82f6;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px">📥 แผนรับมาแล้ว</span>'+
-          '<b style="font-family:ui-monospace,monospace;color:#3b82f6;font-size:14px">'+recvAll.toLocaleString()+'</b>'+
-          '<span style="color:var(--text3)">/ '+plan.toLocaleString()+' = <b>'+pr.pct+'%</b></span>'+
-          '<span style="color:var(--text3);font-size:11px">— ของที่มาถึงแล้ว ไม่ว่าจะมาเดือนไหน <i>(เลขนี้ตรงกับ Pivot Excel)</i></span>'+
-        '</div>'+
-        /* มุมที่ 2 */
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
-          '<span style="background:#10b981;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px">🎯 แผนสำเร็จ (ตรงเวลา)</span>'+
-          '<b style="font-family:ui-monospace,monospace;color:#10b981;font-size:14px">'+onTime.toLocaleString()+'</b>'+
-          '<span style="color:var(--text3)">/ '+plan.toLocaleString()+' = <b>'+acc.pct+'%</b></span>'+
-          '<span style="color:var(--text3);font-size:11px">— เฉพาะของที่มาถึง<u>ตรงเดือน '+esc(m)+'</u> เป๊ะ</span>'+
-        '</div>'+
-        /* แผนภาพส่วนต่าง */
-        '<div style="background:var(--card,#fff);border-radius:8px;padding:10px 12px;border:1px dashed var(--border)">'+
-          '<div style="font-size:11px;color:var(--text3);margin-bottom:6px">Plan '+plan.toLocaleString()+' แตกเป็น:</div>'+
-          '<div style="display:flex;flex-direction:column;gap:5px">'+
-            '<div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;background:#10b981;border-radius:3px;flex-shrink:0"></span>'+
-              '<span style="font-size:11px">มาตรงเดือน '+esc(m)+'</span>'+
-              '<b style="font-family:ui-monospace,monospace;color:#10b981;margin-left:auto">'+onTime.toLocaleString()+'</b></div>'+
-            (late>0?'<div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;background:#f59e0b;border-radius:3px;flex-shrink:0"></span>'+
-              '<span style="font-size:11px">มาช้า (รับเดือนถัดไป)</span>'+
-              '<b style="font-family:ui-monospace,monospace;color:#f59e0b;margin-left:auto">+'+late.toLocaleString()+'</b></div>':'')+
-            '<div style="display:flex;align-items:center;gap:8px;padding-top:5px;border-top:1px solid var(--border)"><span style="width:14px;height:14px;background:#3b82f6;border-radius:3px;flex-shrink:0"></span>'+
-              '<span style="font-size:11px;font-weight:600">= รับมาแล้วทั้งหมด</span>'+
-              '<b style="font-family:ui-monospace,monospace;color:#3b82f6;margin-left:auto">'+recvAll.toLocaleString()+'</b></div>'+
-            (notYet>0?'<div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;background:#cbd5e1;border-radius:3px;flex-shrink:0"></span>'+
-              '<span style="font-size:11px;color:var(--text3)">ยังไม่มา (Production/Shipping)</span>'+
-              '<b style="font-family:ui-monospace,monospace;color:var(--text3);margin-left:auto">'+notYet.toLocaleString()+'</b></div>':'')+
-          '</div>'+
-        '</div>'+
-      '</div>';
-    })();
-
-    /* ══ การ์ด "แผน M5 รับมาแล้ว แยกรายแบรนด์" — ยึดเดือน Plan (ตรง Pivot ที่พี่หนึ่งตรวจ) ══ */
-    (function(){
-      var m = _trackSummaryMonth;
-      var pmData = byPlanMonth[m];
-      if(!pmData) return;
-      var brands = pmData._brands||{};
-      var bkeys = Object.keys(brands).sort(function(a,b){ return brands[b].recv - brands[a].recv; });
-      var planTot = pmData._plan, recvTot = pmData._recv;
-      var pctTot = planTot>0 ? Math.round(recvTot/planTot*100) : 0;
-      var rows = bkeys.map(function(bk){
-        var bd = brands[bk];
-        var p = bd.plan, r = bd.recv;
-        var pc = p>0 ? Math.round(r/p*100) : 0;
-        var pcColor = pc>=90?'#10b981':(pc>=70?'#f59e0b':'#ef4444');
-        var dotColor = (typeof bchipColor==='function') ? bchipColor(bk) : '#6366f1';
-        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'+
-          '<span style="width:9px;height:9px;border-radius:50%;background:'+dotColor+';flex-shrink:0"></span>'+
-          '<span style="font-size:11px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
-          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text3);min-width:55px;text-align:right">'+p.toLocaleString()+'</span>'+
-          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;min-width:55px;text-align:right">'+r.toLocaleString()+'</span>'+
-          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:'+pcColor+';font-weight:700;min-width:42px;text-align:right">'+pc+'%</span>'+
-        '</div>';
-      }).join('');
-      var totPctColor = pctTot>=90?'#10b981':(pctTot>=70?'#f59e0b':'#ef4444');
-      flowHtml += '<div style="grid-column:1/-1;background:var(--card,#fff);border:1.5px solid #3b82f6;border-radius:10px;padding:12px 16px">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">'+
-          '<span style="font-weight:700;color:#3b82f6;font-size:12px">📥 แผน '+esc(m)+' รับมาแล้ว แยกรายแบรนด์ <span style="font-size:10px;color:var(--text3);font-weight:400">(ยึดเดือน Plan — ตรงกับ Report/Pivot)</span></span>'+
-          '<span style="font-size:11px;color:var(--text3)">รวม <b style="color:#3b82f6;font-family:ui-monospace,monospace;font-size:14px">'+recvTot.toLocaleString()+'</b> / '+planTot.toLocaleString()+' = <b style="color:'+totPctColor+'">'+pctTot+'%</b></span>'+
-        '</div>'+
-        '<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:2px solid var(--border);font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">'+
-          '<span style="width:9px;flex-shrink:0"></span>'+
-          '<span style="flex:1">Category</span>'+
-          '<span style="min-width:55px;text-align:right">Plan</span>'+
-          '<span style="min-width:55px;text-align:right">รับจริง</span>'+
-          '<span style="min-width:42px;text-align:right">%</span>'+
-        '</div>'+
-        rows+
-      '</div>';
-    })();
-
-    planKeys.forEach(function(pm){
-      var pmEntry = rmData[pm];
-      var qty = pmEntry._total;
-      var brands = pmEntry._brands||{};
-      var pct = totalFlow > 0 ? Math.round(qty/totalFlow*100) : 0;
-      var pmIdx = parseInt((pm.match(/M(\d+)/)||[0,1])[1]) - 1;
-      var pmColor = monthColors[pmIdx % 12] || '#6b7280';
-
-      /* ── ตรวจว่าตรงเวลาหรือ slip ── */
-      var planN = parseInt((pm.match(/M(\d+)/)||[0,0])[1]);
-      var recvN = parseInt((_trackSummaryMonth.match(/M(\d+)/)||[0,0])[1]);
-      var statusLabel = '';
-      var statusColor = '#10b981';
-      if(planN && recvN){
-        if(planN === recvN){
-          statusLabel = '✓ ตรงเวลา';
-          statusColor = '#10b981';
-        } else if(planN < recvN){
-          var slip = recvN - planN;
-          statusLabel = '⚠ ล่าช้า '+slip+' เดือน';
-          statusColor = slip >= 2 ? '#ef4444' : '#f59e0b';
-        } else {
-          statusLabel = '🚀 มาก่อนแผน';
-          statusColor = '#3b82f6';
-        }
-      }
-
-      /* ── Brand chips (เรียงตามจำนวน desc) ── */
-      var brandKeys2 = Object.keys(brands).sort(function(a,b){ return brands[b]-brands[a]; });
-      var brandHtml = '';
-      if(brandKeys2.length > 0){
-        brandHtml = '<div style="margin-top:8px;padding-top:6px;border-top:1px dashed '+pmColor+'30;display:flex;flex-direction:column;gap:3px">';
-        brandKeys2.forEach(function(bn){
-          var bq = brands[bn];
-          var bpct = qty > 0 ? Math.round(bq/qty*100) : 0;
-          var bc = bColorMap[bn] || '#94a3b8';
-          var bnShort = bn.length > 14 ? bn.substr(0,12)+'…' : bn;
-          /* escape สำหรับ inline JS */
-          var bnEsc = bn.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-          var rmEsc = _trackSummaryMonth.replace(/'/g, "\\'");
-          var pmEsc = pm.replace(/'/g, "\\'");
-          brandHtml += '<div onclick="window._openDrillModal(\''+rmEsc+'\',\''+pmEsc+'\',\''+bnEsc+'\')" style="display:flex;align-items:center;gap:5px;font-size:10px;cursor:pointer;padding:2px 4px;border-radius:4px;transition:background 0.15s" onmouseover="this.style.background=\''+bc+'15\'" onmouseout="this.style.background=\'transparent\'" title="คลิกเพื่อดู raw data — '+esc(bn)+': '+bq.toLocaleString()+' ชิ้น">'+
-            '<div style="width:6px;height:6px;border-radius:50%;background:'+bc+';flex-shrink:0"></div>'+
-            '<div style="flex:1;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500">'+esc(bnShort)+'</div>'+
-            '<div style="font-family:ui-monospace,monospace;color:var(--text);font-weight:600">'+bq.toLocaleString()+'</div>'+
-            '<div style="font-family:ui-monospace,monospace;color:'+bc+';font-weight:600;font-size:9px;min-width:30px;text-align:right">'+bpct+'%</div>'+
-          '</div>';
-        });
-        brandHtml += '</div>';
-      }
-
-      flowHtml += '<div style="background:#fff;border:1px solid '+pmColor+'40;border-left:3px solid '+pmColor+';border-radius:8px;padding:8px 10px">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px">'+
-          '<div style="font-size:11px;font-weight:700;color:'+pmColor+'" title="ของที่รับเข้าคลังจริงแล้ว ซึ่งมาจากแผนเดือน '+esc(pm)+'">รับจาก Plan '+esc(pm)+'</div>'+
-          '<div style="font-size:9px;color:'+statusColor+';font-weight:600;background:'+statusColor+'15;padding:1px 6px;border-radius:4px;white-space:nowrap">'+statusLabel+'</div>'+
-        '</div>'+
-        '<div style="font-size:18px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+qty.toLocaleString()+'</div>'+
-        '<div style="font-size:9px;color:var(--text3);margin-top:2px">'+pct+'% ของรับใน '+esc(_trackSummaryMonth)+'</div>'+
-        brandHtml+
-      '</div>';
-    });
-    flowHtml += '</div></div>';
+      /* เลขใหญ่ */
+      '<div style="font-size:32px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+recvTot.toLocaleString()+'</div>'+
+      '<div style="font-size:11px;color:var(--text3);margin:4px 0 12px">รับจริงสะสมของแผน '+esc(_trackSummaryMonth)+' — จาก Plan '+planTot.toLocaleString()+' = <b style="color:'+totPctCol+'">'+pctTot+'%</b></div>'+
+      /* หัวตาราง */
+      '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:2px solid var(--border);font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">'+
+        '<span style="width:9px;flex-shrink:0"></span>'+
+        '<span style="flex:1">Category</span>'+
+        '<span style="min-width:58px;text-align:right">Plan</span>'+
+        '<span style="min-width:58px;text-align:right">รับจริง</span>'+
+        '<span style="min-width:46px;text-align:right">%</span>'+
+      '</div>'+
+      brandRows+
+      /* แถวรวม */
+      '<div style="display:flex;align-items:center;gap:8px;padding:8px 0 0;font-weight:800">'+
+        '<span style="width:9px;flex-shrink:0"></span>'+
+        '<span style="font-size:12px;color:var(--text);flex:1">รวม</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text2);min-width:58px;text-align:right">'+planTot.toLocaleString()+'</span>'+
+        '<span style="font-size:13px;font-family:ui-monospace,monospace;color:'+rmCol+';min-width:58px;text-align:right">'+recvTot.toLocaleString()+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+totPctCol+';min-width:46px;text-align:right">'+pctTot+'%</span>'+
+      '</div>'+
+    '</div>';
     flowBoxEl.innerHTML = flowHtml;
   } else {
     flowBoxEl.innerHTML = '';

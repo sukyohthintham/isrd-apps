@@ -391,6 +391,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
       <div class="nsec">หลัก</div>
       <button class="nitem active" data-page="dashboard">◈ Dashboard</button>
       <button class="nitem" data-page="tracking">⊞ Tracking</button>
+      <button class="nitem" data-page="insights">📊 Insights</button>
       <div class="nsec">จัดการ</div>
       <button class="nitem" data-page="bom">⊙ BOM (วัตถุดิบ)</button>
       <button class="nitem" data-page="costsheet">📋 Cost Sheet</button>
@@ -598,6 +599,22 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           </div>
           <span class="pginfo" id="pginfo" style="font-size:11px;color:var(--text3)"></span>
         </div>
+      </div>
+
+      <!-- INSIGHTS -->
+      <div class="page" id="page-insights">
+        <div class="ptitle">📊 Insights</div>
+        <div class="psub">วิเคราะห์เชิงลึก — ตรวจสุขภาพข้อมูล, คาดการณ์, Vendor, ต้นทุน</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+          <button class="tab active" data-instab="health" onclick="window._switchInsTab('health')">🚨 Data Health</button>
+          <button class="tab" data-instab="forecast" onclick="window._switchInsTab('forecast')">📊 Forecast</button>
+          <button class="tab" data-instab="vendor" onclick="window._switchInsTab('vendor')">🏭 Vendor</button>
+          <button class="tab" data-instab="cost" onclick="window._switchInsTab('cost')">💰 ต้นทุน</button>
+        </div>
+        <div id="ins-health" class="ins-tab"></div>
+        <div id="ins-forecast" class="ins-tab" style="display:none"></div>
+        <div id="ins-vendor" class="ins-tab" style="display:none"></div>
+        <div id="ins-cost" class="ins-tab" style="display:none"></div>
       </div>
 
       <!-- IMPORT -->
@@ -2201,7 +2218,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513as';
+var APP_VERSION = '20260513at';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -5573,6 +5590,225 @@ document.getElementById('topbar-user').onclick = function () {
 window.onerror = function(msg,src,line,col,err){
   console.error('[GLOBAL]',msg,'L'+line,err?err.stack.split('\n').slice(0,3).join('|'):'');
 };
+/* ══════════════════════ INSIGHTS PAGE ══════════════════════ */
+var _insTab = 'health';
+window._switchInsTab = function(t){
+  _insTab = t;
+  document.querySelectorAll('[data-instab]').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-instab')===t); });
+  ['health','forecast','vendor','cost'].forEach(function(k){
+    var el=document.getElementById('ins-'+k); if(el) el.style.display = (k===t?'block':'none');
+  });
+  renderInsights();
+};
+
+function _insCard(title, body, accent){
+  return '<div style="background:var(--card,#fff);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px'+(accent?';border-left:4px solid '+accent:'')+'">'+
+    (title?'<div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:12px">'+title+'</div>':'')+body+'</div>';
+}
+
+function renderInsights(){
+  if(_insTab==='health')   _renderHealth();
+  if(_insTab==='forecast') _renderForecast();
+  if(_insTab==='vendor')   _renderVendorScore();
+  if(_insTab==='cost')     _renderCostInsight();
+}
+
+/* ── กลุ่ม 1: DATA HEALTH ── */
+function _renderHealth(){
+  var el=document.getElementById('ins-health'); if(!el) return;
+  var issues = { orphanPO:[], cancelRecv:[], overRecv:[], noPO:[] };
+
+  /* สร้าง set PO ใน tracking (normalize) */
+  function nPO(v){ return (v||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); }
+  var trkPOs = {};
+  DATA.forEach(function(d){ var p=nPO(d.pod||d.po); if(p) trkPOs[p]=true; });
+
+  /* 1. PO ใน inbound ที่ไม่มีใน tracking */
+  /* 2. SKU ที่ Cancel แต่มีรับจริง */
+  (IB_DATA||[]).forEach(function(ib){
+    var act=parseInt(ib.actualQty)||0; if(act<=0) return;
+    var ibPO=nPO(ib.po);
+    if(ibPO && !trkPOs[ibPO]){
+      issues.orphanPO.push({po:ib.po, sku:ib.sku, model:ib.model, month:ib.month, qty:act});
+    }
+    if(!ibPO){
+      issues.noPO.push({sku:ib.sku, model:ib.model, month:ib.month, qty:act});
+    }
+    /* match tracking → ถ้า Cancel แต่รับจริง */
+    var m=_matchTracking(ib, normalizeMonth(ib.month||''));
+    if(m && isCancelled(m)){
+      issues.cancelRecv.push({po:ib.po, sku:ib.sku, model:ib.model, qty:act});
+    }
+  });
+
+  /* 3. รับจริง > Plan เกิน 20% */
+  DATA.forEach(function(d){
+    if(isCancelled(d)) return;
+    var plan=parseInt(d.total)||0; if(plan<=0) return;
+    var act=getActualQty(d); if(act===null) return;
+    if(act > plan*1.2){
+      issues.overRecv.push({po:d.pod||d.po, sku:d.sku, model:d.model, plan:plan, recv:act, pct:Math.round(act/plan*100)});
+    }
+  });
+
+  function _issueBlock(title, arr, color, cols, rowFn){
+    var n=arr.length;
+    var head='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:13px;font-weight:700;color:'+(n?color:'#10b981')+'">'+(n?'⚠':'✓')+' '+title+'</span><span style="background:'+(n?color:'#10b981')+'18;color:'+(n?color:'#10b981')+';font-size:11px;font-weight:700;padding:1px 8px;border-radius:10px">'+n+'</span></div>';
+    if(!n) return _insCard('', head+'<div style="font-size:12px;color:var(--text3)">ไม่พบปัญหา 👍</div>', '#10b981');
+    var rows=arr.slice(0,30).map(rowFn).join('');
+    var more = n>30 ? '<div style="font-size:11px;color:var(--text3);margin-top:6px">... และอีก '+(n-30)+' รายการ</div>' : '';
+    return _insCard('', head+'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+
+      '<thead><tr style="border-bottom:2px solid var(--border)">'+cols.map(function(c){return '<th style="padding:5px 8px;text-align:left;color:var(--text3);font-size:9px;text-transform:uppercase;white-space:nowrap">'+c+'</th>';}).join('')+'</tr></thead>'+
+      '<tbody>'+rows+'</tbody></table></div>'+more, color);
+  }
+  function td(v,extra){ return '<td style="padding:5px 8px;'+(extra||'')+'">'+esc(String(v))+'</td>'; }
+
+  var html = '<div style="font-size:12px;color:var(--text2);margin-bottom:14px">สแกนหาความผิดปกติในข้อมูลทั้งระบบ — แก้ที่ต้นทางก่อนตัวเลขเพี้ยนสะสม</div>';
+
+  html += _issueBlock('PO ที่รับเข้าแต่ไม่มีใน Tracking', issues.orphanPO, '#ef4444',
+    ['PO','SKU','Model','เดือนรับ','จำนวน'],
+    function(x){ return '<tr style="border-bottom:1px solid var(--border)">'+td(x.po||'—')+td(x.sku||'—','font-family:ui-monospace,monospace;font-size:10px')+td(x.model||'—')+td(x.month||'—')+td(x.qty.toLocaleString(),'text-align:right;font-weight:600')+'</tr>'; });
+
+  html += _issueBlock('SKU ที่ Cancel แต่มีรับจริง', issues.cancelRecv, '#f59e0b',
+    ['PO','SKU','Model','จำนวนรับ'],
+    function(x){ return '<tr style="border-bottom:1px solid var(--border)">'+td(x.po||'—')+td(x.sku||'—','font-family:ui-monospace,monospace;font-size:10px')+td(x.model||'—')+td(x.qty.toLocaleString(),'text-align:right;font-weight:600;color:#f59e0b')+'</tr>'; });
+
+  html += _issueBlock('รับจริงเกิน Plan มากกว่า 20%', issues.overRecv, '#8b5cf6',
+    ['PO','SKU','Model','Plan','รับจริง','%'],
+    function(x){ return '<tr style="border-bottom:1px solid var(--border)">'+td(x.po||'—')+td(x.sku||'—','font-family:ui-monospace,monospace;font-size:10px')+td(x.model||'—')+td(x.plan.toLocaleString(),'text-align:right')+td(x.recv.toLocaleString(),'text-align:right;font-weight:600')+td(x.pct+'%','text-align:right;color:#8b5cf6;font-weight:700')+'</tr>'; });
+
+  html += _issueBlock('รับเข้าแต่ไม่ใส่ PO', issues.noPO, '#ec4899',
+    ['SKU','Model','เดือนรับ','จำนวน'],
+    function(x){ return '<tr style="border-bottom:1px solid var(--border)">'+td(x.sku||'—','font-family:ui-monospace,monospace;font-size:10px')+td(x.model||'—')+td(x.month||'—')+td(x.qty.toLocaleString(),'text-align:right;font-weight:600')+'</tr>'; });
+
+  el.innerHTML = html;
+}
+
+/* ── กลุ่ม 2: FORECAST ── */
+function _renderForecast(){
+  var el=document.getElementById('ins-forecast'); if(!el) return;
+  /* ของที่ Plan แล้วยังไม่รับครบ แยกตามเดือน */
+  var byMonth={};
+  DATA.forEach(function(d){
+    if(isCancelled(d)) return;
+    var pm=getDisplayMonth(d)||normalizeMonth(d.month||'')||'ไม่ระบุ';
+    var plan=parseInt(d.total)||0;
+    var act=getActualQty(d); if(act===null) act=0;
+    var pending=Math.max(0, plan-act);
+    if(!byMonth[pm]) byMonth[pm]={plan:0,recv:0,pending:0,pendingSku:0,sku:0};
+    byMonth[pm].plan+=plan; byMonth[pm].recv+=act; byMonth[pm].pending+=pending;
+    byMonth[pm].sku++;
+    if(act<plan) byMonth[pm].pendingSku++;
+  });
+  var keys=Object.keys(byMonth).filter(function(k){return /^M\d+$/.test(k);}).sort(function(a,b){
+    return parseInt(a.slice(1))-parseInt(b.slice(1));
+  });
+  var rows=keys.map(function(m){
+    var d=byMonth[m];
+    var pct=d.plan>0?Math.round(d.recv/d.plan*100):0;
+    var col=pct>=90?'#10b981':(pct>=60?'#f59e0b':'#ef4444');
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:8px;font-weight:700;color:var(--text)">'+esc(m)+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace">'+d.plan.toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace;font-weight:600">'+d.recv.toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace;color:'+(d.pending>0?'#ef4444':'#10b981')+';font-weight:700">'+d.pending.toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:var(--text3)">'+d.pendingSku+'/'+d.sku+'</td>'+
+      '<td style="padding:8px;text-align:right;color:'+col+';font-weight:700">'+pct+'%</td>'+
+    '</tr>';
+  }).join('');
+  var body='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">ภาพรวมแต่ละเดือน — ของที่ยังไม่เข้าครบ (ของค้าง) เพื่อวางแผนติดตาม</div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr style="border-bottom:2px solid var(--border)">'+
+    ['เดือน Plan','Plan','รับแล้ว','ค้าง','SKU ค้าง','% สำเร็จ'].map(function(c){return '<th style="padding:6px 8px;text-align:'+(c==='เดือน Plan'?'left':'right')+';font-size:9px;color:var(--text3);text-transform:uppercase">'+c+'</th>';}).join('')+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  el.innerHTML=_insCard('📦 ของค้างรับ แยกตามเดือน Plan', body, '#3b82f6');
+}
+
+/* ── กลุ่ม 3: VENDOR SCORECARD ── */
+function _renderVendorScore(){
+  var el=document.getElementById('ins-vendor'); if(!el) return;
+  var byV={};
+  DATA.forEach(function(d){
+    if(isCancelled(d)) return;
+    var v=(d.vendor||'').trim()||'ไม่ระบุ';
+    var plan=parseInt(d.total)||0;
+    var act=getActualQty(d); if(act===null) act=0;
+    var planM=getDisplayMonth(d);
+    var rms=getReceiveMonths(d);
+    var onTime = rms.some(function(r){ return r.month===planM; });
+    if(!byV[v]) byV[v]={plan:0,recv:0,sku:0,recvSku:0,onTimeSku:0};
+    byV[v].plan+=plan; byV[v].recv+=act; byV[v].sku++;
+    if(act>0) byV[v].recvSku++;
+    if(onTime) byV[v].onTimeSku++;
+  });
+  var keys=Object.keys(byV).sort(function(a,b){ return byV[b].recv-byV[a].recv; });
+  var rows=keys.map(function(v){
+    var d=byV[v];
+    var fillPct=d.plan>0?Math.round(d.recv/d.plan*100):0;
+    var onTimePct=d.sku>0?Math.round(d.onTimeSku/d.sku*100):0;
+    var fc=fillPct>=90?'#10b981':(fillPct>=60?'#f59e0b':'#ef4444');
+    var oc=onTimePct>=70?'#10b981':(onTimePct>=40?'#f59e0b':'#ef4444');
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:8px;font-weight:600;color:var(--text);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(v)+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:var(--text3)">'+d.sku+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace">'+d.plan.toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace;font-weight:600">'+d.recv.toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;color:'+fc+';font-weight:700">'+fillPct+'%</td>'+
+      '<td style="padding:8px;text-align:right;color:'+oc+';font-weight:700">'+onTimePct+'%</td>'+
+    '</tr>';
+  }).join('');
+  var body='<div style="font-size:12px;color:var(--text2);margin-bottom:12px">ผลงาน Vendor — เติมของได้กี่ % (Fill Rate) และส่งตรงเดือนกี่ % (On-Time) · เรียงตามจำนวนที่ส่ง</div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr style="border-bottom:2px solid var(--border)">'+
+    ['Vendor','SKU','Plan','รับจริง','Fill %','ตรงเดือน %'].map(function(c,i){return '<th style="padding:6px 8px;text-align:'+(i===0?'left':'right')+';font-size:9px;color:var(--text3);text-transform:uppercase">'+c+'</th>';}).join('')+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  el.innerHTML=_insCard('🏭 Vendor Scorecard', body, '#8b5cf6');
+}
+
+/* ── กลุ่ม 4: COST INSIGHT ── */
+function _renderCostInsight(){
+  var el=document.getElementById('ins-cost'); if(!el) return;
+  /* ต้นทุนจ่ายจริงรวม แยก brand หลัก + เดือน */
+  var byBrand={}, totalCost=0, totalRecv=0;
+  (IB_DATA||[]).forEach(function(ib){
+    var act=parseInt(ib.actualQty)||0; if(act<=0) return;
+    var cost=parseFloat(ib.cost_thb)||0;
+    var bm=brandGroupMain(ib.brand||'')||'ไม่ระบุ';
+    var lineCost=cost*act;
+    if(!byBrand[bm]) byBrand[bm]={cost:0,qty:0};
+    byBrand[bm].cost+=lineCost; byBrand[bm].qty+=act;
+    totalCost+=lineCost; totalRecv+=act;
+  });
+  var keys=Object.keys(byBrand).sort(function(a,b){ return byBrand[b].cost-byBrand[a].cost; });
+  var hasCost = totalCost>0;
+  var rows=keys.map(function(b){
+    var d=byBrand[b];
+    var avg=d.qty>0?d.cost/d.qty:0;
+    var pct=totalCost>0?Math.round(d.cost/totalCost*100):0;
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:8px;font-weight:600;color:var(--text)">'+esc(b)+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace">'+d.qty.toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace;font-weight:600">฿'+Math.round(d.cost).toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:var(--text3)">฿'+avg.toFixed(1)+'</td>'+
+      '<td style="padding:8px;text-align:right;color:#06b6d4;font-weight:700">'+pct+'%</td>'+
+    '</tr>';
+  }).join('');
+  var body;
+  if(!hasCost){
+    body='<div style="padding:30px;text-align:center;color:var(--text3);font-size:13px">ยังไม่มีข้อมูลต้นทุน (ต้นทุน฿ จ่ายจริง) ในรายการรับสินค้า<br><span style="font-size:11px">กรอกต้นทุนตอนบันทึกรับสินค้าเพื่อดูสรุปนี้</span></div>';
+  } else {
+    body='<div style="display:flex;gap:24px;margin-bottom:14px;flex-wrap:wrap">'+
+      '<div><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">ต้นทุนรวม (จ่ายจริง)</div><div style="font-size:26px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace">฿'+Math.round(totalCost).toLocaleString()+'</div></div>'+
+      '<div style="border-left:1px solid var(--border);padding-left:24px"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">ต้นทุนเฉลี่ย/ชิ้น</div><div style="font-size:26px;font-weight:800;color:#06b6d4;font-family:ui-monospace,monospace">฿'+(totalRecv>0?(totalCost/totalRecv).toFixed(1):'0')+'</div></div>'+
+      '</div>'+
+      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr style="border-bottom:2px solid var(--border)">'+
+      ['Brand','จำนวนรับ','ต้นทุนรวม','เฉลี่ย/ชิ้น','% ต้นทุน'].map(function(c,i){return '<th style="padding:6px 8px;text-align:'+(i===0?'left':'right')+';font-size:9px;color:var(--text3);text-transform:uppercase">'+c+'</th>';}).join('')+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  el.innerHTML=_insCard('💰 ต้นทุนจ่ายจริง แยกตาม Brand', body, '#06b6d4');
+}
+
 function navTo(pg) {
   console.log('[navTo]',pg);
   document.querySelectorAll('.nitem').forEach(function(b){b.classList.remove('active');});
@@ -5599,6 +5835,7 @@ function navTo(pg) {
     if(pg==='fabric')     applyFab();
     if(pg==='shipping'){ if(typeof renderShipping==='function') renderShipping(); else if(typeof renderShip==='function') renderShip(); }
     if(pg==='tracking'){ if(typeof window._bindTrackImport==='function') window._bindTrackImport(); }
+    if(pg==='insights')  renderInsights();
   }catch(e){
     console.error('[navTo] CRASH on',pg,':',e.message,'\n',e.stack.split('\n').slice(0,4).join('\n'));
   }

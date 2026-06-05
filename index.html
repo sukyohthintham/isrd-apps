@@ -2201,7 +2201,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513ar';
+var APP_VERSION = '20260513as';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -3032,6 +3032,26 @@ function saveIbRecord(){
       alert('⛔ PO "'+poFinal+'" ไม่มีในหน้า Tracking\n\nต้องไปเพิ่ม PO นี้ในหน้า Tracking ก่อน แล้วจึงบันทึกรับสินค้า\n(ห้ามรับสินค้าที่ไม่มี Plan รองรับ)');
       showToast('⛔ PO นี้ไม่มีใน Tracking — เพิ่ม PO ก่อนรับ','var(--red)');
       return;
+    }
+    /* ══ เตือน: ถ้า PO นี้ (จับคู่ PO+SKU) เป็น Status Cancel → เตือนก่อนรับ ══
+       กันเคสน้องรับของลง PO ที่ยกเลิก (เช่น SH_Friend ลง PO Cancel แทนตัว active) */
+    var skuFinalN = (skuFinal||'').trim();
+    var matchRows = DATA.filter(function(d){
+      var dPoN = (d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+      if(dPoN !== poFinalN) return false;
+      /* ถ้ามี SKU ให้เทียบ SKU ด้วย (แม่นกว่า) */
+      if(skuFinalN) return (d.sku||'').trim() === skuFinalN;
+      return true;
+    });
+    if(matchRows.length && matchRows.every(function(d){ return isCancelled(d); })){
+      var activePO = DATA.filter(function(d){
+        return skuFinalN && (d.sku||'').trim()===skuFinalN && !isCancelled(d);
+      }).map(function(d){ return d.pod||d.po||''; });
+      var suggestion = activePO.length ? '\n\n💡 SKU นี้มี PO ที่ยังใช้งานอยู่: '+activePO.join(', ')+'\nควรใช้ PO นั้นแทนหรือไม่?' : '';
+      if(!confirm('⚠️ PO "'+poFinal+'" มีสถานะ "Cancel" (ยกเลิก) ใน Tracking\n\nแน่ใจหรือไม่ว่าจะรับของกับ PO ที่ยกเลิกนี้?'+suggestion+'\n\nกด OK = รับต่อ / Cancel = ยกเลิก')){
+        showToast('ยกเลิกการบันทึก — PO นี้ถูก Cancel','var(--orange,#f59e0b)');
+        return;
+      }
     }
   }
   var obj = {
@@ -6371,6 +6391,8 @@ function renderTrackSummary(){
     var planMonth = rm; /* default = สมมุติว่าตรง ถ้าหา tracking ไม่เจอ */
     var matched = _matchTracking(ib, rm);
     if(matched){
+      /* ── ข้ามของที่ match กับ tracking ที่ Cancel — ให้ตรงกับการ์ดซ้าย (ไม่นับ Cancel) ── */
+      if(isCancelled(matched)) return;
       /* ── ยึด month (MONTH Plan เข้า) เป็นหลักเสมอ = single source of truth ตาม Raw Data ──
          month = เดือนที่ user ตั้งว่าจะเข้าคลัง (เห็นในตาราง Tracking)
          - plan เข้า M4 มารับจริง M5 = slip มาช้า → Plan M4

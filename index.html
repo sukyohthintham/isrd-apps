@@ -2199,7 +2199,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513af';
+var APP_VERSION = '20260513ag';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6283,12 +6283,17 @@ function renderTrackSummary(){
     var bKey = _trackBrandGrouped ? brandGroupMain(b) : b;
     var plan = parseInt(x.total)||0;
     var act  = getActualQty(x); if(act===null) act = 0;
-    if(!byPlanMonth[pm]) byPlanMonth[pm] = {_plan:0, _recv:0, _brands:{}};
+    var skuReceived = act > 0 ? 1 : 0; /* SKU นี้รับแล้ว (≥1 ชิ้น) */
+    if(!byPlanMonth[pm]) byPlanMonth[pm] = {_plan:0, _recv:0, _skuTotal:0, _skuRecv:0, _brands:{}};
     byPlanMonth[pm]._plan += plan;
     byPlanMonth[pm]._recv += act;
-    if(!byPlanMonth[pm]._brands[bKey]) byPlanMonth[pm]._brands[bKey] = {plan:0, recv:0};
+    byPlanMonth[pm]._skuTotal += 1;
+    byPlanMonth[pm]._skuRecv += skuReceived;
+    if(!byPlanMonth[pm]._brands[bKey]) byPlanMonth[pm]._brands[bKey] = {plan:0, recv:0, skuTotal:0, skuRecv:0};
     byPlanMonth[pm]._brands[bKey].plan += plan;
     byPlanMonth[pm]._brands[bKey].recv += act;
+    byPlanMonth[pm]._brands[bKey].skuTotal += 1;
+    byPlanMonth[pm]._brands[bKey].skuRecv += skuReceived;
   });
 
   /* ══ PLAN ACCURACY ต่อเดือน — "แผนเข้าเดือนนั้นสำเร็จกี่ %" ══
@@ -6422,54 +6427,75 @@ function renderTrackSummary(){
 
   if(_trackSummaryMonth && byPlanMonth[_trackSummaryMonth]){
     /* ══ การ์ดเดียว: ยึดเดือน Plan (ตรง Pivot/Report) — Plan/รับจริง/% รายแบรนด์ ══ */
-    var pmData = byPlanMonth[_trackSummaryMonth] || {_plan:0,_recv:0,_brands:{}};
+    var pmData = byPlanMonth[_trackSummaryMonth] || {_plan:0,_recv:0,_skuTotal:0,_skuRecv:0,_brands:{}};
     var planTot = pmData._plan, recvTot = pmData._recv;
     var pctTot = planTot>0 ? Math.round(recvTot/planTot*100) : 0;
+    var skuTot = pmData._skuTotal||0, skuRecvTot = pmData._skuRecv||0;
+    var skuPctTot = skuTot>0 ? Math.round(skuRecvTot/skuTot*100) : 0;
     var rmIdx2 = parseInt((_trackSummaryMonth.match(/M(\\d+)/)||[0,1])[1]) - 1;
     var rmCol = monthColors[rmIdx2 % 12] || '#6b7280';
     var totPctCol = pctTot>=100?'#10b981':(pctTot>=80?'#f59e0b':'#ef4444');
+    var skuPctCol = skuPctTot>=90?'#10b981':(skuPctTot>=60?'#f59e0b':'#ef4444');
 
     var brandRows = Object.keys(pmData._brands).sort(function(a,b){ return pmData._brands[b].recv - pmData._brands[a].recv; }).map(function(bk){
       var bd = pmData._brands[bk];
       var pc = bd.plan>0 ? Math.round(bd.recv/bd.plan*100) : 0;
       var pcCol = pc>=100?'#10b981':(pc>=80?'#f59e0b':(pc>=50?'#f97316':'#ef4444'));
+      var skuPc = bd.skuTotal>0 ? Math.round(bd.skuRecv/bd.skuTotal*100) : 0;
+      var skuPcCol = skuPc>=90?'#10b981':(skuPc>=60?'#f59e0b':'#ef4444');
       var dot = (typeof bchipColor==='function') ? bchipColor(bk) : '#6366f1';
       var over = bd.recv > bd.plan;
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'+
         '<span style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0"></span>'+
         '<span style="font-size:12px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text3);min-width:58px;text-align:right">'+bd.plan.toLocaleString()+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;min-width:58px;text-align:right"'+(over?' title="รับเกิน Plan"':'')+'>'+bd.recv.toLocaleString()+(over?' <span style=\'color:#10b981;font-size:9px\'>▲</span>':'')+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+pcCol+';font-weight:700;min-width:46px;text-align:right">'+pc+'%</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text3);min-width:54px;text-align:right">'+bd.plan.toLocaleString()+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;min-width:54px;text-align:right"'+(over?' title="รับเกิน Plan"':'')+'>'+bd.recv.toLocaleString()+(over?' <span style=\'color:#10b981;font-size:9px\'>▲</span>':'')+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+pcCol+';font-weight:700;min-width:42px;text-align:right">'+pc+'%</span>'+
+        '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right" title="SKU รับแล้ว '+bd.skuRecv+' / ทั้งหมด '+bd.skuTotal+'">'+bd.skuRecv+'/'+bd.skuTotal+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+skuPcCol+';font-weight:700;min-width:42px;text-align:right">'+skuPc+'%</span>'+
       '</div>';
     }).join('');
 
-    var flowHtml = '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid '+rmCol+';border-radius:12px;padding:16px 18px;max-width:560px">'+
+    var flowHtml = '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid '+rmCol+';border-radius:12px;padding:16px 18px;max-width:680px">'+
       /* หัว + toggle */
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
         '<span style="font-weight:700;color:'+rmCol+';font-size:13px">📥 รับจาก Plan '+esc(_trackSummaryMonth)+'</span>'+
         '<button onclick="window._toggleTrackBrandGroup()" style="background:'+(_trackBrandGrouped?'#10b981':'#94a3b8')+'15;border:1px solid '+(_trackBrandGrouped?'#10b981':'#94a3b8')+'50;color:'+(_trackBrandGrouped?'#10b981':'#64748b')+';font-size:10px;padding:3px 9px;border-radius:6px;cursor:pointer;font-weight:600" title="สลับ แบรนด์ย่อย / รวมแบรนด์หลัก">'+
           (_trackBrandGrouped ? '🧩 รวมแบรนด์หลัก' : '🔖 แบรนด์ย่อย')+' ⇄</button>'+
       '</div>'+
-      /* เลขใหญ่ */
-      '<div style="font-size:32px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+recvTot.toLocaleString()+'</div>'+
-      '<div style="font-size:11px;color:var(--text3);margin:4px 0 12px">รับจริงสะสมของแผน '+esc(_trackSummaryMonth)+' — จาก Plan '+planTot.toLocaleString()+' = <b style="color:'+totPctCol+'">'+pctTot+'%</b></div>'+
+      /* 2 เลขใหญ่: จำนวนชิ้น + SKU */
+      '<div style="display:flex;gap:24px;margin-bottom:12px;flex-wrap:wrap">'+
+        '<div>'+
+          '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">จำนวน (ชิ้น)</div>'+
+          '<div style="font-size:28px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+recvTot.toLocaleString()+'</div>'+
+          '<div style="font-size:10px;color:var(--text3);margin-top:2px">/ '+planTot.toLocaleString()+' = <b style="color:'+totPctCol+'">'+pctTot+'%</b></div>'+
+        '</div>'+
+        '<div style="border-left:1px solid var(--border);padding-left:24px">'+
+          '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">SKU (รับ ≥1 ชิ้น)</div>'+
+          '<div style="font-size:28px;font-weight:800;color:'+skuPctCol+';font-family:ui-monospace,monospace;line-height:1">'+skuRecvTot+'<span style="font-size:16px;color:var(--text3)">/'+skuTot+'</span></div>'+
+          '<div style="font-size:10px;color:var(--text3);margin-top:2px">= <b style="color:'+skuPctCol+'">'+skuPctTot+'%</b> ของ SKU เข้าแล้ว</div>'+
+        '</div>'+
+      '</div>'+
       /* หัวตาราง */
       '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:2px solid var(--border);font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">'+
         '<span style="width:9px;flex-shrink:0"></span>'+
         '<span style="flex:1">Category</span>'+
-        '<span style="min-width:58px;text-align:right">Plan</span>'+
-        '<span style="min-width:58px;text-align:right">รับจริง</span>'+
-        '<span style="min-width:46px;text-align:right">%</span>'+
+        '<span style="min-width:54px;text-align:right">Plan</span>'+
+        '<span style="min-width:54px;text-align:right">รับจริง</span>'+
+        '<span style="min-width:42px;text-align:right">%ชิ้น</span>'+
+        '<span style="min-width:52px;text-align:right">SKU</span>'+
+        '<span style="min-width:42px;text-align:right">%SKU</span>'+
       '</div>'+
       brandRows+
       /* แถวรวม */
       '<div style="display:flex;align-items:center;gap:8px;padding:8px 0 0;font-weight:800">'+
         '<span style="width:9px;flex-shrink:0"></span>'+
         '<span style="font-size:12px;color:var(--text);flex:1">รวม</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text2);min-width:58px;text-align:right">'+planTot.toLocaleString()+'</span>'+
-        '<span style="font-size:13px;font-family:ui-monospace,monospace;color:'+rmCol+';min-width:58px;text-align:right">'+recvTot.toLocaleString()+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+totPctCol+';min-width:46px;text-align:right">'+pctTot+'%</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text2);min-width:54px;text-align:right">'+planTot.toLocaleString()+'</span>'+
+        '<span style="font-size:13px;font-family:ui-monospace,monospace;color:'+rmCol+';min-width:54px;text-align:right">'+recvTot.toLocaleString()+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+totPctCol+';min-width:42px;text-align:right">'+pctTot+'%</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right">'+skuRecvTot+'/'+skuTot+'</span>'+
+        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+skuPctCol+';min-width:42px;text-align:right">'+skuPctTot+'%</span>'+
       '</div>'+
     '</div>';
     flowBoxEl.innerHTML = flowHtml;

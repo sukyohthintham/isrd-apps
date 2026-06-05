@@ -552,6 +552,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
   <th style="width:75px" title="Brand หลัก (คำนวณจาก Category)">Brand</th>
   <th style="min-width:90px" title="Category สินค้า (Nineties New, SOON Hero ฯลฯ)">Category</th>
   <th style="width:90px" title="Month ที่ Plan ให้เข้าคลัง">Month<div style="font-size:9px;color:var(--text3);font-weight:400">(Plan เข้า)</div></th>
+  <th style="width:90px;background:#eff6ff" title="เดือนที่บันทึกรับเข้าจริง (จาก Actual Inbound)">Month<div style="font-size:9px;color:var(--text3);font-weight:400">(รับจริง)</div></th>
   <th style="width:50px">Qty</th>
   <th style="width:55px" title="จำนวนที่รับจริงจาก Actual Inbound">รับจริง</th>
   <th style="width:65px" title="% Accuracy = (รับจริง ÷ Plan Qty) × 100">% Acc.</th>
@@ -2200,7 +2201,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513al';
+var APP_VERSION = '20260513am';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -4639,6 +4640,48 @@ function getActualQtyInMonth(d, targetMonth){
   return sum;
 }
 
+/* ══ getReceiveMonths — เดือนที่ inbound บันทึกรับจริง (PO+SKU aware) คืน array ══ */
+function getReceiveMonths(d){
+  if(!d || typeof IB_DATA==='undefined' || !IB_DATA.length) return [];
+  var sku = (d.sku||'').trim();
+  var model = (d.model||'').trim();
+  var color = (d.color||'').trim();
+  var podN = (d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+  var months = {};
+  function addM(ib){
+    if((parseInt(ib.actualQty)||0) <= 0) return;
+    var mm = normalizeMonth(ib.month||'') || ib.month;
+    if(mm) months[mm] = (months[mm]||0) + (parseInt(ib.actualQty)||0);
+  }
+  /* PO+SKU เป๊ะ */
+  if(podN && sku){
+    var poFound = false;
+    IB_DATA.forEach(function(ib){
+      if(!ib) return;
+      var ibPoN=(ib.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+      if(ibPoN===podN && (ib.sku||'').trim()===sku){ addM(ib); poFound=true; }
+    });
+    if(poFound) return _sortMonthKeys(Object.keys(months), months);
+  }
+  /* tracking มี PO แต่ไม่เจอ → ถือว่ายังไม่รับ (ไม่ fallback SKU-only กันข้าม PO) */
+  if(podN) return [];
+  /* ไม่มี PO → SKU only */
+  if(sku){
+    IB_DATA.forEach(function(ib){ if(ib && (ib.sku||'').trim()===sku) addM(ib); });
+    return _sortMonthKeys(Object.keys(months), months);
+  }
+  /* fallback model+color */
+  if(model){
+    IB_DATA.forEach(function(ib){ if(ib && (ib.model||'').trim()===model && (ib.color||'').trim()===color) addM(ib); });
+  }
+  return _sortMonthKeys(Object.keys(months), months);
+}
+function _sortMonthKeys(keys, qtyMap){
+  return keys.sort(function(a,b){
+    return parseInt((a.match(/M(\d+)/)||[0,99])[1]) - parseInt((b.match(/M(\d+)/)||[0,99])[1]);
+  }).map(function(m){ return {month:m, qty:qtyMap[m]}; });
+}
+
 function getAccuracyPercent(d){
   /* คำนวณ % รับจริง / Plan — null ถ้ายังไม่รับ */
   var actual = getActualQty(d);
@@ -7005,6 +7048,19 @@ function renderTable(){
           '<div style="font-size:8.5px;color:'+txtBadge+';opacity:0.8;margin-top:1px">⚠ slip '+slipCount+'</div>'+
         '</div>';
       }())+'</td>'+
+      /* Month (รับจริง) — เดือนที่ inbound บันทึกรับ */
+      '<td style="text-align:center;font-size:11px;font-family:ui-monospace,monospace;padding:6px;background:#f8fafc">'+(function(){
+        var rms = getReceiveMonths(x);
+        if(!rms.length) return '<span style="color:var(--text3)">—</span>';
+        var planM = getDisplayMonth(x);
+        return rms.map(function(r){
+          var off = planM && r.month!==planM;
+          var col = off ? '#f59e0b' : '#059669';
+          var bg = off ? '#fffbeb' : '#ecfdf5';
+          var bd = off ? '#fde68a' : '#a7f3d0';
+          return '<span style="background:'+bg+';color:'+col+';border:1px solid '+bd+';border-radius:4px;padding:2px 6px;font-weight:600;white-space:nowrap" title="รับ '+r.qty.toLocaleString()+' ชิ้นใน '+esc(r.month)+(off?' (คนละเดือนกับ Plan)':'')+'">'+esc(r.month)+(off?' ⚠':'')+'</span>';
+        }).join('<br>');
+      }())+'</td>'+
       '<td style="font-family:ui-monospace,monospace;color:var(--text2)">'+(x.total||'—')+'</td>'+
       '<td style="font-family:ui-monospace,monospace;text-align:right">'+(function(){
         var a = getActualQty(x);
@@ -7083,7 +7139,7 @@ function renderTable(){
       '<button onclick="setStatus('+ri+',\'Hold\')" style="background:rgba(255,61,61,.12);border:none;border-radius:3px;color:var(--red);font-size:9px;padding:2px 5px;cursor:pointer;margin-left:2px">Hold</button>' +
       '<button onclick="setStatus('+ri+',\'Cancel\')" style="background:rgba(90,100,120,.12);border:none;border-radius:3px;color:var(--text2);font-size:9px;padding:2px 5px;cursor:pointer;margin-left:2px">✕</button>' +
       '</td></tr>';
-  }).join(''):'<tr><td colspan="24" style="padding:30px;text-align:center;color:var(--text3)">ไม่พบข้อมูล</td></tr>';
+  }).join(''):'<tr><td colspan="28" style="padding:30px;text-align:center;color:var(--text3)">ไม่พบข้อมูล</td></tr>';
   var total=filtered.length;
   var effectivePgSize = (pgSize==='all') ? Math.max(total,1) : pgSize;
   var pages=Math.max(1,Math.ceil(total/effectivePgSize));

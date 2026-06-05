@@ -2024,6 +2024,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
             <th style="width:90px">Brand</th>
             <th style="width:60px;text-align:right">Plan</th>
             <th style="width:60px;text-align:right">รับจริง</th>
+            <th style="width:70px;text-align:center;background:#dbeafe" title="เดือนที่บันทึกรับเข้าจริง (Actual Inbound)">รับเดือน</th>
             <th style="width:50px;text-align:center">% รับ</th>
             <th style="width:90px;background:#fef3c7" title="MONTH (Plan เข้า) ใน Tracking — ตรงกับ Raw Data">Plan เข้า</th>
             <th style="width:90px">Vendor</th>
@@ -2199,7 +2200,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513aj';
+var APP_VERSION = '20260513ak';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -4577,6 +4578,67 @@ function getActualQty(d){
   return found ? sum : null;
 }
 
+/* ══ getActualQtyInMonth — นับ actual เฉพาะ inbound ที่ "รับเดือน targetMonth" ══
+   ใช้ตอนต้องการ "ของแผนเดือนนี้ที่รับตรงเดือน" — เช่น Plan M5 รับ M5 (ตัด Plan M5 ที่รับ M6 ออก)
+   logic match เหมือน getActualQty (PO+SKU) แต่กรอง ib.month === targetMonth */
+function getActualQtyInMonth(d, targetMonth){
+  if(!d || !d.model) return 0;
+  if(typeof IB_DATA === 'undefined' || !IB_DATA.length) return 0;
+  var sku = (d.sku||'').trim();
+  var model = (d.model||'').trim();
+  var color = (d.color||'').trim();
+  var podN = (d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+  var tgt = normalizeMonth(targetMonth||'') || targetMonth;
+  var sum = 0;
+
+  function ibMonthMatch(ib){
+    return (normalizeMonth(ib.month||'') || ib.month) === tgt;
+  }
+
+  /* Strategy 0: PO + SKU */
+  if(podN && sku){
+    var poFound = false;
+    for(var k=0;k<IB_DATA.length;k++){
+      var ibk = IB_DATA[k]; if(!ibk) continue;
+      var ibkPoN = (ibk.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+      if(ibkPoN && ibkPoN===podN && (ibk.sku||'').trim()===sku){
+        poFound = true;
+        if(ibMonthMatch(ibk)) sum += (parseInt(ibk.actualQty)||0);
+      }
+    }
+    if(poFound) return sum;
+  }
+  /* Strategy 1: SKU — แต่ถ้า tracking มี PO ชัดเจน จะไม่ fallback SKU-only
+     (กันจับ inbound ของ PO อื่นที่ SKU เดียวกันมานับผิด) */
+  if(sku && !podN){
+    var found1 = false;
+    for(var i=0;i<IB_DATA.length;i++){
+      var ib = IB_DATA[i]; if(!ib) continue;
+      var ibPoN = (ib.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+      if((ib.sku||'').trim() === sku){
+        found1 = true;
+        if(ibMonthMatch(ib)) sum += (parseInt(ib.actualQty)||0);
+      }
+    }
+    if(found1) return sum;
+  }
+  /* ถ้า tracking มี PO แต่ Strategy 0 ไม่เจอ inbound ที่ PO ตรง → รับใน month นี้ = 0
+     (ไม่ fallback SKU-only เพราะอาจเป็นของ PO อื่น) */
+  if(podN) return sum;
+  /* Strategy 2: model+color */
+  if(model){
+    for(var j=0;j<IB_DATA.length;j++){
+      var ib2 = IB_DATA[j]; if(!ib2) continue;
+      var ib2PoN = (ib2.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+      if(podN && ib2PoN && ib2PoN!==podN) continue;
+      if((ib2.model||'').trim()===model && (ib2.color||'').trim()===color){
+        if(ibMonthMatch(ib2)) sum += (parseInt(ib2.actualQty)||0);
+      }
+    }
+  }
+  return sum;
+}
+
 function getAccuracyPercent(d){
   /* คำนวณ % รับจริง / Plan — null ถ้ายังไม่รับ */
   var actual = getActualQty(d);
@@ -6282,8 +6344,9 @@ function renderTrackSummary(){
     var b  = (x.brand||'').trim() || 'ไม่ระบุ';
     var bKey = _trackBrandGrouped ? brandGroupMain(b) : b;
     var plan = parseInt(x.total)||0;
-    var act  = getActualQty(x); if(act===null) act = 0;
-    var skuReceived = act > 0 ? 1 : 0; /* SKU นี้รับแล้ว (≥1 ชิ้น) */
+    /* รับจริงเฉพาะที่ "รับตรงเดือน Plan" — Plan M5 รับ M5 เท่านั้น (Plan M5 รับ M6 ไม่นับ) */
+    var act  = getActualQtyInMonth(x, pm);
+    var skuReceived = act > 0 ? 1 : 0; /* SKU นี้รับตรงเดือนแล้ว (≥1 ชิ้น) */
     if(!byPlanMonth[pm]) byPlanMonth[pm] = {_plan:0, _recv:0, _skuTotal:0, _skuRecv:0, _brands:{}};
     byPlanMonth[pm]._plan += plan;
     byPlanMonth[pm]._recv += act;
@@ -6767,7 +6830,7 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
   var tbody = document.getElementById('drill-tbody');
   if(tbody){
     if(rows.length === 0){
-      tbody.innerHTML = '<tr><td colspan="11" style="padding:30px;text-align:center;color:var(--text3)">ไม่พบข้อมูล</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" style="padding:30px;text-align:center;color:var(--text3)">ไม่พบข้อมูล</td></tr>';
     } else {
       tbody.innerHTML = rows.map(function(r){
         var ib = r.ib;
@@ -6790,6 +6853,11 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
           '<td style="font-size:11px">'+esc(ib.brand||'—')+'</td>'+
           '<td style="font-family:ui-monospace,monospace;text-align:right;color:var(--text2)">'+pq.toLocaleString()+'</td>'+
           '<td style="font-family:ui-monospace,monospace;text-align:right;color:#3b82f6;font-weight:600">'+aq.toLocaleString()+'</td>'+
+          '<td style="text-align:center;background:#eff6ff">'+(function(){
+            var rcvM = normalizeMonth(ib.month||'') || ib.month || '—';
+            var early = trackMonth!=='—' && rcvM!=='—' && rcvM!==trackMonth;
+            return '<span style="color:'+(early?'#f59e0b':'#3b82f6')+';font-weight:700;font-size:11px"'+(early?' title="รับคนละเดือนกับ Plan"':'')+'>'+esc(rcvM)+(early?' ⚠':'')+'</span>';
+          })()+'</td>'+
           '<td style="text-align:center;color:'+pColor+';font-weight:700;font-size:11px">'+p+'%</td>'+
           '<td style="font-size:11px;background:#fffbeb;text-align:center" title="MONTH (Plan เข้า)">'+trackHtml+'</td>'+
           '<td style="font-size:11px;color:var(--text2)">'+esc(ib.vendor||'—')+'</td>'+

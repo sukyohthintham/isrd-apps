@@ -2199,7 +2199,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513ag';
+var APP_VERSION = '20260513ah';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6456,7 +6456,9 @@ function renderTrackSummary(){
       '</div>';
     }).join('');
 
-    var flowHtml = '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid '+rmCol+';border-radius:12px;padding:16px 18px;max-width:680px">'+
+    var flowHtml = '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">'+
+      /* ═══ การ์ดซ้าย: รับจาก Plan (ยึดเดือน Plan) ═══ */
+      '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid '+rmCol+';border-radius:12px;padding:16px 18px;flex:1;min-width:480px">'+
       /* หัว + toggle */
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
         '<span style="font-weight:700;color:'+rmCol+';font-size:13px">📥 รับจาก Plan '+esc(_trackSummaryMonth)+'</span>'+
@@ -6470,10 +6472,10 @@ function renderTrackSummary(){
           '<div style="font-size:28px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+recvTot.toLocaleString()+'</div>'+
           '<div style="font-size:10px;color:var(--text3);margin-top:2px">/ '+planTot.toLocaleString()+' = <b style="color:'+totPctCol+'">'+pctTot+'%</b></div>'+
         '</div>'+
-        '<div style="border-left:1px solid var(--border);padding-left:24px">'+
-          '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">SKU (รับ ≥1 ชิ้น)</div>'+
+        '<div onclick="window._showPendingSku(\''+_trackSummaryMonth.replace(/'/g,"\\'")+'\')" style="border-left:1px solid var(--border);padding-left:24px;cursor:pointer;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background=\''+skuPctCol+'10\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดู SKU ที่ยังไม่เข้า">'+
+          '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">SKU (รับ ≥1 ชิ้น) 🔍</div>'+
           '<div style="font-size:28px;font-weight:800;color:'+skuPctCol+';font-family:ui-monospace,monospace;line-height:1">'+skuRecvTot+'<span style="font-size:16px;color:var(--text3)">/'+skuTot+'</span></div>'+
-          '<div style="font-size:10px;color:var(--text3);margin-top:2px">= <b style="color:'+skuPctCol+'">'+skuPctTot+'%</b> ของ SKU เข้าแล้ว</div>'+
+          '<div style="font-size:10px;color:var(--text3);margin-top:2px">= <b style="color:'+skuPctCol+'">'+skuPctTot+'%</b> · คลิกดูที่ยังไม่เข้า</div>'+
         '</div>'+
       '</div>'+
       /* หัวตาราง */
@@ -6497,7 +6499,46 @@ function renderTrackSummary(){
         '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right">'+skuRecvTot+'/'+skuTot+'</span>'+
         '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+skuPctCol+';min-width:42px;text-align:right">'+skuPctTot+'%</span>'+
       '</div>'+
-    '</div>';
+    '</div>'+ /* ปิดการ์ดซ้าย */
+    /* ═══ การ์ดขวา: ภาระที่เข้าคลัง M5 (ยึดเดือนรับ — มาจาก Plan เดือนไหน) ═══ */
+    (function(){
+      var rmData = byReceivePlan[_trackSummaryMonth];
+      if(!rmData) return '';
+      var pKeys = Object.keys(rmData).sort(function(a,b){
+        return parseInt((a.match(/M(\\d+)/)||[0,99])[1]) - parseInt((b.match(/M(\\d+)/)||[0,99])[1]);
+      });
+      var totalIn = 0; pKeys.forEach(function(pm){ totalIn += rmData[pm]._total; });
+      var recvN = parseInt((_trackSummaryMonth.match(/M(\\d+)/)||[0,0])[1]);
+      var rows = pKeys.map(function(pm){
+        var q = rmData[pm]._total;
+        var pc = totalIn>0 ? Math.round(q/totalIn*100) : 0;
+        var pn = parseInt((pm.match(/M(\\d+)/)||[0,0])[1]);
+        var lbl, lblCol;
+        if(pn===recvN){ lbl='✓ ตรงเวลา'; lblCol='#10b981'; }
+        else if(pn<recvN){ var s=recvN-pn; lbl='⚠ ตกรอบ '+s+'ด.'; lblCol=s>=2?'#ef4444':'#f59e0b'; }
+        else { lbl='🚀 มาก่อน'; lblCol='#3b82f6'; }
+        var pmIdx = (pn||1)-1;
+        var pmCol = monthColors[pmIdx % 12] || '#6b7280';
+        var rmEsc = _trackSummaryMonth.replace(/'/g,"\\'");
+        var pmEsc = pm.replace(/'/g,"\\'");
+        return '<div onclick="window._openDrillModal(\''+rmEsc+'\',\''+pmEsc+'\',\'\')" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:5px;transition:background 0.15s" onmouseover="this.style.background=\''+pmCol+'10\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดู raw data">'+
+          '<span style="width:10px;height:10px;border-radius:3px;background:'+pmCol+';flex-shrink:0"></span>'+
+          '<span style="font-size:12px;color:var(--text);font-weight:600;min-width:62px">Plan '+esc(pm)+'</span>'+
+          '<span style="font-size:9px;color:'+lblCol+';font-weight:700;background:'+lblCol+'15;padding:1px 6px;border-radius:4px;white-space:nowrap">'+lbl+'</span>'+
+          '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;margin-left:auto">'+q.toLocaleString()+'</span>'+
+          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text3);min-width:38px;text-align:right">'+pc+'%</span>'+
+        '</div>';
+      }).join('');
+      return '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid #8b5cf6;border-radius:12px;padding:16px 18px;flex:1;min-width:340px">'+
+        '<div style="font-weight:700;color:#8b5cf6;font-size:13px;margin-bottom:10px">📦 ภาระเข้าคลัง '+esc(_trackSummaryMonth)+' <span style="font-size:10px;color:var(--text3);font-weight:400">(มาจาก Plan เดือนไหน)</span></div>'+
+        '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">รับเข้าคลังจริงทั้งหมด</div>'+
+        '<div style="font-size:28px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1;margin-bottom:12px">'+totalIn.toLocaleString()+'</div>'+
+        '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:4px;padding-bottom:3px;border-bottom:2px solid var(--border)">แยกตามแผนต้นทาง</div>'+
+        rows+
+        '<div style="font-size:10px;color:var(--text3);margin-top:8px;font-style:italic">💡 คลิกแต่ละแถวดู raw data ได้</div>'+
+      '</div>';
+    })()+
+    '</div>'; /* ปิด wrapper */
     flowBoxEl.innerHTML = flowHtml;
   } else {
     flowBoxEl.innerHTML = '';
@@ -6561,6 +6602,73 @@ window._toggleTrackPlanMode = function(){
 window._toggleTrackBrandGroup = function(){
   _trackBrandGrouped = !_trackBrandGrouped;
   renderTrackSummary();
+};
+
+/* ══ POPUP: SKU ที่ยังไม่เข้า (Plan เดือนนั้น แต่รับจริง 0 ชิ้น) ══ */
+window._showPendingSku = function(m){
+  /* หา tracking ที่ Plan=m, ไม่ Cancel, แล้วแยกเข้าแล้ว/ยังไม่เข้า ตาม getActualQty */
+  var pending = [], received = [];
+  (DATA||[]).forEach(function(x){
+    if(isCancelled(x)) return;
+    var pm = getDisplayMonth(x) || normalizeMonth(x.month||'') || '';
+    if(pm !== m) return;
+    var act = getActualQty(x); if(act===null) act = 0;
+    var item = {
+      sku: x.sku||'', model: x.model||'', color: x.color||'',
+      brand: x.brand||'', plan: parseInt(x.total)||0, recv: act,
+      status: x.status||'', vendor: x.vendor||''
+    };
+    if(act > 0) received.push(item); else pending.push(item);
+  });
+  /* sort pending ตาม brand + plan มาก→น้อย */
+  pending.sort(function(a,b){ return (a.brand+'').localeCompare(b.brand+'') || b.plan-a.plan; });
+
+  var rows = pending.map(function(it){
+    var dot = (typeof bchipColor==='function') ? bchipColor(it.brand) : '#6366f1';
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:7px 8px;font-family:ui-monospace,monospace;font-size:11px;color:var(--text3)">'+esc(it.sku||'—')+'</td>'+
+      '<td style="padding:7px 8px;font-size:12px;color:var(--text);font-weight:500">'+esc(it.model)+'<span style="display:block;font-size:10px;color:var(--text3)">'+esc(it.color)+'</span></td>'+
+      '<td style="padding:7px 8px"><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px"><span style="width:8px;height:8px;border-radius:50%;background:'+dot+'"></span>'+esc(it.brand)+'</span></td>'+
+      '<td style="padding:7px 8px;font-family:ui-monospace,monospace;font-size:12px;text-align:right;color:var(--text)">'+it.plan.toLocaleString()+'</td>'+
+      '<td style="padding:7px 8px;font-size:11px;color:var(--text2)">'+esc(it.status||'—')+'</td>'+
+      '<td style="padding:7px 8px;font-size:11px;color:var(--text3)">'+esc(it.vendor||'—')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var totalPending = pending.length, totalAll = pending.length + received.length;
+  var planPending = pending.reduce(function(s,x){ return s+x.plan; }, 0);
+
+  var modal = document.getElementById('_pendingSkuModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = '_pendingSkuModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.onclick = function(e){ if(e.target===modal) modal.style.display='none'; };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div style="background:var(--card,#fff);border-radius:14px;max-width:780px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'+
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px">'+
+      '<div>'+
+        '<div style="font-weight:700;font-size:15px;color:var(--text)">⏳ SKU แผน '+esc(m)+' ที่ยังไม่เข้า</div>'+
+        '<div style="font-size:12px;color:var(--text3);margin-top:2px">ยังไม่รับ <b style="color:#ef4444">'+totalPending+'</b> จาก '+totalAll+' SKU · รอของอีก <b>'+planPending.toLocaleString()+'</b> ชิ้น</div>'+
+      '</div>'+
+      '<button onclick="document.getElementById(\'_pendingSkuModal\').style.display=\'none\'" style="background:var(--bg2,#f1f5f9);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;color:var(--text2)">✕</button>'+
+    '</div>'+
+    '<div style="overflow:auto;padding:0 20px 16px">'+
+      (totalPending===0
+        ? '<div style="padding:40px;text-align:center;color:#10b981;font-size:14px">🎉 SKU ของแผน '+esc(m)+' เข้าครบทุกตัวแล้ว!</div>'
+        : '<table style="width:100%;border-collapse:collapse">'+
+          '<thead><tr style="position:sticky;top:0;background:var(--card,#fff)">'+
+            '<th style="padding:8px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:2px solid var(--border)">SKU</th>'+
+            '<th style="padding:8px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:2px solid var(--border)">Model / Color</th>'+
+            '<th style="padding:8px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:2px solid var(--border)">Category</th>'+
+            '<th style="padding:8px;text-align:right;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:2px solid var(--border)">Plan</th>'+
+            '<th style="padding:8px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:2px solid var(--border)">Status</th>'+
+            '<th style="padding:8px;text-align:left;font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:2px solid var(--border)">Vendor</th>'+
+          '</tr></thead><tbody>'+rows+'</tbody></table>')+
+    '</div>'+
+  '</div>';
+  modal.style.display = 'flex';
 };
 
 /* ══ DRILL-DOWN MODAL: คลิกตัวเลข Brand → แสดง raw Inbound records ══ */

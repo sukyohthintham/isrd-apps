@@ -1952,6 +1952,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
         <input type="file" id="m_img" accept="image/*" style="display:none">
         <button type="button" id="m_img_clear" style="display:none;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--red);cursor:pointer">ลบรูป</button>
       </div>
+      <div id="imgprev-hint" style="font-size:10px;color:var(--text3);margin-top:4px"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="sbtn sbtn-blue" id="savetrackbtn" style="flex:1">บันทึก</button>
@@ -2218,7 +2219,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513au';
+var APP_VERSION = '20260513av';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -7904,16 +7905,27 @@ window.editTrack=function(idx){
     var opt=document.createElement('option');opt.value=x.vendor;opt.textContent=x.vendor+' (อื่นๆ)';
     vendorSel.appendChild(opt);vendorSel.value=x.vendor;
   }
-  /* show image */
-  if(pendingImg){
-    document.getElementById('imgprev').src=pendingImg;
-    document.getElementById('imgprev').style.display='block';
+  /* show image — ลำดับ: x.img (อัพโหลดเอง) ก่อน, ถ้าไม่มีลอง auto-image (/images/SKU) */
+  var _autoImg = (typeof getAutoImageUrl==='function') ? getAutoImageUrl(x.sku) : '';
+  var _showImg = pendingImg || _autoImg || '';
+  var _isAuto = !pendingImg && !!_autoImg; /* รูปนี้มาจาก auto folder ไม่ใช่ที่อัพเอง */
+  if(_showImg){
+    var _ip=document.getElementById('imgprev');
+    _ip.src=_showImg;
+    _ip.style.display='block';
     document.getElementById('imgph').style.display='none';
-    var _cb=document.getElementById('m_img_clear'); if(_cb) _cb.style.display='block';
+    /* auto-image: ไม่โชว์ปุ่มลบ (ลบไม่ได้ ต้องไปลบที่ folder) แต่เปลี่ยนได้
+       uploaded image: โชว์ปุ่มลบ */
+    var _cb=document.getElementById('m_img_clear');
+    if(_cb) _cb.style.display = _isAuto ? 'none' : 'block';
+    /* badge บอกว่าเป็นรูป auto */
+    var _hint=document.getElementById('imgprev-hint');
+    if(_hint) _hint.textContent = _isAuto ? 'รูปจาก /images/ (คลิกเพื่ออัพโหลดทับ)' : 'คลิกรูปเพื่อเปลี่ยน';
   } else {
     document.getElementById('imgprev').style.display='none';
     document.getElementById('imgph').style.display='flex';
     var _cb2=document.getElementById('m_img_clear'); if(_cb2) _cb2.style.display='none';
+    var _hint2=document.getElementById('imgprev-hint'); if(_hint2) _hint2.textContent='';
   }
   document.getElementById('trackmodal').style.display='flex';
 };

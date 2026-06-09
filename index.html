@@ -320,10 +320,21 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
 </head>
 <body>
 <script>
-/* Cache buster - redirect ถ้ายังไม่มี v param */
+/* Cache buster — sync ?v= กับ version ปัจจุบันเสมอ (ไม่ hardcode เลขเก่า)
+   - ไม่มี v= → เติม v=ปัจจุบัน
+   - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
+   APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  if(location.search.indexOf('v=')<0){
-    location.replace(location.pathname+'?v=20260422a'+location.hash);
+  var CUR = '20260513ax'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var m = location.search.match(/[?&]v=([^&]*)/);
+  var cur = m ? m[1] : null;
+  if(cur !== CUR){
+    /* กัน redirect วนลูป — ถ้าเพิ่ง redirect ไปแล้วใน 5 วิ ไม่ทำซ้ำ */
+    var last = sessionStorage.getItem('_vredir');
+    var now = Date.now();
+    if(last && (now - parseInt(last)) < 5000){ return; }
+    sessionStorage.setItem('_vredir', now);
+    location.replace(location.pathname + '?v=' + CUR + location.hash);
   }
 })();
 </script>
@@ -2219,7 +2230,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513av';
+var APP_VERSION = '20260513ax';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -7280,10 +7291,12 @@ function renderTable(){
   var sl=filtered.slice(start,start+effectivePgSize);
   document.getElementById('ttbody').innerHTML=sl.length?sl.map(function(x,si){
     var ri=start+si; /* filtered index */
-    /* ── รูป: priority 1) auto จาก SKU (คุณภาพดี) > 2) item.img base64 เก่า > 3) placeholder ── */
+    /* ── รูป: ถ้า imgHidden = ผู้ใช้สั่งซ่อน → placeholder เลย ── */
     var th;
-    var autoUrl = getAutoImageUrl(x.sku);
-    if(autoUrl){
+    var autoUrl = x.imgHidden ? null : getAutoImageUrl(x.sku);
+    if(x.imgHidden){
+      th = '<div class="thumb-ph" style="opacity:.5">📦</div>';
+    } else if(autoUrl){
       th = '<img src="'+autoUrl+'" class="thumb lbthumb tw-thumb" data-name="'+esc(x.model)+'" data-sku="'+esc(x.sku||'')+'" loading="lazy">';
     } else if(x.img){
       /* fallback: base64 เก่า + ยังพยายามหารูปใหม่ใน background */
@@ -7757,6 +7770,7 @@ function bindSkuAC(){
   });
 }
 var pendingImg='';
+var pendingImgHidden=false; /* true = ผู้ใช้สั่งลบรูป (ซ่อนรูป auto ด้วย) */
 var editIdx=-1; /* -1 = add mode, >=0 = edit mode */
 document.getElementById('addtrackbtn').onclick=function(){
   editIdx=-1;
@@ -7868,6 +7882,7 @@ window.editTrack=function(idx){
   if(!x)return;
   editIdx=DATA.indexOf(x); /* เก็บ global DATA index เพื่อใช้ตอน save */
   pendingImg=x.img||'';
+  pendingImgHidden = !!x.imgHidden; /* โหลดสถานะลบรูปจาก record */
   document.getElementById('trackmodal-title').textContent='แก้ไขสินค้า';
   document.getElementById('savetrackbtn').textContent='บันทึกการแก้ไข';
   /* fill all fields */
@@ -7905,27 +7920,26 @@ window.editTrack=function(idx){
     var opt=document.createElement('option');opt.value=x.vendor;opt.textContent=x.vendor+' (อื่นๆ)';
     vendorSel.appendChild(opt);vendorSel.value=x.vendor;
   }
-  /* show image — ลำดับ: x.img (อัพโหลดเอง) ก่อน, ถ้าไม่มีลอง auto-image (/images/SKU) */
+  /* show image — ลำดับ: x.img (อัพโหลดเอง) ก่อน, ถ้าไม่มีลอง auto-image (/images/SKU)
+     ถ้า imgHidden = ผู้ใช้สั่งลบ → ไม่แสดงรูปใดๆ (รวม auto) */
   var _autoImg = (typeof getAutoImageUrl==='function') ? getAutoImageUrl(x.sku) : '';
-  var _showImg = pendingImg || _autoImg || '';
-  var _isAuto = !pendingImg && !!_autoImg; /* รูปนี้มาจาก auto folder ไม่ใช่ที่อัพเอง */
+  var _showImg = pendingImgHidden ? '' : (pendingImg || _autoImg || '');
+  var _isAuto = !pendingImg && !!_autoImg && !pendingImgHidden;
   if(_showImg){
     var _ip=document.getElementById('imgprev');
     _ip.src=_showImg;
     _ip.style.display='block';
     document.getElementById('imgph').style.display='none';
-    /* auto-image: ไม่โชว์ปุ่มลบ (ลบไม่ได้ ต้องไปลบที่ folder) แต่เปลี่ยนได้
-       uploaded image: โชว์ปุ่มลบ */
+    /* โชว์ปุ่มลบเสมอเมื่อมีรูป (ทั้ง auto + uploaded) — ลบ auto = ซ่อนรูปนั้น */
     var _cb=document.getElementById('m_img_clear');
-    if(_cb) _cb.style.display = _isAuto ? 'none' : 'block';
-    /* badge บอกว่าเป็นรูป auto */
+    if(_cb) _cb.style.display = 'block';
     var _hint=document.getElementById('imgprev-hint');
-    if(_hint) _hint.textContent = _isAuto ? 'รูปจาก /images/ (คลิกเพื่ออัพโหลดทับ)' : 'คลิกรูปเพื่อเปลี่ยน';
+    if(_hint) _hint.textContent = _isAuto ? 'รูปจาก /images/ · คลิกรูปเพื่อเปลี่ยน · กดลบเพื่อซ่อน' : 'คลิกรูปเพื่อเปลี่ยน';
   } else {
     document.getElementById('imgprev').style.display='none';
     document.getElementById('imgph').style.display='flex';
     var _cb2=document.getElementById('m_img_clear'); if(_cb2) _cb2.style.display='none';
-    var _hint2=document.getElementById('imgprev-hint'); if(_hint2) _hint2.textContent='';
+    var _hint2=document.getElementById('imgprev-hint'); if(_hint2) _hint2.textContent = pendingImgHidden ? 'ลบรูปแล้ว' : '';
   }
   document.getElementById('trackmodal').style.display='flex';
 };
@@ -7947,6 +7961,7 @@ document.getElementById('m_img').onchange=function(e){
       canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
       pendingImg=canvas.toDataURL('image/jpeg',0.75);
+      pendingImgHidden=false; /* อัพรูปใหม่ = ยกเลิกสถานะลบ */
       console.log('[IMG] resized to',w+'x'+h,'size:',Math.round(pendingImg.length/1024)+'KB');
       document.getElementById('imgprev').src=pendingImg;
       document.getElementById('imgprev').style.display='block';
@@ -7961,10 +7976,13 @@ document.getElementById('m_img').onchange=function(e){
 var clrBtn=document.getElementById('m_img_clear');
 if(clrBtn) clrBtn.onclick=function(){
   pendingImg='';
+  pendingImgHidden=true; /* สั่งซ่อนรูป auto ด้วย — ลบให้เป็นช่องว่างจริง */
   document.getElementById('imgprev').style.display='none';
+  document.getElementById('imgprev').src='';
   document.getElementById('imgph').style.display='flex';
   document.getElementById('m_img').value='';
   this.style.display='none';
+  var _h=document.getElementById('imgprev-hint'); if(_h) _h.textContent='ลบรูปแล้ว — กดบันทึกเพื่อยืนยัน';
 };
 document.getElementById('savetrackbtn').onclick=function(){
   var model=(document.getElementById('m_model')||{value:''}).value.trim();
@@ -7998,6 +8016,7 @@ document.getElementById('savetrackbtn').onclick=function(){
     barcode:(document.getElementById('m_barcode')||{value:''}).value||'',
     note:(document.getElementById('m_note')||{value:''}).value||'',
     img:pendingImg||'',
+    imgHidden:pendingImgHidden||false,
     price_thb:parseFloat((document.getElementById('m_price_thb')||{value:'0'}).value)||0,
     plan_date:_fmtDate((document.getElementById('m_plan_date')||{value:''}).value||''),
     cost_thb:parseFloat((document.getElementById('m_cost_thb')||{value:'0'}).value)||0,

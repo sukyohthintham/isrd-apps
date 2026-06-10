@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260513bc'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260513bd'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2234,7 +2234,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513bc';
+var APP_VERSION = '20260513bd';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -5993,7 +5993,7 @@ function _renderBrandCat(){
   var selWk=window._brandCatWk||'';
 
   /* ── filter ตาม WK ที่เลือก (ยึด ETA) ── */
-  var totP=0, totA=0, byBrand={}, byCat={};
+  var totP=0, totA=0, byBrand={}, byCat={}, bySku={};
   DATA.forEach(function(d){
     if(isCancelled(d)) return;
     var p=parseInt(d.total)||0; if(p<=0) return;
@@ -6010,6 +6010,10 @@ function _renderBrandCat(){
     byBrand[bm].p+=p; byBrand[bm].a+=a; byBrand[bm].sku++; if(a>0) byBrand[bm].recvSku++;
     if(!byCat[cat]) byCat[cat]={p:0,a:0,sku:0,recvSku:0,brand:bm};
     byCat[cat].p+=p; byCat[cat].a+=a; byCat[cat].sku++; if(a>0) byCat[cat].recvSku++;
+    /* ราย SKU — group by SKU (รวมทุก PO ของ SKU เดียวกัน) */
+    var sk=(d.sku||'').trim()||'(ไม่มี SKU)';
+    if(!bySku[sk]) bySku[sk]={p:0,a:0,model:d.model||'',cat:cat,brand:bm};
+    bySku[sk].p+=p; bySku[sk].a+=a;
   });
 
   /* ── dropdown filter WK ── */
@@ -6058,12 +6062,44 @@ function _renderBrandCat(){
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
 
+  /* ── ตาราง SKU (เยอะ → search + scroll) ── */
+  var skuKeys=Object.keys(bySku).sort(function(a,b){ return bySku[b].p-bySku[a].p; });
+  var skuSearch=(window._brandCatSkuSearch||'').toLowerCase();
+  var skuFiltered=skuKeys.filter(function(k){
+    if(!skuSearch) return true;
+    var d=bySku[k];
+    return (k+' '+d.model+' '+d.cat).toLowerCase().indexOf(skuSearch)!==-1;
+  });
+  var skuRows=skuFiltered.map(function(k){
+    var d=bySku[k];
+    var pct=d.p>0?Math.round(d.a/d.p*100):0;
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:7px 8px;font-family:ui-monospace,monospace;font-size:10px;color:var(--text2)">'+esc(k)+'</td>'+
+      '<td style="padding:7px 8px;font-size:11px">'+esc(d.model)+' <span style="font-size:9px;color:var(--text3)">('+esc(d.cat)+')</span></td>'+
+      '<td style="padding:7px 8px;text-align:right;font-family:ui-monospace,monospace">'+d.p.toLocaleString()+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;font-family:ui-monospace,monospace;font-weight:600">'+d.a.toLocaleString()+'</td>'+
+      '<td style="padding:7px 8px;text-align:right">'+bar(d.p,d.a)+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;color:'+pctColor(d.p,d.a)+';font-weight:700">'+pct+'%</td>'+
+    '</tr>';
+  }).join('');
+  var skuBody=
+    '<div style="margin-bottom:10px"><input type="text" placeholder="🔍 ค้นหา SKU / Model / Category..." value="'+esc(window._brandCatSkuSearch||'')+'" '+
+      'oninput="window._brandCatSkuSearch=this.value; clearTimeout(window._scTmr); window._scTmr=setTimeout(_renderBrandCat,250);" '+
+      'style="width:100%;max-width:340px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--input-bg,#fff);color:var(--text)"></div>'+
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">แสดง '+skuFiltered.length+' จาก '+skuKeys.length+' SKU</div>'+
+    '<div style="max-height:480px;overflow:auto;border:1px solid var(--border);border-radius:8px">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead style="position:sticky;top:0;background:var(--card,#fff);z-index:1"><tr style="border-bottom:2px solid var(--border)">'+
+    ['SKU','Model','Plan','รับจริง','','%Actual'].map(function(c,i){return '<th style="padding:7px 8px;text-align:'+(i<2?'left':'right')+';font-size:9px;color:var(--text3);text-transform:uppercase;white-space:nowrap">'+c+'</th>';}).join('')+
+    '</tr></thead><tbody>'+(skuRows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text3)">ไม่พบ SKU</td></tr>')+'</tbody></table></div>';
+
   var wkLabel = selWk ? ' — สัปดาห์ '+esc(selWk.replace(/^\d+-/,''))+' ('+esc(wkSet[selWk]?wkSet[selWk].range:'')+')' : ' — ทุกสัปดาห์';
   el.innerHTML =
     filterBar+
     _insCard('🎯 ภาพรวม %Actual'+wkLabel, ovBody, pctColor(totP,totA))+
     _insCard('🏷️ %Actual แยก Brand (หลัก)', buildTable(byBrand,'Brand',false), '#8b5cf6')+
-    _insCard('📦 %Actual แยก Category', buildTable(byCat,'Category',true), '#ec4899');
+    _insCard('📦 %Actual แยก Category', buildTable(byCat,'Category',true), '#ec4899')+
+    _insCard('🔖 %Actual ราย SKU', skuBody, '#f59e0b');
 }
 
 function navTo(pg) {

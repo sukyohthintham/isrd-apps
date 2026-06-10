@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260513ay'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260513az'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -621,11 +621,13 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <button class="tab" data-instab="forecast" onclick="window._switchInsTab('forecast')">📊 Forecast</button>
           <button class="tab" data-instab="vendor" onclick="window._switchInsTab('vendor')">🏭 Vendor</button>
           <button class="tab" data-instab="cost" onclick="window._switchInsTab('cost')">💰 ต้นทุน</button>
+          <button class="tab" data-instab="weekly" onclick="window._switchInsTab('weekly')">📅 รายสัปดาห์</button>
         </div>
         <div id="ins-health" class="ins-tab"></div>
         <div id="ins-forecast" class="ins-tab" style="display:none"></div>
         <div id="ins-vendor" class="ins-tab" style="display:none"></div>
         <div id="ins-cost" class="ins-tab" style="display:none"></div>
+        <div id="ins-weekly" class="ins-tab" style="display:none"></div>
       </div>
 
       <!-- IMPORT -->
@@ -2230,7 +2232,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513ay';
+var APP_VERSION = '20260513az';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -5608,7 +5610,7 @@ var _insTab = 'health';
 window._switchInsTab = function(t){
   _insTab = t;
   document.querySelectorAll('[data-instab]').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-instab')===t); });
-  ['health','forecast','vendor','cost'].forEach(function(k){
+  ['health','forecast','vendor','cost','weekly'].forEach(function(k){
     var el=document.getElementById('ins-'+k); if(el) el.style.display = (k===t?'block':'none');
   });
   renderInsights();
@@ -5624,6 +5626,7 @@ function renderInsights(){
   if(_insTab==='forecast') _renderForecast();
   if(_insTab==='vendor')   _renderVendorScore();
   if(_insTab==='cost')     _renderCostInsight();
+  if(_insTab==='weekly')   _renderWeekly();
 }
 
 /* ── กลุ่ม 1: DATA HEALTH ── */
@@ -5820,6 +5823,130 @@ function _renderCostInsight(){
       '</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
   el.innerHTML=_insCard('💰 ต้นทุนจ่ายจริง แยกตาม Brand', body, '#06b6d4');
+}
+
+/* ── กลุ่ม 5: WEEKLY (Plan ETA vs เข้าจริง Inbound date) ── */
+function _parseDMY(s){
+  if(!s) return null;
+  var m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m) return null;
+  var d = new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+  return isNaN(d.getTime()) ? null : d;
+}
+function _isoWeek(d){
+  /* ISO 8601 week number */
+  var dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var day = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - day);
+  var yStart = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  var wk = Math.ceil((((dt - yStart)/86400000)+1)/7);
+  return dt.getUTCFullYear()+'-W'+(wk<10?'0':'')+wk;
+}
+function _weekRange(d){
+  /* คืนช่วงวันที่ของสัปดาห์ (จันทร์–อาทิตย์) เป็นข้อความสั้น */
+  var day = d.getDay() || 7;
+  var mon = new Date(d); mon.setDate(d.getDate() - day + 1);
+  var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  function f(x){ return x.getDate()+'/'+(x.getMonth()+1); }
+  return f(mon)+'–'+f(sun);
+}
+
+function _renderWeekly(){
+  var el=document.getElementById('ins-weekly'); if(!el) return;
+
+  /* Plan รายสัปดาห์ — ยึด ETA จาก tracking (ข้าม cancel) */
+  var planWk={}, planNoEta=0, planTotal=0;
+  DATA.forEach(function(d){
+    if(isCancelled(d)) return;
+    var plan=parseInt(d.total)||0; if(plan<=0) return;
+    planTotal+=plan;
+    var dt=_parseDMY(d.eta);
+    if(!dt){ planNoEta+=plan; return; }
+    var wk=_isoWeek(dt);
+    if(!planWk[wk]) planWk[wk]={qty:0, range:_weekRange(dt), sort:dt.getTime()};
+    planWk[wk].qty+=plan;
+  });
+
+  /* เข้าจริง รายสัปดาห์ — ยึดวันที่รับจาก Actual Inbound */
+  var actWk={}, actNoDate=0, actTotal=0;
+  (IB_DATA||[]).forEach(function(ib){
+    var act=parseInt(ib.actualQty)||0; if(act<=0) return;
+    actTotal+=act;
+    var dt=_parseDMY(ib.date || ib.receiveDate || ib.วันที่รับ);
+    if(!dt){ actNoDate+=act; return; }
+    var wk=_isoWeek(dt);
+    if(!actWk[wk]) actWk[wk]={qty:0, range:_weekRange(dt), sort:dt.getTime()};
+    actWk[wk].qty+=act;
+  });
+
+  /* รวม keys ทั้ง 2 ฝั่ง เรียงตามเวลา */
+  var allWk={};
+  Object.keys(planWk).forEach(function(k){ allWk[k]={plan:planWk[k].qty, act:0, range:planWk[k].range, sort:planWk[k].sort}; });
+  Object.keys(actWk).forEach(function(k){
+    if(!allWk[k]) allWk[k]={plan:0, act:0, range:actWk[k].range, sort:actWk[k].sort};
+    allWk[k].act=actWk[k].qty;
+  });
+  var keys=Object.keys(allWk).sort(function(a,b){ return allWk[a].sort-allWk[b].sort; });
+
+  /* ── กราฟแท่ง รายสัปดาห์ ── */
+  var maxV=1;
+  keys.forEach(function(k){ maxV=Math.max(maxV, allWk[k].plan, allWk[k].act); });
+  var bars=keys.map(function(k){
+    var d=allWk[k];
+    var ph=Math.round(d.plan/maxV*100), ah=Math.round(d.act/maxV*100);
+    return '<div style="display:flex;flex-direction:column;align-items:center;min-width:54px;flex:1">'+
+      '<div style="display:flex;align-items:flex-end;gap:2px;height:120px">'+
+        '<div title="Plan '+d.plan.toLocaleString()+'" style="width:14px;background:#c7d2fe;border-radius:3px 3px 0 0;height:'+ph+'%"></div>'+
+        '<div title="เข้าจริง '+d.act.toLocaleString()+'" style="width:14px;background:#6366f1;border-radius:3px 3px 0 0;height:'+ah+'%"></div>'+
+      '</div>'+
+      '<div style="font-size:9px;color:var(--text2);margin-top:4px;font-weight:600">'+esc(k.replace(/^\d+-/,''))+'</div>'+
+      '<div style="font-size:8px;color:var(--text3)">'+esc(d.range)+'</div>'+
+    '</div>';
+  }).join('');
+  var legend='<div style="display:flex;gap:16px;margin-bottom:10px;font-size:11px">'+
+    '<span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#c7d2fe;border-radius:3px;display:inline-block"></span>Plan (ตาม ETA)</span>'+
+    '<span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#6366f1;border-radius:3px;display:inline-block"></span>เข้าจริง (วันรับจริง)</span></div>';
+  var chartBody=legend+'<div style="overflow-x:auto"><div style="display:flex;gap:4px;align-items:flex-end;min-width:'+(keys.length*58)+'px;padding-bottom:4px">'+bars+'</div></div>';
+  var warnNote='';
+  if(planNoEta>0) warnNote+='<div style="font-size:11px;color:#f59e0b;margin-top:8px">⚠ มี Plan '+planNoEta.toLocaleString()+' ชิ้นที่ยังไม่ได้กรอก ETA — ไม่ถูกนับในกราฟรายสัปดาห์ (กรอก ETA เพื่อให้ครบ)</div>';
+
+  /* ── %Actual รายเดือน (Plan ตาม ETA-month vs เข้าจริง ตามเดือนรับ) ── */
+  var planMo={}, actMo={};
+  DATA.forEach(function(d){
+    if(isCancelled(d)) return;
+    var plan=parseInt(d.total)||0; if(plan<=0) return;
+    var dt=_parseDMY(d.eta); if(!dt) return;
+    var mk=dt.getFullYear()+'-'+(dt.getMonth()+1<10?'0':'')+(dt.getMonth()+1);
+    planMo[mk]=(planMo[mk]||0)+plan;
+  });
+  (IB_DATA||[]).forEach(function(ib){
+    var act=parseInt(ib.actualQty)||0; if(act<=0) return;
+    var dt=_parseDMY(ib.date || ib.receiveDate); if(!dt) return;
+    var mk=dt.getFullYear()+'-'+(dt.getMonth()+1<10?'0':'')+(dt.getMonth()+1);
+    actMo[mk]=(actMo[mk]||0)+act;
+  });
+  var moKeys={}; Object.keys(planMo).forEach(function(k){moKeys[k]=1;}); Object.keys(actMo).forEach(function(k){moKeys[k]=1;});
+  var moList=Object.keys(moKeys).sort();
+  var moRows=moList.map(function(mk){
+    var p=planMo[mk]||0, a=actMo[mk]||0;
+    var pct=p>0?Math.round(a/p*100):(a>0?'∞':0);
+    var col=(p>0&&a>=p*0.9)?'#10b981':(p>0&&a>=p*0.6?'#f59e0b':'#ef4444');
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:8px;font-weight:600">'+esc(mk)+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace">'+p.toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;font-family:ui-monospace,monospace;font-weight:600">'+a.toLocaleString()+'</td>'+
+      '<td style="padding:8px;text-align:right;color:'+col+';font-weight:700">'+pct+'%</td>'+
+    '</tr>';
+  }).join('');
+  var moBody='<div style="font-size:12px;color:var(--text2);margin-bottom:10px">เทียบ Plan (ตามเดือน ETA) กับของเข้าจริง (ตามเดือนรับจริง) — %Actual แต่ละเดือน</div>'+
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr style="border-bottom:2px solid var(--border)">'+
+    ['เดือน','Plan (ETA)','เข้าจริง','%Actual'].map(function(c,i){return '<th style="padding:6px 8px;text-align:'+(i===0?'left':'right')+';font-size:9px;color:var(--text3);text-transform:uppercase">'+c+'</th>';}).join('')+
+    '</tr></thead><tbody>'+moRows+'</tbody></table></div>';
+
+  el.innerHTML =
+    _insCard('📅 Plan vs เข้าจริง รายสัปดาห์', chartBody+warnNote, '#6366f1')+
+    _insCard('📈 %Actual รายเดือน (ETA vs วันรับจริง)', moBody, '#10b981');
 }
 
 function navTo(pg) {

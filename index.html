@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260513bh'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260513bi'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2234,7 +2234,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513bh';
+var APP_VERSION = '20260513bi';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -5964,9 +5964,47 @@ function _renderWeekly(){
     ['เดือน','Plan (ETA)','เข้าจริง','%Actual'].map(function(c,i){return '<th style="padding:6px 8px;text-align:'+(i===0?'left':'right')+';font-size:9px;color:var(--text3);text-transform:uppercase">'+c+'</th>';}).join('')+
     '</tr></thead><tbody>'+moRows+'</tbody></table></div>';
 
+  /* ══ Matrix แบบ Excel — header (WK/เดือน) เป็นคอลัมน์, Plan/Actual/%Actual เป็นแถว ══ */
+  function buildMatrix(colKeys, getP, getA, colLabel){
+    if(!colKeys.length) return '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">ยังไม่มีข้อมูล</div>';
+    var totP=0, totA=0;
+    colKeys.forEach(function(k){ totP+=getP(k); totA+=getA(k); });
+    /* แถวหัว = ชื่อคอลัมน์ */
+    function th(txt,sticky){ return '<th style="padding:7px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--text2);background:var(--bg2,#f1f5f9);white-space:nowrap;border:1px solid var(--border)'+(sticky?';position:sticky;left:0;z-index:2':'')+'">'+esc(txt)+'</th>'; }
+    var headRow='<tr>'+th(colLabel,true)+colKeys.map(function(k){ return th(k.replace(/^\d+-/,'')); }).join('')+th('รวม')+'</tr>';
+    /* แถว Plan */
+    function cell(v,bold,color){ return '<td style="padding:7px 10px;text-align:right;font-family:ui-monospace,monospace;font-size:11px;border:1px solid var(--border)'+(bold?';font-weight:700':'')+(color?';color:'+color:'')+'">'+v+'</td>'; }
+    function rowLabel(txt,color){ return '<td style="padding:7px 10px;font-weight:700;font-size:11px;color:'+(color||'var(--text)')+';background:var(--bg2,#f8fafc);white-space:nowrap;position:sticky;left:0;z-index:1;border:1px solid var(--border)">'+esc(txt)+'</td>'; }
+    var planRow='<tr>'+rowLabel('Plan')+colKeys.map(function(k){ return cell(getP(k).toLocaleString()); }).join('')+cell(totP.toLocaleString(),true)+'</tr>';
+    var actRow='<tr>'+rowLabel('รับจริง','#6366f1')+colKeys.map(function(k){ return cell(getA(k).toLocaleString(),true,'#6366f1'); }).join('')+cell(totA.toLocaleString(),true,'#6366f1')+'</tr>';
+    var pctRow='<tr>'+rowLabel('%Actual')+colKeys.map(function(k){
+      var p=getP(k),a=getA(k); var pct=p>0?Math.round(a/p*100):(a>0?'∞':0);
+      var c=p>0?(a>=p*0.9?'#10b981':(a>=p*0.6?'#f59e0b':'#ef4444')):'var(--text3)';
+      return cell(pct+'%',true,c);
+    }).join('')+cell((totP>0?Math.round(totA/totP*100):0)+'%',true,pctColor(totP,totA))+'</tr>';
+    return '<div style="overflow-x:auto;border-radius:8px"><table style="border-collapse:collapse;font-size:11px;min-width:100%">'+
+      '<thead>'+headRow+'</thead><tbody>'+planRow+actRow+pctRow+'</tbody></table></div>';
+  }
+  function _pctColorMatrix(p,a){ return p>0?(a>=p*0.9?'#10b981':(a>=p*0.6?'#f59e0b':'#ef4444')):'var(--text3)'; }
+  var pctColor = _pctColorMatrix;
+
+  /* รายสัปดาห์ matrix — ใช้ keys + allWk */
+  var wkMatrix = buildMatrix(keys,
+    function(k){ return allWk[k].plan; },
+    function(k){ return allWk[k].act; },
+    'WK \\ รายการ');
+
+  /* รายเดือน matrix — ใช้ moList + planMo/actMo */
+  var moMatrix = buildMatrix(moList,
+    function(k){ return planMo[k]||0; },
+    function(k){ return actMo[k]||0; },
+    'เดือน \\ รายการ');
+
   el.innerHTML =
     _insCard('📅 Plan vs เข้าจริง รายสัปดาห์', chartBody+warnNote+wkTable, '#6366f1')+
-    _insCard('📈 %Actual รายเดือน (ETA vs วันรับจริง)', moBody, '#10b981');
+    _insCard('📊 ตาราง Matrix รายสัปดาห์ (เลื่อนดูทั้งปี →)', wkMatrix, '#8b5cf6')+
+    _insCard('📈 %Actual รายเดือน (ETA vs วันรับจริง)', moBody, '#10b981')+
+    _insCard('📊 ตาราง Matrix รายเดือน', moMatrix, '#06b6d4');
 }
 
 /* ── กลุ่ม 6: BRAND / CATEGORY %Actual ── */

@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260513bi'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260513bj'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2234,7 +2234,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513bi';
+var APP_VERSION = '20260513bj';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6000,12 +6000,109 @@ function _renderWeekly(){
     function(k){ return actMo[k]||0; },
     'เดือน \\ รายการ');
 
+  /* ══ Brand/Category Matrix แบบละเอียด (Plan|Actual|%Actual ต่อ period) ══
+     period mode: เดือน หรือ สัปดาห์ (เลือก WK ได้) — ยึด ETA */
+  var mxMode = window._mxMode || 'month';  /* 'month' | 'week' */
+  var mxWeeks = window._mxWeeks || null;   /* array ของ WK ที่เลือก (null=ทุก WK) */
+
+  /* สร้าง period list ตาม mode */
+  var periodList, periodLabel;
+  if(mxMode==='week'){
+    periodLabel = 'สัปดาห์';
+    var allWkKeys = keys.slice(); /* keys = WK ที่มีข้อมูล (จากด้านบน) */
+    periodList = (mxWeeks && mxWeeks.length) ? allWkKeys.filter(function(k){ return mxWeeks.indexOf(k)!==-1; }) : allWkKeys;
+  } else {
+    periodLabel = 'เดือน';
+    periodList = moList.slice();
+  }
+
+  /* ฟังก์ชันดึง period key ของ tracking row (ตาม ETA) */
+  function _periodOf(d){
+    var dt=_parseDMY(d.eta); if(!dt) return null;
+    return mxMode==='week' ? _isoWeek(dt) : (dt.getFullYear()+'-'+(dt.getMonth()+1<10?'0':'')+(dt.getMonth()+1));
+  }
+
+  /* สร้างข้อมูล: dim(Brand/Cat) × period → {p, a} */
+  function buildDimData(dimFn){
+    var data={};
+    DATA.forEach(function(d){
+      if(isCancelled(d)) return;
+      var p=parseInt(d.total)||0; if(p<=0) return;
+      var per=_periodOf(d); if(!per || periodList.indexOf(per)===-1) return;
+      var dim=dimFn(d);
+      var a=getActualQty(d); if(a===null) a=0;
+      if(!data[dim]) data[dim]={};
+      if(!data[dim][per]) data[dim][per]={p:0,a:0};
+      data[dim][per].p+=p; data[dim][per].a+=a;
+    });
+    return data;
+  }
+
+  /* สร้างตาราง matrix: dim เป็นแถว, period × [Plan|Actual|%] เป็นคอลัมน์ */
+  function buildDimMatrix(data, dimLabel){
+    var dims=Object.keys(data).sort();
+    if(!dims.length || !periodList.length) return '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">ยังไม่มีข้อมูลในช่วงที่เลือก</div>';
+    var bd='var(--border)', bg='var(--bg2,#f1f5f9)';
+    /* header แถว 1: period span 3 */
+    var h1='<tr><th rowspan="2" style="padding:6px 10px;background:'+bg+';border:1px solid '+bd+';position:sticky;left:0;z-index:3;font-size:10px;text-align:left">'+esc(dimLabel)+'</th>'+
+      periodList.map(function(per){ return '<th colspan="3" style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';font-size:10px;text-align:center;white-space:nowrap">'+esc(per.replace(/^\d+-/,''))+'</th>'; }).join('')+'</tr>';
+    /* header แถว 2: Plan|Actual|% */
+    var h2='<tr>'+periodList.map(function(){ return '<th style="padding:4px 6px;background:'+bg+';border:1px solid '+bd+';font-size:9px;color:var(--text3)">Plan</th><th style="padding:4px 6px;background:'+bg+';border:1px solid '+bd+';font-size:9px;color:var(--text3)">Actual</th><th style="padding:4px 6px;background:'+bg+';border:1px solid '+bd+';font-size:9px;color:var(--text3)">%</th>'; }).join('')+'</tr>';
+    /* แถวข้อมูล */
+    var rows=dims.map(function(dim){
+      var cells=periodList.map(function(per){
+        var c=data[dim][per]||{p:0,a:0};
+        var pct=c.p>0?Math.round(c.a/c.p*100):(c.a>0?'∞':'—');
+        var col=c.p>0?(c.a>=c.p*0.9?'#10b981':(c.a>=c.p*0.6?'#f59e0b':'#ef4444')):'var(--text3)';
+        return '<td style="padding:5px 7px;text-align:right;border:1px solid '+bd+';font-family:ui-monospace,monospace;font-size:10px">'+(c.p||'—')+'</td>'+
+          '<td style="padding:5px 7px;text-align:right;border:1px solid '+bd+';font-family:ui-monospace,monospace;font-size:10px;font-weight:600">'+(c.a||'—')+'</td>'+
+          '<td style="padding:5px 7px;text-align:right;border:1px solid '+bd+';font-size:10px;font-weight:700;color:'+col+'">'+(c.p>0?pct+'%':'—')+'</td>';
+      }).join('');
+      return '<tr><td style="padding:6px 10px;font-weight:600;font-size:11px;border:1px solid '+bd+';background:var(--card,#fff);position:sticky;left:0;z-index:1;white-space:nowrap">'+esc(dim)+'</td>'+cells+'</tr>';
+    }).join('');
+    return '<div style="overflow-x:auto;border-radius:8px"><table style="border-collapse:collapse;min-width:100%">'+
+      '<thead>'+h1+h2+'</thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  var brandData=buildDimData(function(d){ return brandGroupMain(d.brand||''); });
+  var catData=buildDimData(function(d){ return (d.brand||'').trim()||'ไม่ระบุ'; });
+
+  /* ── period selector UI ── */
+  function _mxSelector(){
+    var modeBtns='<div style="display:inline-flex;gap:4px;margin-right:12px">'+
+      '<button onclick="window._mxMode=\'month\';window._mxWeeks=null;_renderWeekly();" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:'+(mxMode==='month'?'#6366f1':'var(--bg2)')+';color:'+(mxMode==='month'?'#fff':'var(--text2)')+';font-weight:600">📅 รายเดือน</button>'+
+      '<button onclick="window._mxMode=\'week\';_renderWeekly();" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:'+(mxMode==='week'?'#6366f1':'var(--bg2)')+';color:'+(mxMode==='week'?'#fff':'var(--text2)')+';font-weight:600">📆 รายสัปดาห์</button>'+
+      '</div>';
+    var wkChecks='';
+    if(mxMode==='week'){
+      wkChecks='<div style="margin-top:10px;padding:10px;background:var(--bg2,#f8fafc);border-radius:8px"><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:6px">เลือกสัปดาห์ที่ต้องการดู (ไม่เลือก = ทุกสัปดาห์):</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">'+keys.map(function(k){
+          var checked=mxWeeks&&mxWeeks.indexOf(k)!==-1;
+          return '<label style="display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:'+(checked?'#6366f1':'var(--card,#fff)')+';color:'+(checked?'#fff':'var(--text2)')+'">'+
+            '<input type="checkbox" '+(checked?'checked':'')+' onchange="_toggleMxWeek(\''+k+'\')" style="margin:0">'+esc(k.replace(/^\d+-/,''))+'</label>';
+        }).join('')+'</div>'+
+        (mxWeeks&&mxWeeks.length?'<button onclick="window._mxWeeks=null;_renderWeekly();" style="margin-top:8px;font-size:10px;padding:3px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--card,#fff);color:var(--text2)">✕ ล้างที่เลือก</button>':'')+
+        '</div>';
+    }
+    return '<div style="margin-bottom:14px">'+modeBtns+wkChecks+'</div>';
+  }
+
   el.innerHTML =
     _insCard('📅 Plan vs เข้าจริง รายสัปดาห์', chartBody+warnNote+wkTable, '#6366f1')+
     _insCard('📊 ตาราง Matrix รายสัปดาห์ (เลื่อนดูทั้งปี →)', wkMatrix, '#8b5cf6')+
     _insCard('📈 %Actual รายเดือน (ETA vs วันรับจริง)', moBody, '#10b981')+
-    _insCard('📊 ตาราง Matrix รายเดือน', moMatrix, '#06b6d4');
+    _insCard('📊 ตาราง Matrix รายเดือน', moMatrix, '#06b6d4')+
+    _insCard('🏷️ Matrix แยก Brand (Plan/Actual/%)', _mxSelector()+buildDimMatrix(brandData,'Brand \\ '+periodLabel), '#ec4899')+
+    _insCard('📦 Matrix แยก Category (Plan/Actual/%)', buildDimMatrix(catData,'Category \\ '+periodLabel), '#f59e0b');
 }
+
+/* toggle เลือก WK ใน matrix */
+window._toggleMxWeek = function(wk){
+  if(!window._mxWeeks) window._mxWeeks=[];
+  var i=window._mxWeeks.indexOf(wk);
+  if(i===-1) window._mxWeeks.push(wk); else window._mxWeeks.splice(i,1);
+  _renderWeekly();
+};
 
 /* ── กลุ่ม 6: BRAND / CATEGORY %Actual ── */
 function _renderBrandCat(){

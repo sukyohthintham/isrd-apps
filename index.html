@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260513be'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260513bf'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2234,38 +2234,31 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513be';
+var APP_VERSION = '20260513bf';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
 function _showUpdateBanner(){
   if(document.getElementById('app-update-banner')) return; /* กันแสดงซ้ำ */
+  if(window._updateDismissed) return; /* ผู้ใช้กดปิดไปแล้วในรอบนี้ — ไม่เด้งซ้ำจนกว่าจะ reload */
   var banner = document.createElement('div');
   banner.id = 'app-update-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#2563eb,#7c3aed);color:#fff;padding:14px 20px;z-index:99999;display:flex;align-items:center;justify-content:center;gap:14px;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.25);font-family:inherit';
-  banner.innerHTML = '<span>🚀 มีเวอร์ชันใหม่ — กำลังอัพเดทใน <span id="upd-cnt" style="font-weight:700;font-size:16px">5</span> วินาที...</span>'+
-    '<button id="upd-now-btn" style="background:#fff;color:#2563eb;border:none;padding:7px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px">อัพเดทเลย</button>'+
-    '<button id="upd-later-btn" style="background:transparent;color:#fff;border:1px solid #ffffff66;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:12px">ภายหลัง</button>';
+  banner.style.cssText = 'position:fixed;bottom:20px;right:20px;background:linear-gradient(90deg,#2563eb,#7c3aed);color:#fff;padding:12px 18px;z-index:9999;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:500;box-shadow:0 6px 20px rgba(37,99,235,0.4);border-radius:12px;font-family:inherit;max-width:300px';
+  banner.innerHTML = '<span>🚀 มีเวอร์ชันใหม่พร้อมใช้งาน</span>'+
+    '<button id="upd-now-btn" style="background:#fff;color:#2563eb;border:none;padding:6px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:12px;white-space:nowrap">อัพเดท</button>'+
+    '<button id="upd-later-btn" style="background:transparent;color:#fff;border:1px solid #ffffff66;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px">✕</button>';
   document.body.appendChild(banner);
-  var n = 5;
-  var timer = setInterval(function(){
-    n--;
-    var el = document.getElementById('upd-cnt');
-    if(el) el.textContent = n;
-    if(n <= 0){ clearInterval(timer); location.reload(true); }
-  }, 1000);
-  document.getElementById('upd-now-btn').onclick = function(){ clearInterval(timer); location.reload(true); };
-  document.getElementById('upd-later-btn').onclick = function(){
-    clearInterval(timer);
-    banner.remove();
-    /* แสดงปุ่มเล็กมุมขวาล่างให้กดอัพเดทภายหลัง */
-    var mini = document.createElement('button');
-    mini.id = 'app-update-mini';
-    mini.textContent = '🚀 อัพเดทเวอร์ชันใหม่';
-    mini.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#2563eb;color:#fff;border:none;padding:10px 16px;border-radius:50px;font-size:12px;font-weight:600;cursor:pointer;z-index:9999;box-shadow:0 4px 12px rgba(37,99,235,0.4)';
-    mini.onclick = function(){ location.reload(true); };
-    document.body.appendChild(mini);
+  /* ไม่ reload อัตโนมัติ — ให้ผู้ใช้กดเองเมื่อพร้อม (กันเด้งตอนกำลังกรอกฟอร์ม) */
+  document.getElementById('upd-now-btn').onclick = function(){
+    /* เตือนถ้ามีฟอร์มเปิดอยู่ — กันข้อมูลที่กรอกค้างหาย */
+    var formOpen = ['trackmodal','drill-modal','ib-modal'].some(function(id){
+      var m=document.getElementById(id);
+      return m && (m.style.display==='flex' || m.style.display==='block');
+    });
+    if(formOpen && !confirm('มีฟอร์มที่เปิดอยู่ — ถ้าอัพเดทตอนนี้ข้อมูลที่กรอกค้างอาจหาย\n\nต้องการอัพเดทเลยหรือไม่?')) return;
+    location.reload(true);
   };
+  document.getElementById('upd-later-btn').onclick = function(){ banner.remove(); window._updateDismissed = true; };
 }
 
 function checkAppVersion(){

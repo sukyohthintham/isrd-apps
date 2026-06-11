@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260513bg'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260513bh'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2089,15 +2089,15 @@ var PROD_TOTAL_NOTE="7,449";
 ═══════════════════════════════════════════════ */
 var USERS = [
   {user:'isrd.admin', pass:'ISRD@2026', name:'Admin', role:'Super Admin',
-   pages:['dashboard','tracking','import','bom','costsheet','vendors','fabric','shipping','products','inbound','masterdata','settings']},
+   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','fabric','shipping','products','inbound','masterdata','settings']},
   {user:'isrd.wh',    pass:'WH@2026',   name:'Warehouse', role:'Warehouse',
-   pages:['dashboard','tracking','fabric','products','costsheet','inbound','settings']},
+   pages:['dashboard','tracking','insights','fabric','products','costsheet','inbound','settings']},
   {user:'isrd.md',    pass:'MD@2026',   name:'Merchandiser', role:'Merchandiser',
-   pages:['dashboard','tracking','import','bom','costsheet','vendors','products','inbound','settings']},
+   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','settings']},
   {user:'isrd.nn',    pass:'NN@2026',   name:'Nineties Team', role:'Nineties',
-   pages:['dashboard','tracking','import','bom','costsheet','vendors','products','inbound','settings']},
+   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','settings']},
   {user:'isrd.sn',    pass:'SN@2026',   name:'SO.ON Team', role:'SO.ON',
-   pages:['dashboard','tracking','import','bom','costsheet','vendors','products','inbound','settings']},
+   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','settings']},
   /* Users ที่เพิ่มผ่าน Settings จะ sync มาจาก Firebase
      เพิ่ม hardcode ไว้เป็น fallback กรณี Firebase ออฟไลน์ */
 ];
@@ -2234,7 +2234,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513bg';
+var APP_VERSION = '20260513bh';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -2529,11 +2529,17 @@ function listenFirebase() {
           USERS[i].role = fu.role || USERS[i].role;
           if(fu.pass && fu.pass.length>=4) USERS[i].pass = fu.pass;
           if(fu.pages && fu.pages.length>0) USERS[i].pages = fu.pages.slice();
+          /* auto-migrate: ใครเห็น tracking ได้ ให้เห็น insights ด้วย (หน้าดูข้อมูลคู่กัน) */
+          if(USERS[i].pages.indexOf('tracking')!==-1 && USERS[i].pages.indexOf('insights')===-1){
+            USERS[i].pages.push('insights');
+          }
           found = true; break;
         }
       }
       if(!found){
-        USERS.push({user:fu.user, pass:fu.pass||'', name:fu.name||fu.user, role:fu.role||'User', pages:fu.pages||['dashboard','settings']});
+        var np = fu.pages||['dashboard','settings'];
+        if(np.indexOf('tracking')!==-1 && np.indexOf('insights')===-1) np.push('insights');
+        USERS.push({user:fu.user, pass:fu.pass||'', name:fu.name||fu.user, role:fu.role||'User', pages:np});
       }
     });
     console.log('[FB] users synced:', USERS.length);
@@ -11186,8 +11192,8 @@ document.getElementById('save-pw-btn').onclick=function(){
   for(var i=0;i<USERS.length;i++){if(USERS[i].user===currentUser.user){USERS[i].pass=n;currentUser.pass=n;break;}}
   savePasswords();fbPushPasswords();clearPwForm();showToast('✓ เปลี่ยนรหัสผ่านเรียบร้อย','var(--green)');
 };
-var ALL_PAGES = ['dashboard','tracking','import','bom','costsheet','vendors','fabric','shipping','products','inbound','masterdata','settings'];
-var PAGE_LABELS = {dashboard:'Dashboard',tracking:'Tracking',import:'Import ไฟล์',bom:'BOM',costsheet:'Cost Sheet',vendors:'Vendors',fabric:'Fabric',shipping:'Shipping',products:'สินค้า',masterdata:'Master Data',inbound:'Actual Inbound',settings:'ตั้งค่า'};
+var ALL_PAGES = ['dashboard','tracking','insights','import','bom','costsheet','vendors','fabric','shipping','products','inbound','masterdata','settings'];
+var PAGE_LABELS = {dashboard:'Dashboard',tracking:'Tracking',insights:'Insights',import:'Import ไฟล์',bom:'BOM',costsheet:'Cost Sheet',vendors:'Vendors',fabric:'Fabric',shipping:'Shipping',products:'สินค้า',masterdata:'Master Data',inbound:'Actual Inbound',settings:'ตั้งค่า'};
 
 function renderAllUsers(){
   var el = document.getElementById('all-users-list');

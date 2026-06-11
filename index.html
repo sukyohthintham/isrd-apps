@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260513bf'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260513bg'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2234,7 +2234,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513bf';
+var APP_VERSION = '20260513bg';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -2497,14 +2497,7 @@ function listenFirebase() {
     if (currentUser) {
       buildUserFilter();
       /* preserve curPage — กันโดดกลับหน้า 1 ตอน Firebase sync */
-      var _keepPage = curPage;
-      applyFilters();
-      curPage = _keepPage;
-      /* validate curPage ยังอยู่ในช่วงที่ valid */
-      var ePgSize = (pgSize==='all') ? Math.max(filtered.length,1) : pgSize;
-      var maxPage = Math.max(1, Math.ceil(filtered.length/ePgSize));
-      if(curPage > maxPage) curPage = maxPage;
-      renderTable();
+      applyFilters(true);
       initDashboard();
     }
   });
@@ -6783,7 +6776,7 @@ function rebuildMonthFilter(){
     months.map(function(m){ return '<option'+(m===cur?' selected':'')+'>'+m+'</option>'; }).join('');
 }
 
-function applyFilters(){
+function applyFilters(keepPage){
   rebuildBrandFilter();
   rebuildMonthFilter();
   buildUserFilter();
@@ -6810,7 +6803,16 @@ function applyFilters(){
     if(q&&(x.model+x.vendor+x.tracking+x.color+(x.pod||'')+(x.sku||'')).replace(/\s/g,'').toLowerCase().indexOf(q.replace(/\s/g,''))===-1)return false;
     return true;
   });
-  curPage=1;renderTable();
+  /* keepPage=true → คงหน้าเดิม (ตอนแก้ข้อมูล/sync) ; ไม่ส่ง → reset หน้า 1 (ตอนเปลี่ยน filter) */
+  if(keepPage){
+    var ePgSize = (pgSize==='all') ? Math.max(filtered.length,1) : pgSize;
+    var maxPage = Math.max(1, Math.ceil(filtered.length/ePgSize));
+    if(curPage > maxPage) curPage = maxPage;
+    if(curPage < 1) curPage = 1;
+  } else {
+    curPage=1;
+  }
+  renderTable();
 }
 
 function rebuildVendorFilter(){
@@ -7851,7 +7853,7 @@ function delTrack(idx){
   actLog('delete','tracking','ลบสินค้า: '+(item.model||'')+' '+(item.color||''),{detail:item.brand||''});
   var globalIdx = DATA.indexOf(item);
   if(globalIdx > -1) DATA.splice(globalIdx, 1);
-  applyFilters(); initDashboard(); fbPushTracking();
+  applyFilters(true); initDashboard(); fbPushTracking();
 }
 window.setStatus=function(idx,status){
   /* idx = filtered index */
@@ -8212,7 +8214,7 @@ function deleteTrack(ri){
     } else {
       fbPushTracking();
     }
-    applyFilters();
+    applyFilters(true);
     initDashboard();
     showToast('🗑️ ลบ "'+label+'" แล้ว','var(--amber)');
   }
@@ -8414,7 +8416,7 @@ document.getElementById('savetrackbtn').onclick=function(){
   }
   editIdx=-1;
   document.getElementById('trackmodal').style.display='none';
-  buildUserFilter();applyFilters();initDashboard();
+  buildUserFilter();applyFilters(true);initDashboard();
   /* push ทันทีและ debounced เพื่อกัน race condition */
   fbPushTracking();
 };
@@ -10555,7 +10557,7 @@ function syncMissingMfgType(){
   });
   if(fixed > 0){
     fbPushTracking();
-    applyFilters();
+    applyFilters(true);
     showToast('✓ แก้ค่า Type ที่เขียนผิด '+fixed+' รายการ (CH→CN ฯลฯ)','var(--green)');
     actLog('edit','tracking','Normalize Type: fixed='+fixed,{detail:''});
   } else {
@@ -10579,7 +10581,7 @@ function syncAllTrackingBrand(){
   });
   if(updated>0){
     fbPushTracking();
-    applyFilters();
+    applyFilters(true);
     initDashboard();
     showToast('✓ อัพเดท Brand '+updated+' รายการ (ข้าม '+skipped+' รายการ)','var(--green)');
     actLog('edit','tracking','Sync Brand จาก Master: อัพเดท '+updated+' รายการ',{detail:''});

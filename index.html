@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-04-11T10:37 -->
+<!-- v2026-06-11T-bl -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260513bk'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611bl'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2234,7 +2234,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260513bk';
+var APP_VERSION = '20260611bl';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6016,6 +6016,12 @@ function _renderWeekly(){
     periodList = moList.slice();
   }
 
+  /* ── ตัวกรองปี (year filter): กรอง period ตามปีที่เลือก โดยไม่ลบข้อมูล ── */
+  var _availYears = (function(){ var y={}; periodList.forEach(function(k){ var m=(k.match(/^(\d{4})-/)||[])[1]; if(m) y[m]=1; }); return Object.keys(y).sort(); })();
+  var mxYear = window._mxYear || 'all';
+  if(mxYear!=='all' && _availYears.indexOf(mxYear)===-1){ mxYear='all'; window._mxYear='all'; } /* ปีที่เลือกไม่มีใน mode นี้ → กลับเป็นทุกปี */
+  if(mxYear!=='all'){ periodList = periodList.filter(function(k){ return k.indexOf(mxYear+'-')===0; }); }
+
   /* ฟังก์ชันดึง period key ของ tracking row (ตาม ETA) */
   function _periodOf(d){
     var dt=_parseDMY(d.eta); if(!dt) return null;
@@ -6049,6 +6055,9 @@ function _renderWeekly(){
     if(mxMode==='week'){
       var mm=per.match(/^(\d{4})-(W\d+)$/);
       if(mm) return _multiYear ? (mm[2]+"'"+mm[1].slice(2)) : mm[2];
+    } else {
+      var mo=per.match(/^(\d{4})-(\d{2})$/);
+      if(mo) return _multiYear ? (mo[2]+"'"+mo[1].slice(2)) : mo[2];
     }
     return per.replace(/^\d+-/,'');
   }
@@ -6063,7 +6072,7 @@ function _renderWeekly(){
     var PB='2px solid var(--text3,#94a3b8)'; /* ขอบหนาแบ่ง period */
     /* header แถว 1: period span 3 — ขอบซ้ายหนาแบ่งแต่ละ period */
     var h1='<tr><th rowspan="2" style="padding:8px 12px;background:'+bg+';border:1px solid '+bd+';position:sticky;left:0;z-index:3;font-size:12px;text-align:left;font-weight:700">'+esc(dimLabel)+'</th>'+
-      periodList.map(function(per){ return '<th colspan="3" style="padding:7px 8px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:12px;font-weight:700;text-align:center;white-space:nowrap;color:var(--text)">'+esc(_perLabel(per))+'</th>'; }).join('')+'</tr>';
+      periodList.map(function(per){ return '<th colspan="3" style="padding:8px 8px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:14px;font-weight:800;text-align:center;white-space:nowrap;color:var(--text)">'+esc(_perLabel(per))+'</th>'; }).join('')+'</tr>';
     /* header แถว 2: Plan|Actual|% */
     var h2='<tr>'+periodList.map(function(){ return '<th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:11px;color:var(--text2);font-weight:600">Plan</th><th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';font-size:11px;color:var(--text2);font-weight:600">Actual</th><th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';font-size:11px;color:var(--text2);font-weight:600">%</th>'; }).join('')+'</tr>';
     /* แถวข้อมูล */
@@ -6072,13 +6081,13 @@ function _renderWeekly(){
         var c=data[dim][per]||{p:0,a:0};
         var pct=c.p>0?Math.round(c.a/c.p*100):(c.a>0?'∞':'—');
         var col=c.p>0?(c.a>=c.p*0.9?'#10b981':(c.a>=c.p*0.6?'#f59e0b':'#ef4444')):'var(--text3)';
-        return '<td style="padding:7px 9px;text-align:right;border:1px solid '+bd+';border-left:'+PB+';font-family:ui-monospace,monospace;font-size:12px">'+(c.p||'—')+'</td>'+
-          '<td style="padding:7px 9px;text-align:right;border:1px solid '+bd+';font-family:ui-monospace,monospace;font-size:12px;font-weight:600">'+(c.a||'—')+'</td>'+
-          '<td style="padding:7px 9px;text-align:right;border:1px solid '+bd+';font-size:12px;font-weight:700;color:'+col+'">'+(c.p>0?pct+'%':'—')+'</td>';
+        return '<td style="padding:9px 11px;text-align:right;border:1px solid '+bd+';border-left:'+PB+';font-family:ui-monospace,monospace;font-size:14px;color:var(--text2)">'+(c.p||'—')+'</td>'+
+          '<td style="padding:9px 11px;text-align:right;border:1px solid '+bd+';font-family:ui-monospace,monospace;font-size:17px;font-weight:700">'+(c.a||'—')+'</td>'+
+          '<td style="padding:9px 11px;text-align:right;border:1px solid '+bd+';font-size:15px;font-weight:800;color:'+col+'">'+(c.p>0?pct+'%':'—')+'</td>';
       }).join('');
       var clickAttr = opts.clickable ? ' onclick="_showSkuRaw(\''+esc(dim).replace(/'/g,"\\'")+'\')" style="cursor:pointer" onmouseover="this.style.background=\'var(--bg2,#f8fafc)\'" onmouseout="this.style.background=\'\'" title="คลิกดู Raw Data"' : '';
       var dimCol = opts.clickable ? '#6366f1' : 'var(--text)';
-      return '<tr'+clickAttr+'><td style="padding:8px 12px;font-weight:600;font-size:12px;border:1px solid '+bd+';background:var(--card,#fff);position:sticky;left:0;z-index:1;white-space:nowrap;color:'+dimCol+'">'+esc(dim)+'</td>'+cells+'</tr>';
+      return '<tr'+clickAttr+'><td style="padding:9px 12px;font-weight:700;font-size:13px;border:1px solid '+bd+';background:var(--card,#fff);position:sticky;left:0;z-index:1;white-space:nowrap;color:'+dimCol+'">'+esc(dim)+'</td>'+cells+'</tr>';
     }).join('');
     return '<div style="overflow-x:auto;border-radius:8px"><table style="border-collapse:collapse;min-width:100%">'+
       '<thead>'+h1+h2+'</thead><tbody>'+rows+'</tbody></table></div>';
@@ -6094,18 +6103,30 @@ function _renderWeekly(){
       '<button onclick="window._mxMode=\'month\';window._mxWeeks=null;_renderWeekly();" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:'+(mxMode==='month'?'#6366f1':'var(--bg2)')+';color:'+(mxMode==='month'?'#fff':'var(--text2)')+';font-weight:600">📅 รายเดือน</button>'+
       '<button onclick="window._mxMode=\'week\';_renderWeekly();" style="padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:'+(mxMode==='week'?'#6366f1':'var(--bg2)')+';color:'+(mxMode==='week'?'#fff':'var(--text2)')+';font-weight:600">📆 รายสัปดาห์</button>'+
       '</div>';
+    /* ปุ่มเลือกปี — แสดงเฉพาะเมื่อข้อมูลมีมากกว่า 1 ปี */
+    var yearBtns='';
+    if(_availYears.length>1){
+      yearBtns='<div style="display:inline-flex;gap:4px;margin-right:14px;align-items:center">'+
+        '<span style="font-size:11px;color:var(--text3);margin-right:2px;font-weight:600">ปี:</span>'+
+        ['all'].concat(_availYears).map(function(y){
+          var lbl=(y==='all')?'ทุกปี':("'"+y.slice(2));
+          var on=(mxYear===y);
+          return '<button onclick="window._mxYear=\''+y+'\';window._mxWeeks=null;_renderWeekly();" style="padding:5px 11px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:'+(on?'#0ea5e9':'var(--bg2)')+';color:'+(on?'#fff':'var(--text2)')+';font-weight:700">'+lbl+'</button>';
+        }).join('')+'</div>';
+    }
     var wkChecks='';
     if(mxMode==='week'){
+      var wkForChecks=(mxYear==='all')?keys:keys.filter(function(k){ return k.indexOf(mxYear+'-')===0; });
       wkChecks='<div style="margin-top:10px;padding:10px;background:var(--bg2,#f8fafc);border-radius:8px"><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:6px">เลือกสัปดาห์ที่ต้องการดู (ไม่เลือก = ทุกสัปดาห์):</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:6px">'+keys.map(function(k){
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">'+wkForChecks.map(function(k){
           var checked=mxWeeks&&mxWeeks.indexOf(k)!==-1;
           return '<label style="display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:'+(checked?'#6366f1':'var(--card,#fff)')+';color:'+(checked?'#fff':'var(--text2)')+'">'+
-            '<input type="checkbox" '+(checked?'checked':'')+' onchange="_toggleMxWeek(\''+k+'\')" style="margin:0">'+esc(k.replace(/^\d+-/,''))+'</label>';
+            '<input type="checkbox" '+(checked?'checked':'')+' onchange="_toggleMxWeek(\''+k+'\')" style="margin:0">'+esc(_perLabel(k))+'</label>';
         }).join('')+'</div>'+
         (mxWeeks&&mxWeeks.length?'<button onclick="window._mxWeeks=null;_renderWeekly();" style="margin-top:8px;font-size:10px;padding:3px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--card,#fff);color:var(--text2)">✕ ล้างที่เลือก</button>':'')+
         '</div>';
     }
-    return '<div style="margin-bottom:14px">'+modeBtns+wkChecks+'</div>';
+    return '<div style="margin-bottom:'+(wkChecks?'0':'14px')+';display:flex;flex-wrap:wrap;align-items:center;gap:4px 0">'+yearBtns+modeBtns+'</div>'+(wkChecks?'<div style="margin-bottom:14px">'+wkChecks+'</div>':'');
   }
 
   /* SKU matrix — เยอะ → มี search filter */
@@ -6175,8 +6196,10 @@ function _renderBrandCat(){
   });
 
   /* ── dropdown filter WK ── */
+  var _bcMultiYr=(function(){var y={};wkKeys.forEach(function(k){var mm=(k.match(/^(\d{4})-/)||[])[1];if(mm)y[mm]=1;});return Object.keys(y).length>1;})();
+  function _bcWkLabel(k){var mm=k.match(/^(\d{4})-(W\d+)$/);return mm?(_bcMultiYr?(mm[2]+"'"+mm[1].slice(2)):mm[2]):k.replace(/^\d+-/,'');}
   var wkOpts='<option value="">ทุกสัปดาห์ (ทั้งหมด)</option>'+wkKeys.map(function(k){
-    return '<option value="'+k+'"'+(k===selWk?' selected':'')+'>'+esc(k.replace(/^\d+-/,''))+' ('+esc(wkSet[k].range)+')</option>';
+    return '<option value="'+k+'"'+(k===selWk?' selected':'')+'>'+esc(_bcWkLabel(k))+' ('+esc(wkSet[k].range)+')</option>';
   }).join('');
   var filterBar='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
     '<span style="font-size:12px;color:var(--text2);font-weight:600">📅 เลือกสัปดาห์ (ตาม ETA):</span>'+

@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-bl -->
+<!-- v2026-06-11T-bm -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611bl'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611bm'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -411,6 +411,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
       <button class="nitem" data-page="shipping">↗ Shipping Code</button>
       <button class="nitem" data-page="products">⊡ สินค้าทั้งหมด</button>
       <button class="nitem" data-page="inbound">📥 Actual Inbound</button>
+      <button class="nitem" data-page="stock">📦 Stock คงเหลือ</button>
       <div class="nsec">ข้อมูลอ้างอิง</div>
       <button class="nitem" data-page="masterdata">📚 Master Data</button>
       <div class="nsec">บัญชี</div>
@@ -1684,6 +1685,27 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
 
+      <!-- STOCK คงเหลือ -->
+      <div class="page" id="page-stock">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0">📦 Stock คงเหลือ</h2>
+            <div id="stock-snapinfo" style="font-size:12px;color:var(--text3);margin-top:4px">ยังไม่มีข้อมูล — อัปโหลดไฟล์ Stock รายวันเพื่อเริ่มใช้งาน</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button onclick="document.getElementById('stock-file').click()" style="padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#2060e0,#1040b0);color:#fff;box-shadow:0 2px 8px rgba(32,96,224,.3)">⬆ อัปโหลด Stock</button>
+            <button onclick="downloadStockTemplate()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:var(--bg2);color:var(--text2)">📄 Template</button>
+            <button onclick="exportStock()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:var(--bg2);color:var(--text2)">⬇ Export</button>
+          </div>
+          <input type="file" id="stock-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="if(this.files[0]){handleStockUpload(this.files[0]); this.value='';}">
+        </div>
+        <div id="stock-upmsg"></div>
+        <div id="stock-summary"></div>
+        <div id="stock-tabs" style="display:flex;gap:6px;margin:14px 0 10px;flex-wrap:wrap"></div>
+        <div id="stock-filterbar"></div>
+        <div id="stock-body"></div>
+      </div>
+
       <!-- SETTINGS -->
       <div class="page" id="page-settings">
         <div class="ptitle">ตั้งค่าบัญชี</div>
@@ -2089,15 +2111,15 @@ var PROD_TOTAL_NOTE="7,449";
 ═══════════════════════════════════════════════ */
 var USERS = [
   {user:'isrd.admin', pass:'ISRD@2026', name:'Admin', role:'Super Admin',
-   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','fabric','shipping','products','inbound','masterdata','settings']},
+   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','fabric','shipping','products','inbound','stock','masterdata','settings']},
   {user:'isrd.wh',    pass:'WH@2026',   name:'Warehouse', role:'Warehouse',
-   pages:['dashboard','tracking','insights','fabric','products','costsheet','inbound','settings']},
+   pages:['dashboard','tracking','insights','fabric','products','costsheet','inbound','stock','settings']},
   {user:'isrd.md',    pass:'MD@2026',   name:'Merchandiser', role:'Merchandiser',
-   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','settings']},
+   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','stock','settings']},
   {user:'isrd.nn',    pass:'NN@2026',   name:'Nineties Team', role:'Nineties',
-   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','settings']},
+   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','stock','settings']},
   {user:'isrd.sn',    pass:'SN@2026',   name:'SO.ON Team', role:'SO.ON',
-   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','settings']},
+   pages:['dashboard','tracking','insights','import','bom','costsheet','vendors','products','inbound','stock','settings']},
   /* Users ที่เพิ่มผ่าน Settings จะ sync มาจาก Firebase
      เพิ่ม hardcode ไว้เป็น fallback กรณี Firebase ออฟไลน์ */
 ];
@@ -2234,7 +2256,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611bl';
+var APP_VERSION = '20260611bm';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -2529,9 +2551,12 @@ function listenFirebase() {
           USERS[i].role = fu.role || USERS[i].role;
           if(fu.pass && fu.pass.length>=4) USERS[i].pass = fu.pass;
           if(fu.pages && fu.pages.length>0) USERS[i].pages = fu.pages.slice();
-          /* auto-migrate: ใครเห็น tracking ได้ ให้เห็น insights ด้วย (หน้าดูข้อมูลคู่กัน) */
+          /* auto-migrate: ใครเห็น tracking ได้ ให้เห็น insights + stock ด้วย (หน้าดูข้อมูลคู่กัน) */
           if(USERS[i].pages.indexOf('tracking')!==-1 && USERS[i].pages.indexOf('insights')===-1){
             USERS[i].pages.push('insights');
+          }
+          if(USERS[i].pages.indexOf('tracking')!==-1 && USERS[i].pages.indexOf('stock')===-1){
+            USERS[i].pages.push('stock');
           }
           found = true; break;
         }
@@ -2539,6 +2564,7 @@ function listenFirebase() {
       if(!found){
         var np = fu.pages||['dashboard','settings'];
         if(np.indexOf('tracking')!==-1 && np.indexOf('insights')===-1) np.push('insights');
+        if(np.indexOf('tracking')!==-1 && np.indexOf('stock')===-1) np.push('stock');
         USERS.push({user:fu.user, pass:fu.pass||'', name:fu.name||fu.user, role:fu.role||'User', pages:np});
       }
     });
@@ -6028,7 +6054,7 @@ function _renderWeekly(){
     return mxMode==='week' ? _isoWeek(dt) : (dt.getFullYear()+'-'+(dt.getMonth()+1<10?'0':'')+(dt.getMonth()+1));
   }
 
-  /* สร้างข้อมูล: dim(Brand/Cat) × period → {p, a} */
+  /* สร้างข้อมูล: dim(Brand/Cat) × period → {p, a} ; พร้อมนับ SKU completion (__tot/__recv) ต่อ dim */
   function buildDimData(dimFn){
     var data={};
     DATA.forEach(function(d){
@@ -6037,9 +6063,10 @@ function _renderWeekly(){
       var per=_periodOf(d); if(!per || periodList.indexOf(per)===-1) return;
       var dim=dimFn(d);
       var a=getActualQty(d); if(a===null) a=0;
-      if(!data[dim]) data[dim]={};
+      if(!data[dim]) data[dim]={__tot:0,__recv:0};
       if(!data[dim][per]) data[dim][per]={p:0,a:0};
       data[dim][per].p+=p; data[dim][per].a+=a;
+      data[dim].__tot++; if(a>0) data[dim].__recv++;  /* นับรายการ (SKU-order) ในกลุ่ม + ที่เริ่มรับแล้ว */
     });
     return data;
   }
@@ -6070,9 +6097,10 @@ function _renderWeekly(){
     if(!dims.length || !periodList.length) return '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">ยังไม่มีข้อมูลในช่วงที่เลือก</div>';
     var bd='var(--border)', bg='var(--bg2,#f1f5f9)';
     var PB='2px solid var(--text3,#94a3b8)'; /* ขอบหนาแบ่ง period */
+    var skuCompTh = opts.showSkuComp ? '<th rowspan="2" style="padding:8px 10px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:12px;font-weight:800;text-align:center;white-space:nowrap;color:var(--text)">ครบ<br>SKU</th>' : '';
     /* header แถว 1: period span 3 — ขอบซ้ายหนาแบ่งแต่ละ period */
     var h1='<tr><th rowspan="2" style="padding:8px 12px;background:'+bg+';border:1px solid '+bd+';position:sticky;left:0;z-index:3;font-size:12px;text-align:left;font-weight:700">'+esc(dimLabel)+'</th>'+
-      periodList.map(function(per){ return '<th colspan="3" style="padding:8px 8px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:14px;font-weight:800;text-align:center;white-space:nowrap;color:var(--text)">'+esc(_perLabel(per))+'</th>'; }).join('')+'</tr>';
+      periodList.map(function(per){ return '<th colspan="3" style="padding:8px 8px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:14px;font-weight:800;text-align:center;white-space:nowrap;color:var(--text)">'+esc(_perLabel(per))+'</th>'; }).join('')+skuCompTh+'</tr>';
     /* header แถว 2: Plan|Actual|% */
     var h2='<tr>'+periodList.map(function(){ return '<th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:11px;color:var(--text2);font-weight:600">Plan</th><th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';font-size:11px;color:var(--text2);font-weight:600">Actual</th><th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';font-size:11px;color:var(--text2);font-weight:600">%</th>'; }).join('')+'</tr>';
     /* แถวข้อมูล */
@@ -6087,7 +6115,14 @@ function _renderWeekly(){
       }).join('');
       var clickAttr = opts.clickable ? ' onclick="_showSkuRaw(\''+esc(dim).replace(/'/g,"\\'")+'\')" style="cursor:pointer" onmouseover="this.style.background=\'var(--bg2,#f8fafc)\'" onmouseout="this.style.background=\'\'" title="คลิกดู Raw Data"' : '';
       var dimCol = opts.clickable ? '#6366f1' : 'var(--text)';
-      return '<tr'+clickAttr+'><td style="padding:9px 12px;font-weight:700;font-size:13px;border:1px solid '+bd+';background:var(--card,#fff);position:sticky;left:0;z-index:1;white-space:nowrap;color:'+dimCol+'">'+esc(dim)+'</td>'+cells+'</tr>';
+      var skuCompCell='';
+      if(opts.showSkuComp){
+        var sc=data[dim]||{}, tot=sc.__tot||0, recv=sc.__recv||0;
+        var spct=tot>0?Math.round(recv/tot*100):0;
+        var scol=spct>=90?'#10b981':(spct>=60?'#f59e0b':'#ef4444');
+        skuCompCell='<td style="padding:7px 11px;text-align:center;border:1px solid '+bd+';border-left:'+PB+';white-space:nowrap"><div style="font-size:15px;font-weight:800;color:'+scol+'">'+spct+'%</div><div style="font-size:10px;color:var(--text3);font-family:ui-monospace,monospace">'+recv+'/'+tot+'</div></td>';
+      }
+      return '<tr'+clickAttr+'><td style="padding:9px 12px;font-weight:700;font-size:13px;border:1px solid '+bd+';background:var(--card,#fff);position:sticky;left:0;z-index:1;white-space:nowrap;color:'+dimCol+'">'+esc(dim)+'</td>'+cells+skuCompCell+'</tr>';
     }).join('');
     return '<div style="overflow-x:auto;border-radius:8px"><table style="border-collapse:collapse;min-width:100%">'+
       '<thead>'+h1+h2+'</thead><tbody>'+rows+'</tbody></table></div>';
@@ -6143,8 +6178,8 @@ function _renderWeekly(){
 
   el.innerHTML =
     _insCard('📅 Plan vs เข้าจริง รายสัปดาห์ (ภาพรวม)', chartBody+warnNote, '#6366f1')+
-    _insCard('🏷️ Matrix แยก Brand (Plan/Actual/%)', _mxSelector()+buildDimMatrix(brandData,'Brand \\ '+periodLabel), '#ec4899')+
-    _insCard('📦 Matrix แยก Category (Plan/Actual/%)', buildDimMatrix(catData,'Category \\ '+periodLabel), '#f59e0b')+
+    _insCard('🏷️ Matrix แยก Brand (Plan/Actual/%)', _mxSelector()+buildDimMatrix(brandData,'Brand \\ '+periodLabel,{showSkuComp:true}), '#ec4899')+
+    _insCard('📦 Matrix แยก Category (Plan/Actual/%)', buildDimMatrix(catData,'Category \\ '+periodLabel,{showSkuComp:true}), '#f59e0b')+
     _insCard('🔖 Matrix แยก SKU (Plan/Actual/%)', skuSearchBox+buildDimMatrix(skuDataFiltered,'SKU \\ '+periodLabel,{clickable:true}), '#8b5cf6');
 }
 
@@ -6285,6 +6320,225 @@ function _renderBrandCat(){
     _insCard('🔖 %Actual ราย SKU', skuBody, '#f59e0b');
 }
 
+/* ═══════════════════════════════════════════════════════════
+   📦 STOCK คงเหลือ — upload daily snapshot, sync ผ่าน Firebase,
+   template/export, และมุมมองเชื่อมกับ Tracking ด้วย SKU
+   ═══════════════════════════════════════════════════════════ */
+var STOCK_DATA = [];      /* [{s,n,c,sc,t,w,q,a,p,u}] */
+var STOCK_META = null;    /* {date,by,at,count,totalQty,totalAvail,totalValue,whCount,skuCount} */
+var _stockTab = 'wh';     /* wh | cat | sku | track */
+var _stockListening = false;
+var STOCK_COLS = ['s','n','c','sc','t','w','q','a','p','u'];
+var STOCK_HEADERS = ['รหัสสินค้า','ชื่อสินค้า','หมวดหมู่','หมวดหมู่ย่อย','Tag','คลัง','จำนวน','จำนวนพร้อมขาย','ราคาขาย','หน่วยสินค้า','Date'];
+
+function _sPad2(n){ return n<10?'0'+n:''+n; }
+function _stockFmtDate(v){
+  if(v instanceof Date) return v.getFullYear()+'-'+_sPad2(v.getMonth()+1)+'-'+_sPad2(v.getDate());
+  var s=String(v||'').trim();
+  if(/^\d{5}(\.\d+)?$/.test(s)){ var d=new Date(Math.round((parseFloat(s)-25569)*86400*1000)); return d.getFullYear()+'-'+_sPad2(d.getMonth()+1)+'-'+_sPad2(d.getDate()); }
+  return s.slice(0,10);
+}
+
+/* ─ Firebase sync (เก็บเป็น snapshot ก้อนเดียว: meta + cols + rows[][]) ─ */
+function fbPushStock(){
+  if(!fbDB) return;
+  var payload = {
+    meta: STOCK_META || {},
+    cols: STOCK_COLS,
+    rows: STOCK_DATA.map(function(r){ return STOCK_COLS.map(function(c){ return r[c]; }); })
+  };
+  fbDB.ref(FB_PATH+'/stock').set(payload).catch(function(e){ console.warn('FB stock push:', e.message); });
+}
+function listenStock(){
+  if(!fbDB || _stockListening) return;
+  _stockListening = true;
+  fbDB.ref(FB_PATH+'/stock').on('value', function(snap){
+    var val = snap.val();
+    STOCK_DATA = []; STOCK_META = null;
+    if(val && val.rows){
+      var cols = val.cols || STOCK_COLS;
+      STOCK_DATA = val.rows.map(function(arr){ var o={}; cols.forEach(function(c,i){ o[c]=arr[i]; }); return o; });
+      STOCK_META = val.meta || null;
+    }
+    var pg=document.getElementById('page-stock');
+    if(pg && pg.classList.contains('active')) renderStock();
+  });
+}
+function initStock(){ listenStock(); renderStock(); }
+
+/* ─ อ่านไฟล์ที่อัปโหลด (xlsx/csv) ─ */
+function handleStockUpload(file){
+  var msg = document.getElementById('stock-upmsg');
+  msg.innerHTML = '<div style="padding:10px 14px;background:var(--blue-a);border-radius:8px;font-size:13px;color:var(--blue);margin-bottom:10px">⏳ กำลังอ่านไฟล์ '+esc(file.name)+' ...</div>';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      var shName = wb.SheetNames.indexOf('Stock')!==-1 ? 'Stock' : wb.SheetNames[0];
+      var raw = XLSX.utils.sheet_to_json(wb.Sheets[shName], {defval:''});
+      if(!raw.length) throw new Error('ไฟล์ไม่มีข้อมูล');
+      var missing = ['รหัสสินค้า','คลัง','จำนวน'].filter(function(h){ return !(h in raw[0]); });
+      if(missing.length) throw new Error('ไฟล์ขาดคอลัมน์: '+missing.join(', ')+' — กรุณาดาวน์โหลด Template เพื่อดูรูปแบบ');
+      var rows=[], date='';
+      raw.forEach(function(r){
+        var sku=String(r['รหัสสินค้า']||'').trim(); if(!sku) return;
+        if(!date && r['Date']) date=_stockFmtDate(r['Date']);
+        rows.push({ s:sku, n:String(r['ชื่อสินค้า']||'').trim(), c:String(r['หมวดหมู่']||'').trim(),
+          sc:String(r['หมวดหมู่ย่อย']||'').trim(), t:String(r['Tag']||'').trim(), w:String(r['คลัง']||'').trim(),
+          q:parseFloat(r['จำนวน'])||0, a:parseFloat(r['จำนวนพร้อมขาย'])||0, p:parseFloat(r['ราคาขาย'])||0, u:String(r['หน่วยสินค้า']||'').trim() });
+      });
+      if(!rows.length) throw new Error('ไม่พบแถวที่มีรหัสสินค้า');
+      var tQ=0,tA=0,tV=0,whs={},skus={};
+      rows.forEach(function(r){ tQ+=r.q; tA+=r.a; tV+=r.a*r.p; whs[r.w]=1; skus[r.s]=1; });
+      STOCK_DATA = rows;
+      STOCK_META = { date:date||_stockFmtDate(new Date()), by:(currentUser&&currentUser.name)||'?', at:Date.now(),
+        count:rows.length, totalQty:tQ, totalAvail:tA, totalValue:tV, whCount:Object.keys(whs).length, skuCount:Object.keys(skus).length };
+      fbPushStock();
+      msg.innerHTML = '<div style="padding:10px 14px;background:var(--green-a);border-radius:8px;font-size:13px;color:var(--green);margin-bottom:10px">✅ อัปโหลดสำเร็จ '+rows.length.toLocaleString()+' รายการ · '+Object.keys(skus).length.toLocaleString()+' SKU · '+Object.keys(whs).length+' คลัง — sync ให้ทีมแล้ว</div>';
+      setTimeout(function(){ if(msg) msg.innerHTML=''; }, 6000);
+      renderStock();
+    }catch(err){
+      msg.innerHTML = '<div style="padding:10px 14px;background:var(--red-a);border-radius:8px;font-size:13px;color:var(--red);margin-bottom:10px">❌ '+esc(err.message)+'</div>';
+    }
+  };
+  reader.onerror = function(){ msg.innerHTML='<div style="padding:10px;color:var(--red)">❌ อ่านไฟล์ไม่สำเร็จ</div>'; };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ─ Template ─ */
+function downloadStockTemplate(){
+  var ws = XLSX.utils.aoa_to_sheet([ STOCK_HEADERS,
+    ['NTBS001BK01','ตัวอย่าง_NTDS BASIC','Nineties Basic','Basic','-','WH Display',10,8,590,'ตัว','2026-06-11'],
+    ['SOSALE250PL','ตัวอย่าง_SOON SALE','Soon Sale','-','-','SOON Siam Square',5,5,250,'ตัว','2026-06-11'] ]);
+  var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Stock');
+  XLSX.writeFile(wb, 'Stock_Template.xlsx');
+}
+
+/* ─ Export ─ */
+function exportStock(){
+  if(!STOCK_DATA.length){ alert('ยังไม่มีข้อมูล Stock ให้ Export'); return; }
+  var aoa=[STOCK_HEADERS], dt=(STOCK_META&&STOCK_META.date)||'';
+  STOCK_DATA.forEach(function(r){ aoa.push([r.s,r.n,r.c,r.sc,r.t,r.w,r.q,r.a,r.p,r.u,dt]); });
+  var ws=XLSX.utils.aoa_to_sheet(aoa); var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Stock');
+  XLSX.writeFile(wb, 'Stock_Export_'+dt.replace(/-/g,'')+'.xlsx');
+}
+
+/* ─ Render: summary + tabs + body ─ */
+function renderStock(){
+  var sumEl=document.getElementById('stock-summary'); if(!sumEl) return;
+  var infoEl=document.getElementById('stock-snapinfo'), tabsEl=document.getElementById('stock-tabs');
+  var fbEl=document.getElementById('stock-filterbar'), bodyEl=document.getElementById('stock-body');
+  if(!STOCK_DATA.length){
+    if(infoEl) infoEl.textContent='ยังไม่มีข้อมูล — อัปโหลดไฟล์ Stock รายวันเพื่อเริ่มใช้งาน';
+    sumEl.innerHTML=''; tabsEl.innerHTML=''; fbEl.innerHTML='';
+    bodyEl.innerHTML='<div style="padding:48px;text-align:center;color:var(--text3)">📭 ยังไม่มีข้อมูล Stock<br><span style="font-size:12px">กดปุ่ม "อัปโหลด Stock" ด้านบน — หรือดาวน์โหลด Template เพื่อดูรูปแบบไฟล์</span></div>';
+    return;
+  }
+  var m=STOCK_META||{};
+  if(infoEl) infoEl.innerHTML='📅 ข้อมูล ณ '+esc(m.date||'?')+' · โดย '+esc(m.by||'?')+' · '+(m.count||STOCK_DATA.length).toLocaleString()+' รายการ';
+  var cards=[ {l:'SKU ทั้งหมด',v:(m.skuCount||0).toLocaleString(),c:'#2060e0'},
+    {l:'จำนวนรวม',v:(m.totalQty||0).toLocaleString(),c:'#6010a0'},
+    {l:'พร้อมขาย',v:(m.totalAvail||0).toLocaleString(),c:'#007a3a'},
+    {l:'มูลค่าพร้อมขาย',v:'฿'+Math.round(m.totalValue||0).toLocaleString(),c:'#b06000'},
+    {l:'จำนวนคลัง',v:(m.whCount||0).toLocaleString(),c:'#005880'} ];
+  sumEl.innerHTML='<div style="display:flex;gap:12px;flex-wrap:wrap">'+cards.map(function(c){
+    return '<div style="flex:1;min-width:140px;background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--card-shadow)">'+
+      '<div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.3px">'+c.l+'</div>'+
+      '<div style="font-size:22px;font-weight:800;color:'+c.c+';font-family:ui-monospace,monospace;margin-top:4px">'+c.v+'</div></div>';
+  }).join('')+'</div>';
+  var tabs=[['wh','🏬 ตามคลัง'],['cat','📂 ตามหมวดหมู่'],['sku','🔖 ราย SKU'],['track','🔗 เชื่อม Tracking']];
+  tabsEl.innerHTML=tabs.map(function(t){ var on=_stockTab===t[0];
+    return '<button onclick="_stockTab=\''+t[0]+'\';renderStock()" style="padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid var(--border);font-weight:'+(on?'700':'600')+';background:'+(on?'#2060e0':'var(--bg2)')+';color:'+(on?'#fff':'var(--text2)')+'">'+t[1]+'</button>';
+  }).join('');
+  if(_stockTab==='wh') renderStockByWh();
+  else if(_stockTab==='cat') renderStockByCat();
+  else if(_stockTab==='sku') renderStockBySku();
+  else renderStockVsTracking();
+}
+
+function _stockTableHTML(headers, rowsHTML){
+  return '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:13px">'+
+    '<thead><tr style="background:var(--table-head-bg,#f5f8ff);border-bottom:2px solid var(--border)">'+
+    headers.map(function(h,i){ return '<th style="padding:9px 12px;text-align:'+(i===0?'left':'right')+';font-size:11px;color:var(--table-head-color,#6070b0);font-weight:700;white-space:nowrap">'+h+'</th>'; }).join('')+
+    '</tr></thead><tbody>'+rowsHTML+'</tbody></table></div>';
+}
+function _stockAgg(keyFn){
+  var m={};
+  STOCK_DATA.forEach(function(r){ var k=keyFn(r)||'(ไม่ระบุ)';
+    if(!m[k]) m[k]={qty:0,avail:0,value:0,sku:{}}; m[k].qty+=r.q; m[k].avail+=r.a; m[k].value+=r.a*r.p; m[k].sku[r.s]=1; });
+  return m;
+}
+function _stockAggRows(m, label){
+  var keys=Object.keys(m).sort(function(a,b){ return m[b].avail-m[a].avail; });
+  var rows=keys.map(function(k){ var d=m[k];
+    return '<tr style="border-bottom:1px solid var(--table-border,#e8eef8)">'+
+      '<td style="padding:8px 12px;font-weight:600">'+esc(k)+'</td>'+
+      '<td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace">'+Object.keys(d.sku).length.toLocaleString()+'</td>'+
+      '<td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace">'+d.qty.toLocaleString()+'</td>'+
+      '<td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:700;color:#007a3a">'+d.avail.toLocaleString()+'</td>'+
+      '<td style="padding:8px 12px;text-align:right;font-family:ui-monospace,monospace;color:var(--text2)">฿'+Math.round(d.value).toLocaleString()+'</td></tr>';
+  }).join('');
+  return _stockTableHTML([label+' ('+keys.length+')','SKU','จำนวน','พร้อมขาย','มูลค่า'], rows);
+}
+function renderStockByWh(){ document.getElementById('stock-filterbar').innerHTML='';
+  document.getElementById('stock-body').innerHTML=_stockAggRows(_stockAgg(function(r){return r.w;}),'คลัง'); }
+function renderStockByCat(){ document.getElementById('stock-filterbar').innerHTML='';
+  document.getElementById('stock-body').innerHTML=_stockAggRows(_stockAgg(function(r){return r.c;}),'หมวดหมู่'); }
+
+function renderStockBySku(){
+  document.getElementById('stock-filterbar').innerHTML='<div style="margin-bottom:10px"><input type="text" placeholder="🔍 ค้นหา SKU / ชื่อสินค้า / หมวดหมู่..." value="'+esc(window._stockSkuSearch||'')+'" oninput="window._stockSkuSearch=this.value;clearTimeout(window._stTmr);window._stTmr=setTimeout(renderStockBySku,250)" style="width:100%;max-width:360px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--input-bg,#fff);color:var(--text)"></div>';
+  var m={}; STOCK_DATA.forEach(function(r){ if(!m[r.s]) m[r.s]={name:r.n,cat:r.c,qty:0,avail:0,wh:0}; m[r.s].qty+=r.q; m[r.s].avail+=r.a; m[r.s].wh++; });
+  var q=(window._stockSkuSearch||'').toLowerCase(), keys=Object.keys(m);
+  if(q) keys=keys.filter(function(k){ return (k+' '+m[k].name+' '+m[k].cat).toLowerCase().indexOf(q)!==-1; });
+  keys.sort(function(a,b){ return m[b].avail-m[a].avail; });
+  var total=keys.length, LIMIT=300, shown=keys.slice(0,LIMIT);
+  var rows=shown.map(function(k){ var d=m[k];
+    return '<tr style="border-bottom:1px solid var(--table-border,#e8eef8)">'+
+      '<td style="padding:7px 12px;font-family:ui-monospace,monospace;font-size:11px;color:#2060e0;font-weight:600">'+esc(k)+'</td>'+
+      '<td style="padding:7px 12px;font-size:12px">'+esc(d.name)+' <span style="font-size:9px;color:var(--text3)">('+esc(d.cat)+')</span></td>'+
+      '<td style="padding:7px 12px;text-align:right;font-family:ui-monospace,monospace">'+d.qty.toLocaleString()+'</td>'+
+      '<td style="padding:7px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:700;color:#007a3a">'+d.avail.toLocaleString()+'</td>'+
+      '<td style="padding:7px 12px;text-align:right;font-size:11px;color:var(--text3)">'+d.wh+' คลัง</td></tr>';
+  }).join('');
+  var note='<div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+(total>LIMIT?'แสดง '+LIMIT+' จาก '+total.toLocaleString()+' SKU (ค้นหาเพื่อแคบผล)':total.toLocaleString()+' SKU')+'</div>';
+  document.getElementById('stock-body').innerHTML=note+_stockTableHTML(['SKU','ชื่อสินค้า','จำนวน','พร้อมขาย','คลัง'], rows||'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text3)">ไม่พบ</td></tr>');
+}
+
+function renderStockVsTracking(){
+  var tr={};
+  (DATA||[]).forEach(function(d){
+    if(typeof isCancelled==='function' && isCancelled(d)) return;
+    var sku=(d.sku||'').trim(); if(!sku) return;
+    var p=parseInt(d.total)||0;
+    var a=(typeof getActualQty==='function'?getActualQty(d):null); if(a===null) a=0;
+    if(!tr[sku]) tr[sku]={plan:0,recv:0,brand:(typeof brandGroupMain==='function'?brandGroupMain(d.brand||''):(d.brand||'')),model:d.model||''};
+    tr[sku].plan+=p; tr[sku].recv+=a;
+  });
+  var st={}; STOCK_DATA.forEach(function(r){ if(!st[r.s]) st[r.s]={avail:0,qty:0}; st[r.s].avail+=r.a; st[r.s].qty+=r.q; });
+  var q=(window._stockTrackSearch||'').toLowerCase();
+  document.getElementById('stock-filterbar').innerHTML='<div style="margin-bottom:10px"><input type="text" placeholder="🔍 ค้นหา SKU / Brand / Model..." value="'+esc(window._stockTrackSearch||'')+'" oninput="window._stockTrackSearch=this.value;clearTimeout(window._sttTmr);window._sttTmr=setTimeout(renderStockVsTracking,250)" style="width:100%;max-width:360px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--input-bg,#fff);color:var(--text)"></div>';
+  var allKeys=Object.keys(tr), matched=allKeys.filter(function(k){ return st[k]; }).length, keys=allKeys.slice();
+  if(q) keys=keys.filter(function(k){ return (k+' '+tr[k].brand+' '+tr[k].model).toLowerCase().indexOf(q)!==-1; });
+  keys.sort(function(a,b){ return tr[b].plan-tr[a].plan; });
+  var total=keys.length, LIMIT=300, shown=keys.slice(0,LIMIT);
+  var rows=shown.map(function(k){
+    var t=tr[k], s=st[k], inStock=!!s, av=inStock?s.avail:0;
+    var pctR=t.plan>0?Math.round(t.recv/t.plan*100):0;
+    var rcol=pctR>=90?'#007a3a':(pctR>=60?'#b06000':'#c8001a');
+    return '<tr style="border-bottom:1px solid var(--table-border,#e8eef8)">'+
+      '<td style="padding:7px 12px;font-family:ui-monospace,monospace;font-size:11px;color:#2060e0;font-weight:600">'+esc(k)+'</td>'+
+      '<td style="padding:7px 12px;font-size:11px">'+esc(t.brand)+'</td>'+
+      '<td style="padding:7px 12px;text-align:right;font-family:ui-monospace,monospace">'+t.plan.toLocaleString()+'</td>'+
+      '<td style="padding:7px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:600">'+t.recv.toLocaleString()+'</td>'+
+      '<td style="padding:7px 12px;text-align:right;font-weight:700;color:'+rcol+'">'+pctR+'%</td>'+
+      '<td style="padding:7px 12px;text-align:right;font-family:ui-monospace,monospace;font-weight:700;color:'+(inStock?'#007a3a':'var(--text3)')+'">'+(inStock?av.toLocaleString():'—')+'</td></tr>';
+  }).join('');
+  var note='<div style="font-size:12px;color:var(--text2);margin-bottom:8px;padding:9px 12px;background:var(--bg3,#f5f7ff);border:1px solid var(--border);border-radius:8px">🔗 จับคู่ Tracking ↔ Stock ด้วยรหัส SKU · พบใน Stock <b>'+matched.toLocaleString()+'</b> จาก '+allKeys.length.toLocaleString()+' SKU ที่สั่ง'+(total>LIMIT?' · แสดง '+LIMIT+' แรก (ค้นหาเพื่อแคบผล)':'')+'<br><span style="font-size:10px;color:var(--text3)">Plan = ยอดสั่ง · รับเข้า = Actual Inbound · คงเหลือ = พร้อมขายใน Stock ทุกคลัง</span></div>';
+  document.getElementById('stock-body').innerHTML=note+_stockTableHTML(['SKU','Brand','Plan','รับเข้า','%รับ','คงเหลือ'], rows||'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text3)">ไม่พบ</td></tr>');
+}
+
+
 function navTo(pg) {
   console.log('[navTo]',pg);
   document.querySelectorAll('.nitem').forEach(function(b){b.classList.remove('active');});
@@ -6312,6 +6566,7 @@ function navTo(pg) {
     if(pg==='shipping'){ if(typeof renderShipping==='function') renderShipping(); else if(typeof renderShip==='function') renderShip(); }
     if(pg==='tracking'){ if(typeof window._bindTrackImport==='function') window._bindTrackImport(); }
     if(pg==='insights')  renderInsights();
+    if(pg==='stock')     initStock();
   }catch(e){
     console.error('[navTo] CRASH on',pg,':',e.message,'\n',e.stack.split('\n').slice(0,4).join('\n'));
   }
@@ -11381,7 +11636,7 @@ document.getElementById('save-pw-btn').onclick=function(){
   for(var i=0;i<USERS.length;i++){if(USERS[i].user===currentUser.user){USERS[i].pass=n;currentUser.pass=n;break;}}
   savePasswords();fbPushPasswords();clearPwForm();showToast('✓ เปลี่ยนรหัสผ่านเรียบร้อย','var(--green)');
 };
-var ALL_PAGES = ['dashboard','tracking','insights','import','bom','costsheet','vendors','fabric','shipping','products','inbound','masterdata','settings'];
+var ALL_PAGES = ['dashboard','tracking','insights','import','bom','costsheet','vendors','fabric','shipping','products','inbound','stock','masterdata','settings'];
 var PAGE_LABELS = {dashboard:'Dashboard',tracking:'Tracking',insights:'Insights',import:'Import ไฟล์',bom:'BOM',costsheet:'Cost Sheet',vendors:'Vendors',fabric:'Fabric',shipping:'Shipping',products:'สินค้า',masterdata:'Master Data',inbound:'Actual Inbound',settings:'ตั้งค่า'};
 
 function renderAllUsers(){

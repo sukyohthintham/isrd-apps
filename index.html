@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-bq -->
+<!-- v2026-06-11T-bs -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -332,7 +332,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611bq'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611bs'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2264,7 +2264,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611bq';
+var APP_VERSION = '20260611bs';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -8123,7 +8123,8 @@ function renderTable(){
   var effectivePgSize = (pgSize==='all') ? Math.max(filtered.length,1) : pgSize;
   var start=(curPage-1)*effectivePgSize;
   var sl=filtered.slice(start,start+effectivePgSize);
-  var _stShown={}; /* กันแสดงคงเหลือซ้ำเมื่อ SKU เดียวมีหลาย PO ในหน้าเดียว */
+  /* นับจำนวน PO (รายการ) ต่อ SKU จาก filtered ทั้งหมด → ใช้บอกว่า SKU มีหลาย PO ไหม (คงเหลือเป็นยอดต่อ SKU) */
+  var _skuCount={}; filtered.forEach(function(r){ var s=(r.sku||'').trim(); if(s) _skuCount[s]=(_skuCount[s]||0)+1; });
   document.getElementById('ttbody').innerHTML=sl.length?sl.map(function(x,si){
     var ri=start+si; /* filtered index */
     /* ── รูป: ถ้า imgHidden = ผู้ใช้สั่งซ่อน → placeholder เลย ── */
@@ -8205,16 +8206,16 @@ function renderTable(){
         else { bg='#ede9fe'; txt='#5b21b6'; br='#c4b5fd'; }
         return '<span style="display:inline-block;background:'+bg+';color:'+txt+';border:1px solid '+br+';border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;font-family:ui-monospace,monospace">'+pct+'%</span>';
       }())+'</td>'+
-      '<td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px;background:#f6fefb" title="คงเหลือพร้อมขายใน Stock (รวมทุกคลัง) — ยอดต่อ SKU">'+(function(){
+      '<td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px;background:#f6fefb">'+(function(){
         var av=(typeof _stockAvailForSku==='function')?_stockAvailForSku(x.sku):null;
-        if(av===null) return '<span style="color:var(--text3)">—</span>';
+        if(av===null) return '<span style="color:var(--text3)" title="ยังไม่มีข้อมูล Stock — อัปโหลดที่หน้า Stock คงเหลือ">—</span>';
         var sku=(x.sku||'').trim();
-        if(sku && _stShown[sku]){
-          /* SKU นี้มีหลาย PO — คงเหลือเป็นยอดเดียวต่อ SKU แสดงที่แถวแรกแล้ว ไม่นับซ้ำ */
-          return '<span style="color:var(--text3);font-size:11px;opacity:.7" title="ยอดคงเหลือของ SKU นี้ ('+av.toLocaleString()+') แสดงที่แถวแรกแล้ว — เป็นยอดเดียวกัน ไม่ใช่ของเพิ่ม">⤴ <span style="font-size:10px">'+av.toLocaleString()+'</span></span>';
+        var col=av>0?'#007a3a':'#c8001a';
+        if(sku && _skuCount[sku]>1){
+          /* SKU นี้มีหลาย PO — คงเหลือเป็นยอดเดียวต่อ SKU แสดงทุกแถว (เห็นได้ทุกแถวรวมงานเก่า) แต่บอกชัดว่าอย่าบวกซ้ำ */
+          return '<span style="color:'+col+';font-weight:700;border-bottom:1px dashed '+col+'88;cursor:help" title="ยอดคงเหลือต่อ SKU (รวมทุกคลัง) · SKU นี้มี '+_skuCount[sku]+' รายการ/PO — ทุกแถวแสดงยอดเดียวกัน ไม่ใช่ของแยก อย่านำไปบวกซ้ำ (ตอน Export ระบบออกยอดให้ครั้งเดียวต่อ SKU)">'+av.toLocaleString()+'</span>';
         }
-        if(sku) _stShown[sku]=true;
-        return '<span style="color:'+(av>0?'#007a3a':'#c8001a')+';font-weight:700">'+av.toLocaleString()+'</span>';
+        return '<span style="color:'+col+';font-weight:700">'+av.toLocaleString()+'</span>';
       }())+'</td>'+
       '<td style="font-family:ui-monospace,monospace;color:var(--amber)">'+(x.price?'¥'+x.price:'—')+'</td>'+
       '<td style="font-family:ui-monospace,monospace;color:var(--green)">'+(x.price_thb?'฿'+x.price_thb:'—')+'</td>'+
@@ -8525,7 +8526,7 @@ document.getElementById('track-export-btn').onclick=function(){
   if(typeof XLSX === 'undefined'){ showToast('XLSX library ยังไม่โหลด','var(--red)'); return; }
   var headers = [
     'SKU','Model','Color','Type','Brand','Month','Month (รับจริง)',
-    'Qty (Plan)','รับจริง','% Accuracy',
+    'Qty (Plan)','รับจริง','% Accuracy','คงเหลือ (Stock)',
     'Price (¥)','Price (฿)','ต้นทุน฿ (จ่ายจริง)','Cost Sheet (BOM)',
     'Vendor','Status',
     'ETD (เวลาออก)','ETA (เวลาถึง)','ATA (เวลาถึงจริง)',
@@ -8534,6 +8535,7 @@ document.getElementById('track-export-btn').onclick=function(){
     'Print Status','Printed By','Printed At',
     'Note','Added By','Added At','Edited By','Edited At'
   ];
+  var _expShown={}; /* กันคงเหลือซ้ำใน export: SKU เดียวออกยอดครั้งเดียว (แถวแรก) */
   var rows = filtered.map(function(x){
     var actual = getActualQty(x);
     var acc = getAccuracyPercent(x);
@@ -8550,6 +8552,15 @@ document.getElementById('track-export-btn').onclick=function(){
       x.total||0,
       actual===null ? '' : actual,
       acc===null ? '' : (acc+'%'),
+      (function(){
+        if(typeof _stockAvailForSku!=='function') return '';
+        var av=_stockAvailForSku(x.sku);
+        if(av===null) return '';
+        var sku=(x.sku||'').trim();
+        if(sku && _expShown[sku]) return ''; /* SKU ซ้ำ (หลาย PO) → เว้นว่าง กัน SUM เกิน */
+        if(sku) _expShown[sku]=true;
+        return av;
+      })(),
       x.price||'',
       x.price_thb||'',
       x.cost_thb||'',
@@ -8581,7 +8592,7 @@ document.getElementById('track-export-btn').onclick=function(){
   /* set column widths สำหรับอ่านง่าย */
   ws['!cols'] = [
     {wch:18},{wch:28},{wch:12},{wch:8},{wch:18},{wch:8},
-    {wch:10},{wch:10},{wch:10},
+    {wch:10},{wch:10},{wch:10},{wch:13},
     {wch:10},{wch:10},{wch:14},{wch:14},
     {wch:22},{wch:18},
     {wch:14},{wch:14},{wch:14},

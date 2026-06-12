@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-bm -->
+<!-- v2026-06-11T-bn -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -325,7 +325,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611bm'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611bn'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -569,6 +569,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
   <th style="width:50px">Qty</th>
   <th style="width:55px" title="จำนวนที่รับจริงจาก Actual Inbound">รับจริง</th>
   <th style="width:65px" title="% Accuracy = (รับจริง ÷ Plan Qty) × 100">% Acc.</th>
+  <th style="width:62px;background:#ecfdf5" title="คงเหลือพร้อมขายใน Stock (รวมทุกคลัง) — จับคู่ด้วยรหัส SKU">คงเหลือ<div style="font-size:9px;color:#007a3a;font-weight:400">(Stock)</div></th>
   <th style="width:60px">Price ¥</th>
   <th style="width:60px">Price ฿</th>
   <th style="width:90px" title="ต้นทุนที่จ่ายจริงให้ Vendor">ต้นทุน฿<div style="font-size:9px;color:var(--text3);font-weight:400">(จ่ายจริง)</div></th>
@@ -2256,7 +2257,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611bm';
+var APP_VERSION = '20260611bn';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -2660,6 +2661,9 @@ function listenFirebase() {
 
   /* ─── INBOUND listener — โหลดทันทีที่ login → Dashboard accuracy charts ใช้ได้ ─── */
   listenInbound();
+
+  /* ─── STOCK listener — โหลดทันทีที่ login → คอลัมน์คงเหลือในหน้า Tracking มีข้อมูล ─── */
+  if(typeof listenStock==='function') listenStock();
 
   /* ─── VENDORS listener — real-time sync ทุกเครื่อง (สำคัญ! ก่อนหน้านี้ไม่เคยเรียก) ─── */
   listenVendors();
@@ -6326,12 +6330,22 @@ function _renderBrandCat(){
    ═══════════════════════════════════════════════════════════ */
 var STOCK_DATA = [];      /* [{s,n,c,sc,t,w,q,a,p,u}] */
 var STOCK_META = null;    /* {date,by,at,count,totalQty,totalAvail,totalValue,whCount,skuCount} */
+var STOCK_BY_SKU = {};    /* sku → รวม avail ทุกคลัง (index สำหรับคอลัมน์คงเหลือในหน้า Tracking) */
 var _stockTab = 'wh';     /* wh | cat | sku | track */
 var _stockListening = false;
 var STOCK_COLS = ['s','n','c','sc','t','w','q','a','p','u'];
 var STOCK_HEADERS = ['รหัสสินค้า','ชื่อสินค้า','หมวดหมู่','หมวดหมู่ย่อย','Tag','คลัง','จำนวน','จำนวนพร้อมขาย','ราคาขาย','หน่วยสินค้า','Date'];
 
 function _sPad2(n){ return n<10?'0'+n:''+n; }
+function _buildStockIndex(){
+  STOCK_BY_SKU = {};
+  STOCK_DATA.forEach(function(r){ STOCK_BY_SKU[r.s]=(STOCK_BY_SKU[r.s]||0)+r.a; });
+}
+function _stockAvailForSku(sku){
+  if(!STOCK_DATA.length) return null;
+  sku=(sku||'').trim(); if(!sku) return null;
+  return STOCK_BY_SKU[sku]!==undefined ? STOCK_BY_SKU[sku] : 0;
+}
 function _stockFmtDate(v){
   if(v instanceof Date) return v.getFullYear()+'-'+_sPad2(v.getMonth()+1)+'-'+_sPad2(v.getDate());
   var s=String(v||'').trim();
@@ -6360,8 +6374,11 @@ function listenStock(){
       STOCK_DATA = val.rows.map(function(arr){ var o={}; cols.forEach(function(c,i){ o[c]=arr[i]; }); return o; });
       STOCK_META = val.meta || null;
     }
+    _buildStockIndex();
     var pg=document.getElementById('page-stock');
     if(pg && pg.classList.contains('active')) renderStock();
+    var tpg=document.getElementById('page-tracking');
+    if(tpg && tpg.classList.contains('active') && typeof renderTable==='function' && typeof filtered!=='undefined' && filtered && filtered.length) renderTable();
   });
 }
 function initStock(){ listenStock(); renderStock(); }
@@ -6390,7 +6407,7 @@ function handleStockUpload(file){
       if(!rows.length) throw new Error('ไม่พบแถวที่มีรหัสสินค้า');
       var tQ=0,tA=0,tV=0,whs={},skus={};
       rows.forEach(function(r){ tQ+=r.q; tA+=r.a; tV+=r.a*r.p; whs[r.w]=1; skus[r.s]=1; });
-      STOCK_DATA = rows;
+      STOCK_DATA = rows; _buildStockIndex();
       STOCK_META = { date:date||_stockFmtDate(new Date()), by:(currentUser&&currentUser.name)||'?', at:Date.now(),
         count:rows.length, totalQty:tQ, totalAvail:tA, totalValue:tV, whCount:Object.keys(whs).length, skuCount:Object.keys(skus).length };
       fbPushStock();
@@ -7336,8 +7353,9 @@ function renderTrackSummary(){
     var b = getDisplayBrand(x) || 'ไม่ระบุ';
     if(!byMonth[m]) byMonth[m] = {sku:0, qty:0, actual:0};
     byMonth[m].sku++; byMonth[m].qty += qty;
-    if(!byBrand[b]) byBrand[b] = {sku:0, qty:0, actual:0};
+    if(!byBrand[b]) byBrand[b] = {sku:0, qty:0, actual:0, recvSku:0};
     byBrand[b].sku++; byBrand[b].qty += qty;
+    if(getActualQty(x)>0) byBrand[b].recvSku++;
     if(!byMonthBrand[m]) byMonthBrand[m] = {};
     if(!byMonthBrand[m][b]) byMonthBrand[m][b] = {sku:0, qty:0, actual:0};
     byMonthBrand[m][b].sku++; byMonthBrand[m][b].qty += qty;
@@ -7358,7 +7376,7 @@ function renderTrackSummary(){
     var b = (ib.brand||'').trim() || 'ไม่ระบุ';
     if(!byMonth[rm]) byMonth[rm] = {sku:0, qty:0, actual:0};
     byMonth[rm].actual += actual;
-    if(!byBrand[b]) byBrand[b] = {sku:0, qty:0, actual:0};
+    if(!byBrand[b]) byBrand[b] = {sku:0, qty:0, actual:0, recvSku:0};
     byBrand[b].actual += actual;
     if(!byMonthBrand[rm]) byMonthBrand[rm] = {};
     if(!byMonthBrand[rm][b]) byMonthBrand[rm][b] = {sku:0, qty:0, actual:0};
@@ -7476,6 +7494,13 @@ function renderTrackSummary(){
         '<div style="flex:1;height:4px;background:'+opts.color+'20;border-radius:2px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+pctColor+';transition:width 0.3s"></div></div>'+
         '<div style="font-size:10px;font-weight:700;color:'+pctColor+';font-family:ui-monospace,monospace;min-width:32px;text-align:right">'+pct+'%</div>'+
       '</div>'+
+      (opts.recvSku!==undefined ? (function(){
+        var sp=opts.sku>0?Math.round(opts.recvSku/opts.sku*100):0;
+        var spc=sp>=90?'#10b981':(sp>=60?'#f59e0b':(sp>0?'#ef4444':'#94a3b8'));
+        return '<div style="margin-top:4px;padding-top:4px;border-top:1px dashed '+opts.color+'25;display:flex;justify-content:space-between;align-items:center" title="SKU ที่เริ่มรับแล้ว '+opts.recvSku+' / ทั้งหมด '+opts.sku+'">'+
+          '<span style="font-size:9px;color:var(--text3)">🔖 %SKU</span>'+
+          '<span style="font-size:11px;font-weight:800;color:'+spc+';font-family:ui-monospace,monospace">'+opts.recvSku+'/'+opts.sku+' ('+sp+'%)</span></div>';
+      })() : '')+
       (opts.planRecv ? (function(){
         var pr = opts.planRecv;
         var prColor = pr.pct >= 90 ? '#10b981' : (pr.pct >= 70 ? '#f59e0b' : '#3b82f6');
@@ -7707,7 +7732,7 @@ function renderTrackSummary(){
       var c = brandColors[i % 8];
       var d = scopeData[b];
       var labelShort = b.length > 14 ? b.substr(0,12)+'…' : b;
-      bhtml += _miniCard({label:labelShort, icon:'🏷️', color:c, sku:d.sku, plan:d.qty, actual:d.actual});
+      bhtml += _miniCard({label:labelShort, icon:'🏷️', color:c, sku:d.sku, plan:d.qty, actual:d.actual, recvSku:d.recvSku});
     });
     brandBoxEl.innerHTML = bhtml;
   }
@@ -8162,6 +8187,11 @@ function renderTable(){
         else if(pct === 100){ bg='#dcfce7'; txt='#166534'; br='#86efac'; }
         else { bg='#ede9fe'; txt='#5b21b6'; br='#c4b5fd'; }
         return '<span style="display:inline-block;background:'+bg+';color:'+txt+';border:1px solid '+br+';border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;font-family:ui-monospace,monospace">'+pct+'%</span>';
+      }())+'</td>'+
+      '<td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px;background:#f6fefb" title="คงเหลือพร้อมขายใน Stock (รวมทุกคลัง)">'+(function(){
+        var av=(typeof _stockAvailForSku==='function')?_stockAvailForSku(x.sku):null;
+        if(av===null) return '<span style="color:var(--text3)">—</span>';
+        return '<span style="color:'+(av>0?'#007a3a':'#c8001a')+';font-weight:700">'+av.toLocaleString()+'</span>';
       }())+'</td>'+
       '<td style="font-family:ui-monospace,monospace;color:var(--amber)">'+(x.price?'¥'+x.price:'—')+'</td>'+
       '<td style="font-family:ui-monospace,monospace;color:var(--green)">'+(x.price_thb?'฿'+x.price_thb:'—')+'</td>'+

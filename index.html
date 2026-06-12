@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-bn -->
+<!-- v2026-06-11T-bo -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -147,6 +147,13 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
 .dt th{padding:7px 8px;text-align:left;font-size:9px;color:var(--table-head-color);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--table-head-bg);white-space:nowrap;font-weight:700}
 .dt td{padding:6px 8px;border-bottom:1px solid var(--table-border);font-size:12px;vertical-align:middle;color:var(--text)}
 .dt tbody tr:last-child td{border-bottom:none}
+/* ── ขยายตัวอักษรตาราง Tracking ให้อ่านง่ายขึ้น (override inline 11px เดิม) ── */
+#page-tracking .dt th{font-size:11px !important;padding:9px 8px}
+#page-tracking .dt td{font-size:13px !important;padding:8px 8px}
+#page-tracking .dt td [style*="font-size:11px"]{font-size:12.5px !important}
+#page-tracking .dt td [style*="font-size:10px"]{font-size:11.5px !important}
+#page-tracking .dt td [style*="font-size:9px"]{font-size:10.5px !important}
+#page-tracking .dt td select.status-sel{font-size:12px}
 .dt tbody tr:hover{background:var(--table-row-hover)}
 .pgbar{display:flex;align-items:center;gap:8px;margin-top:12px;justify-content:flex-end}
 .pgbtn{background:var(--card-bg);border:1px solid var(--border);color:var(--text2);padding:5px 11px;border-radius:6px;cursor:pointer;font-size:12px}
@@ -325,7 +332,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611bn'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611bo'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2257,7 +2264,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611bn';
+var APP_VERSION = '20260611bo';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 

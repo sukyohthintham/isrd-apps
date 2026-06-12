@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-cb -->
+<!-- v2026-06-11T-cc -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611cb'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611cc'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -885,7 +885,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
     <div>
       <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">ข้อมูล Style & Order</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 14px;padding:10px 13px;background:var(--bg2);border-radius:9px;border:0.5px solid var(--border);margin-bottom:0">
-        <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px">SKU / รหัสสินค้า</div><input class="finput" id="csf-code" value="" oninput="csUpdateHeader()" placeholder="เช่น NTCT0068NB00FF หรือชื่อรุ่น" style="background:var(--input-bg)"></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px">SKU / รหัสสินค้า <span style="font-weight:400;text-transform:none;color:var(--text3)">· ใส่ได้หลาย SKU คั่นด้วย ,</span></div><input class="finput" id="csf-code" value="" oninput="csUpdateHeader();csRenderSkuChips()" placeholder="เช่น NTCT0068NB00FF, NTCT0068WH00FF (หลายสี/ไซส์ ต้นทุนเท่ากัน)" style="background:var(--input-bg)"><div id="csf-sku-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px"></div></div>
         <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px">ชื่อรุ่น</div><input class="finput" id="csf-name" value="" oninput="csUpdateHeader()" placeholder="เช่น Slip Dress" style="background:var(--input-bg)"></div>
         <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px">Season / Collection</div><input class="finput" id="csf-season" value="" placeholder="เช่น Q2 Main 2025" style="background:var(--input-bg)"></div>
         <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px">Order Qty (pcs)</div><input class="finput" id="csf-qty" value="500" oninput="csSyncQty(this.value);csCalc()" style="background:var(--input-bg)"></div>
@@ -2322,7 +2322,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611cb';
+var APP_VERSION = '20260611cc';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -10165,6 +10165,16 @@ function csRequestEdit(){
 }
 
 /* ── Update header ── */
+function csGetSkuList(){
+  var el=document.getElementById('csf-code');
+  return ((el&&el.value)||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+}
+function csRenderSkuChips(){
+  var box=document.getElementById('csf-sku-chips'); if(!box) return;
+  var skus=csGetSkuList();
+  if(skus.length<2){ box.innerHTML=''; return; }
+  box.innerHTML='<span style="font-size:9px;color:var(--text3);align-self:center;margin-right:2px">'+skus.length+' SKU →</span>'+skus.map(function(s){return '<span style="font-size:10px;padding:2px 8px;border-radius:50px;background:#E6F1FB;color:#0C447C;border:0.5px solid #85B7EB">'+esc(s)+'</span>';}).join('');
+}
 function csUpdateHeader(){
   var code=(document.getElementById('csf-code')||{value:''}).value;
   var name=(document.getElementById('csf-name')||{value:''}).value;
@@ -10173,8 +10183,11 @@ function csUpdateHeader(){
   var factory=(document.getElementById('csf-factory')||{value:''}).value;
   var hd=document.getElementById('cs-hd-title');
   var sub=document.getElementById('cs-hd-sub');
-  if(hd) hd.textContent='Cost Sheet'+(code?' — '+code:'')+(name?' '+name:'');
+  var skus=csGetSkuList();
+  var codeShow=skus.length>1?(skus[0]+' +'+(skus.length-1)+' SKU'):code;
+  if(hd) hd.textContent='Cost Sheet'+(codeShow?' — '+codeShow:'')+(name?' '+name:'');
   if(sub) sub.textContent=(season?season+' · ':'')+( factory?factory+' · ':'')+( mer?'MD: '+mer:'');
+  csRenderSkuChips();
 }
 
 /* ── Sync helpers ── */

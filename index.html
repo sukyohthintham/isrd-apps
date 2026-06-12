@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-bz -->
+<!-- v2026-06-11T-ca -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611bz'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611ca'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -937,7 +937,10 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
       <div id="csf-img-gallery" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;padding:10px 13px;background:var(--bg2);border-radius:9px;border:0.5px solid var(--border)"></div>
     </div>
 
-    <button onclick="csSwTab('bom',document.getElementById('cs-tab-bom'))" style="background:#1a1a2e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-start">ถัดไป: กรอก BOM →</button>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="csListNew()" style="background:#1D9E75;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer">✏️ สร้าง Cost Sheet ใหม่</button>
+      <button onclick="csSwTab('bom',document.getElementById('cs-tab-bom'))" style="background:#1a1a2e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer">ถัดไป: กรอก BOM →</button>
+    </div>
   </div>
 
   <!-- ══ BOM PANE ══ -->
@@ -1029,6 +1032,23 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
           </div>
           <div id="cs-rows-labor"></div>
+        </div>
+      </div>
+
+      <!-- Shipping ค่าขนส่ง -->
+      <div style="border:0.5px solid var(--border);border-radius:9px;overflow:hidden;margin-bottom:8px">
+        <div onclick="csToggleSec('shipping')" style="padding:7px 12px;background:var(--bg2);border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+          <span style="font-size:14px">🚛</span>
+          <span style="font-size:12px;font-weight:700;flex:1;color:var(--text)">ค่าขนส่ง (Shipping)</span>
+          <span id="cs-sec-shipping-total" style="font-size:11px;font-weight:700;color:#1a1a2e;margin-right:8px">฿ 0</span>
+          <button onclick="event.stopPropagation();csAddRowSec('shipping')" style="padding:2px 8px;border-radius:5px;background:transparent;color:var(--text);border:0.5px solid var(--border);font-size:10px;cursor:pointer">+ เพิ่ม</button>
+          <span id="cs-arr-shipping" style="font-size:11px;color:var(--text3);margin-left:8px">▼</span>
+        </div>
+        <div class="cs-sec-open" id="cs-body-shipping">
+          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
+          </div>
+          <div id="cs-rows-shipping"></div>
         </div>
       </div>
 
@@ -2302,7 +2322,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611bz';
+var APP_VERSION = '20260611ca';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -9775,8 +9795,8 @@ var csStyleImgs = []; /* [{d:dataURL, label:'ชื่อสี/แบบ'}] —
 var csHistItems = [];
 var csBomData = {
   1: {
-    fabric:[],trim:[],pkg:[],labor:[],
-    fob:{price:0,cur:'USD'},freight:{price:0,cur:'THB'},duty:0,agent:{price:0,cur:'THB'},ohPct:10
+    fabric:[],trim:[],pkg:[],labor:[],shipping:[],
+    fob:{price:0,cur:'USD'},freight:{price:0,cur:'THB'},duty:0,agent:{price:0,cur:'THB'},ohPct:0
   },
   2: null
 };
@@ -9785,7 +9805,8 @@ var csTypeOpts = {
   fabric:['ผ้าหลัก','ผ้าซับใน','ผ้าตกแต่ง','ผ้ายืด','ผ้าถัก','อื่นๆ'],
   trim:['ด้าย','ซิป','กระดุม','ตะขอ/Velcro','ยางยืด','Main Label','Care Label','Size Label','Hangtag','Woven Label','ลูกไม้/Ribbon','อื่นๆ'],
   pkg:['ถุงพลาสติก','กล่อง','แขวน','แท็ก','สติกเกอร์','อื่นๆ'],
-  labor:['ค่าตัดเย็บ CMT','ค่าสกรีน','ค่าปัก','ค่าพับแพ็ค','อื่นๆ']
+  labor:['ค่าตัดเย็บ CMT','ค่าสกรีน','ค่าปัก','ค่าพับแพ็ค','อื่นๆ'],
+  shipping:['ค่าขนส่งจีน-ไทย','ค่าขนส่งในประเทศ','ค่า Shipping','ค่าเคลียร์สินค้า','อื่นๆ']
 };
 
 var csUnits = ['เมตร','หลา','กิโล','กรัม','Cone','ม้วน','หลอด','ชิ้น','ตัว','โหล','แพ็ค','ถุง','กล่อง','แผ่น','หน่วย'];
@@ -9863,6 +9884,15 @@ function csGetFX(){
 function csToTHB(price,cur){ csGetFX(); return (parseFloat(price)||0)*(csFX[cur||'THB']||1); }
 function csFmt(n,d){ return (Math.round(n*100)/100).toLocaleString('th',{minimumFractionDigits:d===undefined?2:d,maximumFractionDigits:d===undefined?2:d}); }
 
+/* ── Update single row total ── */
+function csUpdRowTotal(inp){
+  var row=inp.closest('.cs-bom-row'); if(!row) return;
+  var sec=inp.dataset.sec, idx=parseInt(inp.dataset.idx);
+  var r=csBomData[csEditVer][sec] && csBomData[csEditVer][sec][idx]; if(!r) return;
+  var thb=csToTHB(r.price,r.cur)*(parseFloat(r.qty)||0);
+  var tc=row.querySelector('.cs-row-total'); if(tc) tc.textContent='฿'+csFmt(thb);
+}
+
 /* ── Render section rows ── */
 function csRenderSec(sec){
   var rs=csBomData[csEditVer][sec]||[];
@@ -9873,6 +9903,7 @@ function csRenderSec(sec){
   rs.forEach(function(r,i){
     var thb=csToTHB(r.price,r.cur)*(parseFloat(r.qty)||0);
     var div=document.createElement('div');
+    div.className='cs-bom-row';
     div.style.cssText='display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:start';
     /* name (autocomplete จาก Master Data วัตถุดิบ) */
     var nameInp=document.createElement('input'); nameInp.className='finput'; nameInp.value=r.name||''; nameInp.placeholder='พิมพ์เพื่อค้นจาก Master Data…'; nameInp.setAttribute('list','cs-mat-list'); nameInp.style.cssText='font-size:11px;background:var(--input-bg);display:block;width:100%';
@@ -9883,17 +9914,17 @@ function csRenderSec(sec){
     var priceWrap=document.createElement('div'); priceWrap.style.cssText='display:flex;gap:3px';
     var priceInp=document.createElement('input'); priceInp.className='finput'; priceInp.value=r.price; priceInp.style.cssText='flex:1;min-width:0;text-align:right;font-size:11px;background:var(--input-bg)';
     priceInp.dataset.sec=sec; priceInp.dataset.idx=i;
-    priceInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].price=parseFloat(this.value)||0;csCalc();};
+    priceInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].price=parseFloat(this.value)||0;csUpdRowTotal(this);csCalc();};
     var curSel=document.createElement('select'); curSel.className='finput'; curSel.style.cssText='width:52px;font-size:10px;background:var(--input-bg)';
     ['THB','USD','CNY'].forEach(function(c){var op=document.createElement('option');op.value=c;op.textContent=c;if(r.cur===c)op.selected=true;curSel.appendChild(op);});
     curSel.dataset.sec=sec; curSel.dataset.idx=i;
-    curSel.onchange=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].cur=this.value;csCalc();};
+    curSel.onchange=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].cur=this.value;csUpdRowTotal(this);csCalc();};
     priceWrap.appendChild(priceInp); priceWrap.appendChild(curSel);
     div.appendChild(priceWrap);
     /* qty */
     var qtyInp=document.createElement('input'); qtyInp.className='finput'; qtyInp.value=r.qty; qtyInp.style.cssText='text-align:right;font-size:11px;background:var(--input-bg)';
     qtyInp.dataset.sec=sec; qtyInp.dataset.idx=i;
-    qtyInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].qty=parseFloat(this.value)||0;csCalc();};
+    qtyInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].qty=parseFloat(this.value)||0;csUpdRowTotal(this);csCalc();};
     div.appendChild(qtyInp);
     /* unit */
     var unitSel=document.createElement('select'); unitSel.className='finput'; unitSel.style.cssText='font-size:10px;background:var(--input-bg)';
@@ -9902,7 +9933,7 @@ function csRenderSec(sec){
     unitSel.onchange=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].unit=this.value;csCalc();};
     div.appendChild(unitSel);
     /* total */
-    var totalDiv=document.createElement('div'); totalDiv.style.cssText='font-size:13px;font-weight:700;text-align:right;color:var(--text);padding-top:6px'; totalDiv.textContent='฿'+csFmt(thb);
+    var totalDiv=document.createElement('div'); totalDiv.className='cs-row-total'; totalDiv.style.cssText='font-size:13px;font-weight:700;text-align:right;color:var(--text);padding-top:6px'; totalDiv.textContent='฿'+csFmt(thb);
     div.appendChild(totalDiv);
     /* delete */
     var delBtn=document.createElement('button');
@@ -9916,7 +9947,7 @@ function csRenderSec(sec){
 }
 
 function csRenderAllRows(){
-  ['fabric','trim','pkg','labor'].forEach(function(s){csRenderSec(s);});
+  ['fabric','trim','pkg','labor','shipping'].forEach(function(s){csRenderSec(s);});
   csCalc();
 }
 
@@ -9951,10 +9982,11 @@ function csCalcVer(ver){
     var trm=csCalcSec(ver,'trim');
     var pkg=csCalcSec(ver,'pkg');
     var lab=csCalcSec(ver,'labor');
+    var ship=csCalcSec(ver,'shipping');
     var mat=fab+trm+pkg+lab;
     var ohPct=parseFloat((document.getElementById('cs-oh-pct')||{value:'0'}).value)||0;
     var oh=mat*(ohPct/100);
-    return {fab:fab,trm:trm,pkg:pkg,lab:lab,oh:oh,cost:mat+oh,mode:'CMT'};
+    return {fab:fab,trm:trm,pkg:pkg,lab:lab,ship:ship,oh:oh,cost:mat+ship+oh,mode:'CMT'};
   } else {
     var fobP=csToTHB(parseFloat((document.getElementById('cs-fob-price')||{value:'0'}).value)||0,(document.getElementById('cs-fob-cur')||{value:'USD'}).value);
     var frP=csToTHB(parseFloat((document.getElementById('cs-freight')||{value:'0'}).value)||0,(document.getElementById('cs-freight-cur')||{value:'THB'}).value);
@@ -9978,6 +10010,7 @@ function csCalc(){
     setT('cs-sec-trim-total',csCalcSec(csEditVer,'trim'));
     setT('cs-sec-pkg-total',csCalcSec(csEditVer,'pkg'));
     setT('cs-sec-labor-total',csCalcSec(csEditVer,'labor'));
+    setT('cs-sec-shipping-total',csCalcSec(csEditVer,'shipping'));
     var oht=document.getElementById('cs-oh-total');if(oht)oht.textContent='฿ '+csFmt(cur.oh);
   } else {
     var s=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
@@ -10019,7 +10052,7 @@ function csCalcCompare(){
     +'<div style="padding:8px 12px;font-size:10px;font-weight:700;text-align:center;border-left:0.5px solid var(--border);background:#F0FAF6;color:#085041">v2 Confirmed</div>'
     +'<div style="padding:8px 12px;font-size:10px;font-weight:700;text-align:center;border-left:0.5px solid var(--border);background:#F0F4FF;color:#0C447C">ต่าง</div>';
   cont.innerHTML=''; cont.appendChild(hd);
-  var lines=csCurMode==='CMT'?[['🧵 ผ้า',r1.fab,r2.fab],['🪡 Trim',r1.trm,r2.trm],['📦 Packaging',r1.pkg,r2.pkg],['🏭 ค่าแรง',r1.lab,r2.lab],['🚚 Overhead',r1.oh,r2.oh]]
+  var lines=csCurMode==='CMT'?[['🧵 ผ้า',r1.fab,r2.fab],['🪡 Trim',r1.trm,r2.trm],['📦 Packaging',r1.pkg,r2.pkg],['🏭 ค่าแรง',r1.lab,r2.lab],['🚛 ค่าขนส่ง',r1.ship||0,r2.ship||0],['🚚 Overhead',r1.oh,r2.oh]]
     :[['🚢 FOB',r1.fob||0,r2.fob||0],['✈️ Freight',r1.freight||0,r2.freight||0],['🏛 Duty',r1.duty||0,r2.duty||0],['👤 Agent',r1.agent||0,r2.agent||0]];
   lines.forEach(function(l){
     var d=csFmtDiff(l[2]-l[1]);
@@ -10049,7 +10082,7 @@ function csCalcMargin(){
   var sp=parseFloat((document.getElementById('cs-sell-price')||document.getElementById('csf-sellprice')||{value:'0'}).value)||0;
   var qty=parseFloat((document.getElementById('csf-qty')||{value:'500'}).value)||500;
   var gm=sp-cur.cost; var gmPct=sp>0?gm/sp*100:0;
-  var lines=csCurMode==='CMT'?[['ผ้า',cur.fab],['Trim',cur.trm],['Packaging',cur.pkg],['ค่าแรง CMT',cur.lab],['Overhead',cur.oh]]
+  var lines=csCurMode==='CMT'?[['ผ้า',cur.fab],['Trim',cur.trm],['Packaging',cur.pkg],['ค่าแรง CMT',cur.lab],['ค่าขนส่ง',cur.ship||0],['Overhead',cur.oh]]
     :[['FOB',cur.fob||0],['Freight',cur.freight||0],['Duty',cur.duty||0],['Agent',cur.agent||0]];
   bd.innerHTML=lines.map(function(l){
     var pct=cur.cost>0?(l[1]/cur.cost*100):0;
@@ -10114,7 +10147,11 @@ function csConfirmV2(){
   csFbSave(); showToast('🔒 Confirm v2 แล้ว — ล็อกการแก้ไข','var(--green)');
 }
 function csRequestEdit(){
-  if(!confirm('🔓 ขอแก้ไข Cost Sheet ที่ Confirm แล้ว?\n\nระบบจะปลดล็อกให้แก้ไขได้อีกครั้ง\nหลังแก้เสร็จต้องกด Confirm ใหม่อีกครั้ง\n\nยืนยันขอแก้ไข?')) return;
+  if(!confirm('🔓 ขอแก้ไข Cost Sheet ที่ Confirm แล้ว?\n\nการแก้ไขต้องได้รับอนุมัติจากผู้จัดการ (Manager) ก่อน\nหลังแก้เสร็จต้องกด Confirm ใหม่อีกครั้ง\n\nดำเนินการต่อ?')) return;
+  var pass=prompt('🔐 อนุมัติโดยผู้จัดการ\n\nกรุณากรอกรหัสผ่านผู้จัดการ (Admin / Super Admin) เพื่ออนุมัติการแก้ไข:');
+  if(pass===null) return;
+  var mgr=(typeof USERS!=='undefined'?USERS:[]).find(function(u){return u&&(u.role==='Super Admin'||u.role==='Admin')&&u.pass===pass;});
+  if(!mgr){ showToast('❌ รหัสผ่านผู้จัดการไม่ถูกต้อง — ไม่อนุมัติการแก้ไข','#E24B4A'); return; }
   csV2done=false;
   var b=document.getElementById('cs-confirm-btn');
   if(b){b.textContent='✓ Confirm v2 Cost Sheet';b.style.background='#1D9E75';b.disabled=false;}
@@ -10123,8 +10160,8 @@ function csRequestEdit(){
   var badge=document.getElementById('cs-mode-badge');
   if(badge){badge.textContent='โหมด: '+csCurMode;badge.style.background='#E6F1FB';badge.style.color='#0C447C';badge.style.borderColor='#85B7EB';}
   csRenderAllRows();
-  csFbSave(); showToast('🔓 ปลดล็อกแล้ว — อย่าลืม Confirm ใหม่หลังแก้เสร็จ','var(--amber)');
-  actLog('edit','costsheet','ขอแก้ไข Cost Sheet ที่ Confirm แล้ว',{detail:(document.getElementById('csf-code')||{value:''}).value});
+  csFbSave(); showToast('🔓 ผู้จัดการ '+mgr.name+' อนุมัติแล้ว — ปลดล็อกให้แก้ไข','var(--amber)');
+  actLog('edit','costsheet','ขอแก้ไข Cost Sheet (อนุมัติโดย '+mgr.name+')',{detail:(document.getElementById('csf-code')||{value:''}).value});
 }
 
 /* ── Update header ── */
@@ -10388,7 +10425,7 @@ function csListOpen(key){
 function csListNew(){
   if(!confirm('สร้าง Cost Sheet ใหม่? ข้อมูลปัจจุบันจะถูกล้าง')) return;
   /* clear */
-  csBomData = {1:{fabric:[],trim:[],pkg:[],labor:[{name:'ค่าขนส่ง',sup:'',type:'',price:0,cur:'THB',qty:1,unit:'ตัว'}],fob:{price:0,cur:'USD'},freight:{price:0,cur:'THB'},duty:0,agent:{price:0,cur:'THB'},ohPct:0},2:null};
+  csBomData = {1:{fabric:[],trim:[],pkg:[],labor:[],shipping:[{name:'ค่าขนส่ง',sup:'',type:'ค่าขนส่งจีน-ไทย',price:0,cur:'THB',qty:1,unit:'ตัว'}],fob:{price:0,cur:'USD'},freight:{price:0,cur:'THB'},duty:0,agent:{price:0,cur:'THB'},ohPct:0},2:null};
   ['csf-code','csf-name','csf-season','csf-qty','csf-factory','csf-mer','csf-designer','csf-note','csf-sellprice'].forEach(function(id){
     var el = document.getElementById(id); if(el) el.value = id==='csf-qty'?'500':'';
   });
@@ -10454,7 +10491,7 @@ function csPrintPDF(){
   /* ── BOM rows helpers ── */
   var fabRows=(csBomData[csEditVer].fabric||[]);
   var accRows=(csBomData[csEditVer].trim||[]).concat(csBomData[csEditVer].pkg||[]);
-  var othRows=(csBomData[csEditVer].labor||[]);
+  var othRows=(csBomData[csEditVer].labor||[]).concat(csBomData[csEditVer].shipping||[]);
   function rowCells(r,i){
     var unitTHB=csToTHB(r.price,r.cur);
     var line=unitTHB*(parseFloat(r.qty)||0);
@@ -10480,7 +10517,7 @@ function csPrintPDF(){
 
   var fabTotal=cur.fab||0;
   var accTotal=(cur.trm||0)+(cur.pkg||0);
-  var othTotal=(cur.lab||0)+(cur.oh||0);
+  var othTotal=(cur.lab||0)+(cur.ship||0)+(cur.oh||0);
 
   /* ── Photo cells ── */
   var photoHtml=(csStyleImgs&&csStyleImgs.length)

@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-bv -->
+<!-- v2026-06-11T-bw -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -274,7 +274,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
 .ac-wrap{position:relative;display:block}
 .cs-pane{display:none}.cs-pane-on{display:flex;flex-direction:column}
 .cs-tab{color:var(--text3);border-bottom:2px solid transparent;background:transparent}.cs-tab.cs-tab-on{color:var(--text);border-bottom-color:#1a1a2e;font-weight:700;background:var(--card-bg)}
-.cs-sec-open{display:block}.cs-bom-row{display:grid;grid-template-columns:1.5fr 110px 140px 75px 72px 95px 28px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:center}.cs-bom-row:hover{background:var(--bg2)}
+.cs-sec-open{display:block}.cs-bom-row{display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:center}.cs-bom-row:hover{background:var(--bg2)}
 .cs-del-btn{width:24px;height:24px;border-radius:5px;background:transparent;border:0.5px solid var(--border);color:var(--text3);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}.cs-del-btn:hover{background:#FCEBEB;border-color:#F09595;color:#791F1F}
 .ac-list{position:fixed;min-width:220px;max-width:400px;background:var(--card-bg);border:1px solid var(--border2);border-radius:10px;max-height:220px;overflow-y:auto;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none}
 .ac-list.show{display:block;animation:acIn .12s ease}
@@ -336,7 +336,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611bv'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611bw'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -829,6 +829,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
 
       <!-- COST SHEET -->
       <div class="page" id="page-costsheet">
+        <datalist id="cs-mat-list"></datalist>
   <div style="background:#1a1a2e;padding:13px 20px;display:flex;align-items:center;gap:12px;border-radius:0">
     <div style="flex:1">
       <div id="cs-hd-title" style="font-size:14px;font-weight:700;color:#fff">Cost Sheet</div>
@@ -933,9 +934,8 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-fabric" style="font-size:11px;color:var(--text3);margin-left:8px">▼</span>
         </div>
         <div class="cs-sec-open" id="cs-body-fabric">
-          <div style="display:grid;grid-template-columns:1.5fr 110px 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
-            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / Supplier</span>
-            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ประเภท</span>
+          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย</span>
@@ -956,9 +956,8 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-trim" style="font-size:11px;color:var(--text3);margin-left:8px">▼</span>
         </div>
         <div class="cs-sec-open" id="cs-body-trim">
-          <div style="display:grid;grid-template-columns:1.5fr 110px 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
-            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / Supplier</span>
-            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ประเภท</span>
+          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span>
@@ -979,8 +978,8 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-pkg" style="font-size:11px;color:var(--text3);margin-left:8px">▲</span>
         </div>
         <div id="cs-body-pkg">
-          <div style="display:grid;grid-template-columns:1.5fr 110px 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
-            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / Supplier</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ประเภท</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
+          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
           </div>
           <div id="cs-rows-pkg"></div>
         </div>
@@ -996,8 +995,8 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-labor" style="font-size:11px;color:var(--text3);margin-left:8px">▼</span>
         </div>
         <div class="cs-sec-open" id="cs-body-labor">
-          <div style="display:grid;grid-template-columns:1.5fr 110px 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
-            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / Supplier</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ประเภท</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
+          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
           </div>
           <div id="cs-rows-labor"></div>
         </div>
@@ -2272,7 +2271,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611bv';
+var APP_VERSION = '20260611bw';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -9841,22 +9840,12 @@ function csRenderSec(sec){
   rs.forEach(function(r,i){
     var thb=csToTHB(r.price,r.cur)*(parseFloat(r.qty)||0);
     var div=document.createElement('div');
-    div.style.cssText='display:grid;grid-template-columns:1.5fr 110px 140px 75px 72px 95px 28px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:start';
-    /* name + sup */
-    var nameInp=document.createElement('input'); nameInp.className='finput'; nameInp.value=r.name||''; nameInp.placeholder='ชื่อ / รายการ'; nameInp.style.cssText='margin-bottom:3px;font-size:11px;background:var(--input-bg);display:block;width:100%';
+    div.style.cssText='display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:start';
+    /* name (autocomplete จาก Master Data วัตถุดิบ) */
+    var nameInp=document.createElement('input'); nameInp.className='finput'; nameInp.value=r.name||''; nameInp.placeholder='พิมพ์เพื่อค้นจาก Master Data…'; nameInp.setAttribute('list','cs-mat-list'); nameInp.style.cssText='font-size:11px;background:var(--input-bg);display:block;width:100%';
     nameInp.dataset.sec=sec; nameInp.dataset.idx=i; nameInp.dataset.field='name';
     nameInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].name=this.value;};
-    var supInp=document.createElement('input'); supInp.className='finput'; supInp.value=r.sup||''; supInp.placeholder='Supplier'; supInp.style.cssText='font-size:10px;background:var(--input-bg);display:block;width:100%';
-    supInp.dataset.sec=sec; supInp.dataset.idx=i;
-    supInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].sup=this.value;};
-    var nameWrap=document.createElement('div'); nameWrap.appendChild(nameInp); nameWrap.appendChild(supInp);
-    div.appendChild(nameWrap);
-    /* type */
-    var typeSel=document.createElement('select'); typeSel.className='finput'; typeSel.style.cssText='font-size:10px;background:var(--input-bg)';
-    tOpts.forEach(function(t){var op=document.createElement('option');op.value=t;op.textContent=t;if(r.type===t)op.selected=true;typeSel.appendChild(op);});
-    typeSel.dataset.sec=sec; typeSel.dataset.idx=i;
-    typeSel.onchange=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].type=this.value;};
-    div.appendChild(typeSel);
+    div.appendChild(nameInp);
     /* price + cur */
     var priceWrap=document.createElement('div'); priceWrap.style.cssText='display:flex;gap:3px';
     var priceInp=document.createElement('input'); priceInp.className='finput'; priceInp.value=r.price; priceInp.style.cssText='flex:1;min-width:0;text-align:right;font-size:11px;background:var(--input-bg)';
@@ -10143,6 +10132,10 @@ function csfRenderImgs(){
   g.innerHTML=html;
 }
 function csfDelImg(i){csStyleImgs.splice(i,1);csfRenderImgs();}
+function csPopulateMatList(){
+  var dl=document.getElementById('cs-mat-list');if(!dl)return;
+  dl.innerHTML=(typeof MASTER_MATERIALS!=='undefined'?MASTER_MATERIALS:[]).map(function(m){return '<option value="'+esc(m)+'">';}).join('');
+}
 
 /* ── Save / Load / Firebase ── */
 var CS_LS_KEY='isrd_cs_v2';
@@ -10367,7 +10360,7 @@ function csSaveToList(){
     code: snap.code||'', name: snap.name||'', season: snap.season||'',
     factory: snap.factory||'', qty: snap.qty||500,
     cost: cur.cost, gm: gm, confirmed: !!csBomData[2],
-    img: snap.img||'', savedAt: Date.now(),
+    img: (snap.styleImgs&&snap.styleImgs[0]?snap.styleImgs[0].d:'')||snap.styleImg||'', savedAt: Date.now(),
     /* บันทึก full snapshot ด้วย */
     snapshot: snap
   };
@@ -10404,7 +10397,7 @@ function csPrintPDF(){
 (function(){
   var loaded=csLoadLocal();
   if(!loaded) csBomData[2]=JSON.parse(JSON.stringify(csBomData[1]));
-  csCalc(); csRenderHist(); csfRenderImgs();
+  csCalc(); csRenderHist(); csfRenderImgs(); csPopulateMatList();
   /* Listen Firebase costsheet */
   if(typeof fbDB!=='undefined'&&fbDB){
     fbDB.ref(FB_PATH+'/costsheet').once('value',function(snap){

@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-by -->
+<!-- v2026-06-11T-bz -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611by'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611bz'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -1037,7 +1037,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
         <span style="font-size:13px">🚚</span>
         <span style="font-size:11px;font-weight:600;flex:1;color:var(--text)">Overhead & Logistics</span>
         <span style="font-size:11px;color:var(--text3)">% ของต้นทุน</span>
-        <input class="finput" id="cs-oh-pct" value="10" style="width:55px;text-align:right;background:var(--input-bg)" oninput="csCalc()">
+        <input class="finput" id="cs-oh-pct" value="0" style="width:55px;text-align:right;background:var(--input-bg)" oninput="csCalc()">
         <span style="color:var(--text3)">%</span>
         <span id="cs-oh-total" style="font-size:11px;font-weight:700;min-width:90px;text-align:right;color:var(--text)">฿ 0</span>
       </div>
@@ -1126,6 +1126,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div id="cs-cmp-table" style="border-radius:9px;overflow:hidden;border:0.5px solid var(--border)"></div>
     <button id="cs-confirm-btn" onclick="csConfirmV2()" style="padding:8px 16px;border-radius:8px;background:#1D9E75;color:#fff;border:none;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-start">✓ Confirm v2 Cost Sheet</button>
+    <button id="cs-reqedit-btn" onclick="csRequestEdit()" style="padding:8px 16px;border-radius:8px;background:#EF9F27;color:#fff;border:none;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-start;display:none;margin-left:8px">🔓 ขอแก้ไข</button>
   </div>
 
   <!-- ══ MARGIN PANE ══ -->
@@ -2301,7 +2302,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611by';
+var APP_VERSION = '20260611bz';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -9831,9 +9832,11 @@ function csSetMode(m){
 }
 
 /* ── Version ── */
+function _csVerEmpty(v){ return !['fabric','trim','pkg','labor'].some(function(s){return csBomData[v]&&csBomData[v][s]&&csBomData[v][s].length;}); }
 function csSetVer(v){
   csEditVer=v;
   if(!csBomData[v]) csBomData[v]=JSON.parse(JSON.stringify(csBomData[1]));
+  else if(v===2 && _csVerEmpty(2)){ csBomData[2]=JSON.parse(JSON.stringify(csBomData[1])); showToast('ดึงข้อมูลจาก v1 มา v2 ให้แล้ว ✓','var(--green)'); }
   var b1=document.getElementById('cs-vbtn1');
   var b2=document.getElementById('cs-vbtn2');
   if(b1){b1.style.background=v===1?'#EF9F27':'var(--bg3)';b1.style.color=v===1?'#fff':'var(--text2)';b1.style.fontWeight=v===1?'600':'';}
@@ -9908,6 +9911,7 @@ function csRenderSec(sec){
     delBtn.onclick=function(){csBomData[csEditVer][this.dataset.sec].splice(parseInt(this.dataset.idx),1);csRenderAllRows();};
     div.appendChild(delBtn);
     cont.appendChild(div);
+    if(csV2done){ div.querySelectorAll('input,select,button').forEach(function(el){el.disabled=true;el.style.opacity='.65';}); }
   });
 }
 
@@ -9918,6 +9922,7 @@ function csRenderAllRows(){
 
 /* ── Add row ── */
 function csAddRowSec(sec){
+  if(csV2done){ showToast('🔒 ถูก Confirm แล้ว — กด "ขอแก้ไข" ในแท็บเปรียบเทียบก่อน','var(--amber)'); return; }
   if(!csBomData[csEditVer][sec]) csBomData[csEditVer][sec]=[];
   var tOpts=csTypeOpts[sec]||[];
   var defUnit=sec==='fabric'?'เมตร':sec==='labor'?'ตัว':'ชิ้น';
@@ -9947,7 +9952,7 @@ function csCalcVer(ver){
     var pkg=csCalcSec(ver,'pkg');
     var lab=csCalcSec(ver,'labor');
     var mat=fab+trm+pkg+lab;
-    var ohPct=parseFloat((document.getElementById('cs-oh-pct')||{value:'10'}).value)||0;
+    var ohPct=parseFloat((document.getElementById('cs-oh-pct')||{value:'0'}).value)||0;
     var oh=mat*(ohPct/100);
     return {fab:fab,trm:trm,pkg:pkg,lab:lab,oh:oh,cost:mat+oh,mode:'CMT'};
   } else {
@@ -10095,14 +10100,31 @@ function csRenderHist(){
 
 /* ── Confirm v2 ── */
 function csConfirmV2(){
+  if(!confirm('✓ ยืนยัน Confirm v2 Cost Sheet?\n\nหลัง Confirm ระบบจะล็อกไม่ให้แก้ไข BOM/ต้นทุน\nถ้าต้องแก้ ต้องกด "ขอแก้ไข" ในแท็บเปรียบเทียบก่อน')) return;
   csV2done=true;
   var b=document.getElementById('cs-confirm-btn');
   if(b){b.textContent='✓ Confirmed';b.style.background='#9FE1CB';b.disabled=true;}
+  var re=document.getElementById('cs-reqedit-btn'); if(re) re.style.display='inline-block';
+  var oh=document.getElementById('cs-oh-pct'); if(oh){oh.disabled=true;oh.style.opacity='.65';}
   var badge=document.getElementById('cs-mode-badge');
   if(badge){badge.textContent='v2 Confirmed ✓';badge.style.background='#E1F5EE';badge.style.color='#085041';badge.style.borderColor='#9FE1CB';}
   var r2=csCalcVer(2);
   csAddHistItem(2,'หลัง Sample ผ่าน — Confirmed',r2.cost,'✓ Confirmed');
-  csFbSave(); showToast('✓ Confirm v2 Cost Sheet แล้ว','var(--green)');
+  csRenderAllRows();
+  csFbSave(); showToast('🔒 Confirm v2 แล้ว — ล็อกการแก้ไข','var(--green)');
+}
+function csRequestEdit(){
+  if(!confirm('🔓 ขอแก้ไข Cost Sheet ที่ Confirm แล้ว?\n\nระบบจะปลดล็อกให้แก้ไขได้อีกครั้ง\nหลังแก้เสร็จต้องกด Confirm ใหม่อีกครั้ง\n\nยืนยันขอแก้ไข?')) return;
+  csV2done=false;
+  var b=document.getElementById('cs-confirm-btn');
+  if(b){b.textContent='✓ Confirm v2 Cost Sheet';b.style.background='#1D9E75';b.disabled=false;}
+  var re=document.getElementById('cs-reqedit-btn'); if(re) re.style.display='none';
+  var oh=document.getElementById('cs-oh-pct'); if(oh){oh.disabled=false;oh.style.opacity='';}
+  var badge=document.getElementById('cs-mode-badge');
+  if(badge){badge.textContent='โหมด: '+csCurMode;badge.style.background='#E6F1FB';badge.style.color='#0C447C';badge.style.borderColor='#85B7EB';}
+  csRenderAllRows();
+  csFbSave(); showToast('🔓 ปลดล็อกแล้ว — อย่าลืม Confirm ใหม่หลังแก้เสร็จ','var(--amber)');
+  actLog('edit','costsheet','ขอแก้ไข Cost Sheet ที่ Confirm แล้ว',{detail:(document.getElementById('csf-code')||{value:''}).value});
 }
 
 /* ── Update header ── */
@@ -10164,7 +10186,11 @@ function csfRenderImgs(){
 function csfDelImg(i){csStyleImgs.splice(i,1);csfRenderImgs();}
 function csPopulateMatList(){
   var dl=document.getElementById('cs-mat-list');if(!dl)return;
-  dl.innerHTML=(typeof MASTER_MATERIALS!=='undefined'?MASTER_MATERIALS:[]).map(function(m){return '<option value="'+esc(m)+'">';}).join('');
+  var arr=(typeof MASTER_MATERIALS!=='undefined'?MASTER_MATERIALS:[]);
+  dl.innerHTML=arr.map(function(m){
+    var name=(m&&typeof m==='object')?(m.n||m.name||''):m;
+    return name?'<option value="'+esc(name)+'">':'';
+  }).join('');
 }
 
 /* ── Save / Load / Firebase ── */
@@ -10196,7 +10222,7 @@ function csGetSnapshot(){
     sellprice:(document.getElementById('csf-sellprice')||{value:'0'}).value,
     fxUsd:(document.getElementById('csf-usd')||{value:'36.5'}).value,
     fxCny:(document.getElementById('csf-cny')||{value:'5.0'}).value,
-    ohPct:(document.getElementById('cs-oh-pct')||{value:'10'}).value,
+    ohPct:(document.getElementById('cs-oh-pct')||{value:'0'}).value,
     savedAt:Date.now()
   };
 }
@@ -10204,7 +10230,11 @@ function csLoadSnapshot(d){
   if(!d) return;
   if(d.bom) csBomData=d.bom;
   if(d.curMode) csSetMode(d.curMode);
-  if(d.v2done){csV2done=true;var badge=document.getElementById('cs-mode-badge');if(badge){badge.textContent='v2 Confirmed ✓';badge.style.background='#E1F5EE';badge.style.color='#085041';badge.style.borderColor='#9FE1CB';}}
+  if(d.v2done){csV2done=true;var badge=document.getElementById('cs-mode-badge');if(badge){badge.textContent='v2 Confirmed ✓';badge.style.background='#E1F5EE';badge.style.color='#085041';badge.style.borderColor='#9FE1CB';}
+    var cb=document.getElementById('cs-confirm-btn');if(cb){cb.textContent='✓ Confirmed';cb.style.background='#9FE1CB';cb.disabled=true;}
+    var re=document.getElementById('cs-reqedit-btn');if(re)re.style.display='inline-block';
+    var oh=document.getElementById('cs-oh-pct');if(oh){oh.disabled=true;oh.style.opacity='.65';}
+  } else { csV2done=false; var re2=document.getElementById('cs-reqedit-btn');if(re2)re2.style.display='none'; var oh2=document.getElementById('cs-oh-pct');if(oh2){oh2.disabled=false;oh2.style.opacity='';} }
   if(d.styleImgs&&d.styleImgs.length){csStyleImgs=d.styleImgs.slice();}
   else if(d.styleImg){csStyleImgs=[{d:d.styleImg,label:''}];}
   else{csStyleImgs=[];}
@@ -10358,7 +10388,7 @@ function csListOpen(key){
 function csListNew(){
   if(!confirm('สร้าง Cost Sheet ใหม่? ข้อมูลปัจจุบันจะถูกล้าง')) return;
   /* clear */
-  csBomData = {1:{fabric:[],trim:[],pkg:[],labor:[],fob:{price:0,cur:'USD'},freight:{price:0,cur:'THB'},duty:0,agent:{price:0,cur:'THB'},ohPct:10},2:null};
+  csBomData = {1:{fabric:[],trim:[],pkg:[],labor:[{name:'ค่าขนส่ง',sup:'',type:'',price:0,cur:'THB',qty:1,unit:'ตัว'}],fob:{price:0,cur:'USD'},freight:{price:0,cur:'THB'},duty:0,agent:{price:0,cur:'THB'},ohPct:0},2:null};
   ['csf-code','csf-name','csf-season','csf-qty','csf-factory','csf-mer','csf-designer','csf-note','csf-sellprice'].forEach(function(id){
     var el = document.getElementById(id); if(el) el.value = id==='csf-qty'?'500':'';
   });
@@ -11868,6 +11898,7 @@ function saveMDItem(){
     else MASTER_MATERIALS.push(obj);
   }
   fbPushMasterData();
+  if(typeof csPopulateMatList==='function') csPopulateMatList();
   document.getElementById('md-modal').style.display='none';
   renderMasterData();
   showToast('✓ บันทึกเรียบร้อย','var(--green)');
@@ -11897,6 +11928,7 @@ function loadMasterDataFromFB(){
       MASTER_MATERIALS.length=0;
       (Array.isArray(val)?val:Object.values(val)).forEach(function(m){if(m)MASTER_MATERIALS.push(m);});
       console.log('[FB] master_materials loaded:',MASTER_MATERIALS.length);
+      if(typeof csPopulateMatList==='function') csPopulateMatList();
     }
   },function(err){console.warn('[FB] master_materials:',err.message);});
 }

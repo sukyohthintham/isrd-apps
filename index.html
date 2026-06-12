@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-cc -->
+<!-- v2026-06-11T-cd -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611cc'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611cd'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -591,6 +591,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <button class="sbtn no-print" onclick="openTrackImportModal()" style="background:var(--cyan)22;color:var(--cyan);border:1px solid var(--cyan)44;padding:6px 12px;font-size:12px;border-radius:8px;cursor:pointer;font-weight:600">📂 Import ไฟล์</button>
           <button id="delete-all-track-btn" onclick="deleteAllTracking()" class="sbtn no-print" style="display:none;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:6px 12px;font-size:12px;border-radius:8px">🗑️ ลบทั้งหมด</button>
           <button id="sync-brand-btn" onclick="syncAllTrackingBrand()" class="sbtn no-print" style="background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;padding:6px 12px;font-size:12px;border-radius:8px" title="Sync Brand จาก Master สินค้า">🔄 Sync Brand</button>
+          <button id="undo-brand-btn" onclick="undoSyncBrand()" class="sbtn no-print" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:6px 12px;font-size:12px;border-radius:8px" title="คืนค่า Brand เดิมก่อน Sync ครั้งล่าสุด">↩️ ย้อน Brand</button>
           <button id="sync-type-btn" onclick="syncMissingMfgType()" class="sbtn no-print" style="background:#fef9c3;color:#713f12;border:1px solid #fde68a;padding:6px 12px;font-size:12px;border-radius:8px" title="Auto-detect Type TH/CN">🔄 Auto Type</button>
           <button onclick="resetOriginalMonth()" class="sbtn no-print" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:6px 12px;font-size:12px;border-radius:8px" title="ล้าง originalMonth ให้ตรงกับ month ปัจจุบัน (ลบ slip history ที่ผิด)">🔧 Fix Plan Month</button>
           <button class="sbtn sbtn-green sbtn-sm no-print" id="track-export-btn">⬇ Export</button>
@@ -2322,7 +2323,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611cc';
+var APP_VERSION = '20260611cd';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -11414,6 +11415,14 @@ function syncAllTrackingBrand(){
   if(!hasPerm('sync-brand')){
     showToast('⚠ ไม่มีสิทธิ์ Sync Brand','var(--red)'); return;
   }
+  if(!confirm('🔄 Sync Brand จาก Master สินค้า?\n\nระบบจะเขียนทับ Brand ใน Tracking ด้วยค่าจาก Master\n(ระบบจะสำรองข้อมูล Brand เดิมไว้ให้ — กด "↩️ ย้อน Brand" เพื่อกู้คืนได้)\n\nดำเนินการต่อ?')) return;
+  /* ── สำรอง Brand เดิมก่อนเขียนทับ (กู้คืนได้ด้วย undoSyncBrand) ── */
+  try{
+    var bk=DATA.map(function(d){return {sku:d.sku||'',po:d.po||'',brand:d.brand||''};});
+    var payload={ts:Date.now(),data:bk};
+    try{ localStorage.setItem('isrd_brand_presync', JSON.stringify(payload)); }catch(e){}
+    if(fbDB) fbDB.ref(FB_PATH+'/tracking_brand_backup').set(payload);
+  }catch(e){ console.warn('[brand backup]',e.message); }
   var updated=0, skipped=0;
   DATA.forEach(function(d){
     var brand = getLookupBrand(d.model, d.sku);
@@ -11428,11 +11437,29 @@ function syncAllTrackingBrand(){
     fbPushTracking();
     applyFilters(true);
     initDashboard();
-    showToast('✓ อัพเดท Brand '+updated+' รายการ (ข้าม '+skipped+' รายการ)','var(--green)');
+    showToast('✓ อัพเดท Brand '+updated+' รายการ (สำรองเดิมไว้แล้ว · กด ↩️ ย้อน Brand เพื่อกู้คืน)','var(--green)');
     actLog('edit','tracking','Sync Brand จาก Master: อัพเดท '+updated+' รายการ',{detail:''});
   } else {
     showToast('Brand ตรงกับ Master แล้วทุกรายการ ('+skipped+' รายการ)','var(--amber)');
   }
+}
+function undoSyncBrand(){
+  if(!hasPerm('sync-brand')){ showToast('⚠ ไม่มีสิทธิ์','var(--red)'); return; }
+  function restore(payload){
+    if(!payload||!payload.data||!payload.data.length){ showToast('ไม่พบข้อมูลสำรอง Brand','var(--amber)'); return; }
+    var when=payload.ts?new Date(payload.ts).toLocaleString('th'):'';
+    if(!confirm('↩️ คืนค่า Brand เดิมที่สำรองไว้'+(when?(' เมื่อ '+when):'')+'?\n\nระบบจะเขียน Brand เดิมกลับทับค่าปัจจุบัน')) return;
+    var map={}; payload.data.forEach(function(r){map[(r.sku||'')+'|'+(r.po||'')]=r.brand;});
+    var n=0;
+    DATA.forEach(function(d){var k=(d.sku||'')+'|'+(d.po||'');if(map[k]!==undefined&&d.brand!==map[k]){d.brand=map[k];n++;}});
+    if(n>0){ fbPushTracking(); applyFilters(true); initDashboard(); }
+    showToast('↩️ คืนค่า Brand '+n+' รายการแล้ว','var(--green)');
+    actLog('edit','tracking','Undo Sync Brand: คืนค่า '+n+' รายการ',{detail:''});
+  }
+  var raw=null; try{ raw=localStorage.getItem('isrd_brand_presync'); }catch(e){}
+  if(raw){ try{ restore(JSON.parse(raw)); return; }catch(e){} }
+  if(fbDB){ fbDB.ref(FB_PATH+'/tracking_brand_backup').once('value',function(s){ restore(s.val()); }); }
+  else showToast('ไม่พบข้อมูลสำรอง Brand','var(--amber)');
 }
 function initProducts(){
   try{

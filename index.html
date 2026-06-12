@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-bu -->
+<!-- v2026-06-11T-bv -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -336,7 +336,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260611bu'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260611bv'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -902,18 +902,8 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
 
     <!-- Style Image -->
     <div>
-      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">รูปสินค้า</div>
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 13px;background:var(--bg2);border-radius:9px;border:0.5px solid var(--border)">
-        <div id="csf-si-main" onclick="csfPickStyleImg()" style="width:70px;height:90px;border-radius:7px;border:1.5px dashed var(--border);background:var(--card-bg);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0">
-          <span style="font-size:9px;color:var(--text3);text-align:center;padding:4px">+ รูปสินค้า</span>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">รูปสินค้าหลัก</div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:6px">แสดงใน PDF · JPG, PNG</div>
-          <div style="font-size:10px;color:#1D9E75" id="csf-si-status"></div>
-          <button onclick="csfClearStyleImg()" style="margin-top:4px;padding:3px 10px;border-radius:6px;background:transparent;color:var(--text3);border:0.5px solid var(--border);font-size:10px;cursor:pointer">ลบรูป</button>
-        </div>
-      </div>
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">รูปสินค้า (เพิ่มได้หลายรูป · แสดงทุกหน้าและใน PDF)</div>
+      <div id="csf-img-gallery" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;padding:10px 13px;background:var(--bg2);border-radius:9px;border:0.5px solid var(--border)"></div>
     </div>
 
     <button onclick="csSwTab('bom',document.getElementById('cs-tab-bom'))" style="background:#1a1a2e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-start">ถัดไป: กรอก BOM →</button>
@@ -2282,7 +2272,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260611bu';
+var APP_VERSION = '20260611bv';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -9751,6 +9741,7 @@ var csCurMode = 'CMT';
 var csEditVer = 1;
 var csV2done = false;
 var csStyleImg = '';
+var csStyleImgs = []; /* [{d:dataURL, label:'ชื่อสี/แบบ'}] — รูปสินค้าหลายรูป แสดงทุกหน้า/PDF */
 var csHistItems = [];
 var csBomData = {
   1: {
@@ -10117,34 +10108,41 @@ function csSyncQty(val){
   var ql=document.getElementById('cs-qty-lbl');if(ql)ql.textContent=val;
 }
 
-/* ── Style image ── */
+/* ── Style images (หลายรูป) ── */
 function csfPickStyleImg(){
-  var inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  var inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;
   inp.onchange=function(e){
-    var f=e.target.files[0];if(!f)return;
-    var r=new FileReader();
-    r.onload=function(ev){
-      var img=new Image();
-      img.onload=function(){
-        var MAX=700,w=img.width,h=img.height;
-        if(w>MAX){h=h*MAX/w;w=MAX;}if(h>MAX){w=w*MAX/h;h=MAX;}
-        var c=document.createElement('canvas');c.width=w;c.height=h;
-        c.getContext('2d').drawImage(img,0,0,w,h);
-        csStyleImg=c.toDataURL('image/jpeg',0.82);
-        var box=document.getElementById('csf-si-main');
-        if(box) box.innerHTML='<img src="'+csStyleImg+'" style="width:100%;height:100%;object-fit:cover;display:block">';
-        var st=document.getElementById('csf-si-status');if(st) st.textContent='✓ อัปโหลดแล้ว';
-        showToast('อัปโหลดรูปสินค้าแล้ว ✓','var(--green)');
-      };img.src=ev.target.result;
-    };r.readAsDataURL(f);
+    var files=Array.prototype.slice.call(e.target.files);if(!files.length)return;
+    var done=0;
+    files.forEach(function(f){
+      var r=new FileReader();
+      r.onload=function(ev){
+        var img=new Image();
+        img.onload=function(){
+          var MAX=700,w=img.width,h=img.height;
+          if(w>MAX){h=h*MAX/w;w=MAX;}if(h>MAX){w=w*MAX/h;h=MAX;}
+          var c=document.createElement('canvas');c.width=w;c.height=h;
+          c.getContext('2d').drawImage(img,0,0,w,h);
+          csStyleImgs.push({d:c.toDataURL('image/jpeg',0.82),label:''});
+          done++;if(done===files.length){csfRenderImgs();showToast('อัปโหลด '+files.length+' รูปแล้ว ✓','var(--green)');}
+        };img.src=ev.target.result;
+      };r.readAsDataURL(f);
+    });
   };inp.click();
 }
-function csfClearStyleImg(){
-  csStyleImg='';
-  var box=document.getElementById('csf-si-main');
-  if(box) box.innerHTML='<span style="font-size:9px;color:var(--text3);text-align:center;padding:4px">+ รูปสินค้า</span>';
-  var st=document.getElementById('csf-si-status');if(st) st.textContent='';
+function csfRenderImgs(){
+  var g=document.getElementById('csf-img-gallery');if(!g)return;
+  var html=csStyleImgs.map(function(im,i){
+    return '<div style="width:100px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card-bg)">'+
+      '<div style="width:100px;height:124px;overflow:hidden;background:#fff"><img src="'+im.d+'" style="width:100%;height:100%;object-fit:cover;display:block"></div>'+
+      '<input value="'+esc(im.label||'')+'" placeholder="ชื่อสี/แบบ" oninput="csStyleImgs['+i+'].label=this.value" style="width:100%;border:none;border-top:1px solid var(--border);font-size:10px;padding:3px 5px;box-sizing:border-box;background:var(--input-bg);text-align:center">'+
+      '<button onclick="csfDelImg('+i+')" style="width:100%;border:none;border-top:1px solid var(--border);background:transparent;color:#E24B4A;font-size:10px;padding:3px;cursor:pointer">✕ ลบ</button>'+
+    '</div>';
+  }).join('');
+  html+='<div onclick="csfPickStyleImg()" style="width:100px;height:158px;border:1.5px dashed var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:11px;text-align:center;gap:4px"><span style="font-size:22px">+</span>เพิ่มรูป</div>';
+  g.innerHTML=html;
 }
+function csfDelImg(i){csStyleImgs.splice(i,1);csfRenderImgs();}
 
 /* ── Save / Load / Firebase ── */
 var CS_LS_KEY='isrd_cs_v2';
@@ -10163,7 +10161,7 @@ function csSaveData(){
 }
 function csGetSnapshot(){
   return {
-    bom:csBomData, curMode:csCurMode, v2done:csV2done, styleImg:csStyleImg,
+    bom:csBomData, curMode:csCurMode, v2done:csV2done, styleImgs:csStyleImgs, styleImg:(csStyleImgs[0]?csStyleImgs[0].d:''),
     code:(document.getElementById('csf-code')||{value:''}).value,
     name:(document.getElementById('csf-name')||{value:''}).value,
     season:(document.getElementById('csf-season')||{value:''}).value,
@@ -10184,7 +10182,10 @@ function csLoadSnapshot(d){
   if(d.bom) csBomData=d.bom;
   if(d.curMode) csSetMode(d.curMode);
   if(d.v2done){csV2done=true;var badge=document.getElementById('cs-mode-badge');if(badge){badge.textContent='v2 Confirmed ✓';badge.style.background='#E1F5EE';badge.style.color='#085041';badge.style.borderColor='#9FE1CB';}}
-  if(d.styleImg){csStyleImg=d.styleImg;var box=document.getElementById('csf-si-main');if(box)box.innerHTML='<img src="'+d.styleImg+'" style="width:100%;height:100%;object-fit:cover;display:block">';var st=document.getElementById('csf-si-status');if(st)st.textContent='✓ อัปโหลดแล้ว';}
+  if(d.styleImgs&&d.styleImgs.length){csStyleImgs=d.styleImgs.slice();}
+  else if(d.styleImg){csStyleImgs=[{d:d.styleImg,label:''}];}
+  else{csStyleImgs=[];}
+  csfRenderImgs();
   var setV=function(id,v){if(v!==undefined){var el=document.getElementById(id);if(el)el.value=v;}};
   setV('csf-code',d.code);setV('csf-name',d.name);setV('csf-season',d.season);
   setV('csf-factory',d.factory);setV('csf-mer',d.mer);setV('csf-designer',d.designer);
@@ -10202,6 +10203,13 @@ function csFbSave(){
   if(!fbDB){showToast('⚠ Firebase ไม่ได้เชื่อมต่อ','var(--amber)');return;}
   var snap=csGetSnapshot();
   // ลบ styleImg ออกถ้าใหญ่เกิน (>400KB) เพื่อกัน Firebase reject
+  // กันรูปใหญ่เกิน Firebase: ตัด styleImgs ที่ทำให้รวมเกิน ~2MB
+  if(snap.styleImgs&&snap.styleImgs.length){
+    var tot=0,kept=[];
+    snap.styleImgs.forEach(function(im){ var sz=(im.d||'').length; if(tot+sz<2000000){kept.push(im);tot+=sz;} });
+    snap.styleImgs=kept; snap.styleImg=(kept[0]?kept[0].d:'');
+    if(kept.length<((csStyleImgs||[]).length)) showToast('⚠ รูปบางส่วนใหญ่เกิน ไม่ได้ Sync ขึ้น Firebase','var(--amber)');
+  }
   if(snap.styleImg&&snap.styleImg.length>600000) snap.styleImg='';
   fbDB.ref(FB_PATH+'/costsheet').set(snap)
     .then(function(){syncStatus('ok');showToast('☁️ Sync Firebase สำเร็จ','var(--green)');})
@@ -10396,7 +10404,7 @@ function csPrintPDF(){
 (function(){
   var loaded=csLoadLocal();
   if(!loaded) csBomData[2]=JSON.parse(JSON.stringify(csBomData[1]));
-  csCalc(); csRenderHist();
+  csCalc(); csRenderHist(); csfRenderImgs();
   /* Listen Firebase costsheet */
   if(typeof fbDB!=='undefined'&&fbDB){
     fbDB.ref(FB_PATH+'/costsheet').once('value',function(snap){

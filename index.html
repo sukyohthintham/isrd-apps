@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-15T-cn -->
+<!-- v2026-06-15T-co -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260615cn'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260615co'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -903,6 +903,18 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
         <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px">Designer</div><input class="finput" id="csf-designer" value="" placeholder="ชื่อ Designer" style="background:var(--input-bg)"></div>
         <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px">หมายเหตุ</div><input class="finput" id="csf-note" value="" placeholder="หมายเหตุเพิ่มเติม" style="background:var(--input-bg)"></div>
         <div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px">ราคาขาย / pc (฿)</div><input class="finput" id="csf-sellprice" value="0" oninput="csSyncSP(this.value);csCalc()" style="background:var(--input-bg)"></div>
+      </div>
+    </div>
+
+    <!-- สีและราคา (จากรหัสผ้า) -->
+    <div>
+      <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+        <span>สีและราคา <span style="font-weight:400;text-transform:none;color:var(--text3)">· พิมพ์เอง/เลือกจากรหัสผ้า — แสดงในช่องสีตอน Print</span></span>
+        <button type="button" onclick="csAddColorRow()" style="font-size:11px;padding:4px 11px;border-radius:6px;background:#1D9E75;color:#fff;border:none;cursor:pointer;font-weight:700">+ เพิ่มสี</button>
+      </div>
+      <div style="padding:10px 13px;background:var(--bg2);border-radius:9px;border:0.5px solid var(--border)">
+        <div id="csf-color-rows"></div>
+        <datalist id="cs-fabric-list"></datalist>
       </div>
     </div>
 
@@ -2334,7 +2346,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260615cn';
+var APP_VERSION = '20260615co';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6673,6 +6685,7 @@ function navTo(pg) {
       initCSSections();
       if(typeof csRenderSkuRows==='function') csRenderSkuRows();
       if(typeof csPopulateFactoryList==='function') csPopulateFactoryList();
+      if(typeof csRenderColorRows==='function') csRenderColorRows();
     }
     if(pg==='masterdata') initMasterDataPage();
     if(pg==='fabric')     applyFab();
@@ -9936,7 +9949,20 @@ function csRenderSec(sec){
     var nameInp=document.createElement('input'); nameInp.className='finput'; nameInp.value=r.name||''; nameInp.placeholder='พิมพ์เพื่อค้นจาก Master Data…'; nameInp.setAttribute('list','cs-mat-list'); nameInp.style.cssText='font-size:11px;background:var(--input-bg);display:block;width:100%';
     nameInp.dataset.sec=sec; nameInp.dataset.idx=i; nameInp.dataset.field='name';
     nameInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].name=this.value;};
-    div.appendChild(nameInp);
+    /* fabric: ใส่ select Body/Rib นำหน้าชื่อผ้า + autocomplete รหัสผ้า */
+    if(sec==='fabric'){
+      nameInp.setAttribute('list','cs-fabric-list');
+      var pWrap=document.createElement('div'); pWrap.style.cssText='display:flex;gap:4px;align-items:center';
+      var partSel=document.createElement('select'); partSel.className='finput'; partSel.style.cssText='width:62px;font-size:10px;background:var(--input-bg);flex-shrink:0';
+      ['','Body','Rib'].forEach(function(p){var op=document.createElement('option');op.value=p;op.textContent=p||'—';if((r.part||'')===p)op.selected=true;partSel.appendChild(op);});
+      partSel.dataset.sec=sec; partSel.dataset.idx=i;
+      partSel.onchange=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].part=this.value;};
+      nameInp.style.flex='1'; nameInp.style.minWidth='0';
+      pWrap.appendChild(partSel); pWrap.appendChild(nameInp);
+      div.appendChild(pWrap);
+    } else {
+      div.appendChild(nameInp);
+    }
     /* supplier (autocomplete จาก Vendors) */
     var supInp=document.createElement('input'); supInp.className='finput'; supInp.value=r.sup||''; supInp.placeholder='Supplier'; supInp.setAttribute('list','cs-factory-list'); supInp.style.cssText='font-size:11px;background:var(--input-bg);display:block;width:100%';
     supInp.dataset.sec=sec; supInp.dataset.idx=i; supInp.dataset.field='sup';
@@ -10283,6 +10309,45 @@ function csRenderSkuRows(){
 }
 function csAddSkuRow(){ csSkuRows.push({sku:'',qty:0}); csRenderSkuRows(); }
 function csDelSkuRow(i){ csSkuRows.splice(i,1); if(!csSkuRows.length) csSkuRows=[{sku:'',qty:0}]; csRenderSkuRows(); }
+
+/* ── สีและราคา (จากรหัสผ้า) — แสดงในช่องสีตอน Print ── */
+var csColorRows=[];
+function csRenderColorRows(){
+  var box=document.getElementById('csf-color-rows'); if(!box) return;
+  csPopulateFabricList();
+  if(!csColorRows.length){ box.innerHTML='<div style="font-size:11px;color:var(--text3)">ยังไม่มีสี — กด "+ เพิ่มสี"</div>'; return; }
+  box.innerHTML=csColorRows.map(function(r,i){
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">'
+      +'<input class="finput" value="'+esc(r.color||'')+'" data-i="'+i+'" list="cs-fabric-list" oninput="csColorRowChange(this,\'color\')" placeholder="สี (พิมพ์/เลือกจากรหัสผ้า)" style="flex:1;background:var(--input-bg)">'
+      +'<input type="number" step="0.01" class="finput" value="'+(r.price!=null&&r.price!==''?r.price:'')+'" data-i="'+i+'" oninput="csColorRowChange(this,\'price\')" placeholder="ราคา" style="width:96px;text-align:right;background:var(--input-bg)">'
+      +'<span style="font-size:10px;color:var(--text3)">฿</span>'
+      +'<button type="button" onclick="csDelColorRow('+i+')" title="ลบสีนี้" style="width:26px;height:26px;border-radius:6px;border:0.5px solid var(--border);background:transparent;color:#E24B4A;cursor:pointer;font-size:14px;flex:0 0 auto">×</button>'
+      +'</div>';
+  }).join('');
+}
+function csAddColorRow(){ csColorRows.push({color:'',price:''}); csRenderColorRows(); }
+function csDelColorRow(i){ csColorRows.splice(i,1); csRenderColorRows(); }
+function csColorRowChange(inp,field){
+  var i=parseInt(inp.dataset.i); if(!csColorRows[i]) return;
+  if(field==='price'){ csColorRows[i].price=inp.value; return; }
+  csColorRows[i].color=inp.value;
+  /* auto-fill ราคาถ้าตรงรหัสผ้า (Code หรือ สี) และยังไม่ได้กรอกราคา */
+  if((!csColorRows[i].price||csColorRows[i].price==='') && typeof MASTER_FABRICCODES!=='undefined'){
+    var v=(inp.value||'').trim().toLowerCase();
+    var hit=MASTER_FABRICCODES.find(function(f){ return f && ((f.code||'').toLowerCase()===v || (f.color||'').toLowerCase()===v); });
+    if(hit){ var p=(hit.thb!=null&&hit.thb!=='')?hit.thb:hit.rmb; if(p!=null&&p!==''){ csColorRows[i].price=p; csRenderColorRows(); } }
+  }
+}
+function csPopulateFabricList(){
+  var dl=document.getElementById('cs-fabric-list'); if(!dl) return;
+  var arr=(typeof MASTER_FABRICCODES!=='undefined'?MASTER_FABRICCODES:[]);
+  dl.innerHTML=arr.map(function(f){
+    if(!f) return '';
+    var val=f.color||f.code||''; if(!val) return '';
+    var label=(f.color||'')+(f.code?' · '+f.code:'')+((f.thb!=null&&f.thb!=='')?' · ฿'+f.thb:((f.rmb!=null&&f.rmb!=='')?' · ¥'+f.rmb:''));
+    return '<option value="'+esc(val)+'">'+esc(label)+'</option>';
+  }).join('');
+}
 function csSkuRowChange(inp,field){
   var i=parseInt(inp.dataset.i); if(!csSkuRows[i]) return;
   if(field==='qty') csSkuRows[i].qty=parseFloat(inp.value)||0;
@@ -10339,6 +10404,7 @@ function csGetSnapshot(){
     fxCny:(document.getElementById('csf-cny')||{value:'5.0'}).value,
     ohPct:(document.getElementById('cs-oh-pct')||{value:'0'}).value,
     skuRows:csSkuRows,
+    colorRows:csColorRows,
     savedAt:Date.now()
   };
 }
@@ -10351,6 +10417,8 @@ function csLoadSnapshot(d){
     csSkuRows = oldSkus.length ? oldSkus.map(function(sk){return {sku:sk,qty:(parseFloat(oq[sk])||0)};}) : [{sku:(d.code||''),qty:0}];
   }
   csRenderSkuRows();
+  csColorRows = (d.colorRows&&d.colorRows.length) ? d.colorRows.map(function(c){return {color:(c.color||''),price:(c.price!=null?c.price:'')};}) : [];
+  csRenderColorRows();
   if(d.bom) csBomData=d.bom;
   /* กันรายการเก่าที่ยังไม่มี section ใหม่ (เช่น shipping) — เติม key ที่ขาดให้ครบ */
   [1,2].forEach(function(v){ if(csBomData[v]){ ['fabric','trim','pkg','labor','shipping'].forEach(function(sec){ if(!Array.isArray(csBomData[v][sec])) csBomData[v][sec]=[]; }); } });
@@ -10568,7 +10636,7 @@ function csListNew(){
     var el = document.getElementById(id); if(el) el.value = id==='csf-qty'?'500':'';
   });
   var ohNew=document.getElementById('cs-oh-pct'); if(ohNew){ohNew.value='0';ohNew.disabled=false;ohNew.style.opacity='';}
-  csSkuRows=[{sku:'',qty:0}]; csRenderSkuRows(); csCurrentKey=null;
+  csSkuRows=[{sku:'',qty:0}]; csRenderSkuRows(); csColorRows=[]; csRenderColorRows(); csCurrentKey=null;
   csV2done=false;
   var reNew=document.getElementById('cs-reqedit-btn'); if(reNew) reNew.style.display='none';
   var cbNew=document.getElementById('cs-confirm-btn'); if(cbNew){cbNew.textContent='✓ Confirm v2 Cost Sheet';cbNew.style.background='#1D9E75';cbNew.disabled=false;}
@@ -10664,7 +10732,7 @@ function csPrintPDF(){
     var line=unitTHB*(parseFloat(r.qty)||0);
     return '<tr>'+
       '<td style="text-align:center">'+(i+1)+'</td>'+
-      '<td>'+esc(r.name||'')+'</td>'+
+      '<td>'+(r.part?'<b>'+esc(r.part)+'</b> · ':'')+esc(r.name||'')+'</td>'+
       '<td></td>'+              /* Position */
       '<td></td>'+              /* COLOR Lab */
       '<td>'+esc(r.sup||'')+'</td>'+
@@ -10692,12 +10760,18 @@ function csPrintPDF(){
       }).join('')
     : '<div style="color:#888;font-size:9pt;padding:20px">— ไม่มีรูปสินค้า —</div>';
 
-  /* ── Color-variant rows (จาก label ของรูป) ── */
-  var colorRows=(csStyleImgs&&csStyleImgs.length)
-    ? csStyleImgs.filter(function(im){return im.label;}).map(function(im){
-        return '<tr><td>'+esc(im.label)+'</td><td style="text-align:right"></td></tr>';
-      }).join('')
-    : '';
+  /* ── Color-variant rows: ใช้ "สีและราคา" ก่อน → fallback ไป label ของรูป ── */
+  var colorRows='';
+  if(csColorRows&&csColorRows.length){
+    colorRows=csColorRows.filter(function(c){return c&&((c.color||'')!==''||(c.price!=null&&c.price!==''));}).map(function(c){
+      return '<tr><td>'+esc(c.color||'')+'</td><td style="text-align:right">'+((c.price!=null&&c.price!=='')?'฿'+esc(String(c.price)):'')+'</td></tr>';
+    }).join('');
+  }
+  if(!colorRows && csStyleImgs && csStyleImgs.length){
+    colorRows=csStyleImgs.filter(function(im){return im.label;}).map(function(im){
+      return '<tr><td>'+esc(im.label)+'</td><td style="text-align:right"></td></tr>';
+    }).join('');
+  }
   if(!colorRows) colorRows='<tr><td>&nbsp;</td><td></td></tr><tr><td>&nbsp;</td><td></td></tr>';
 
   var html=''+

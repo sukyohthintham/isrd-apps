@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-15T-cq -->
+<!-- v2026-06-15T-cr -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260615cq'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260615cr'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2353,7 +2353,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260615cq';
+var APP_VERSION = '20260615cr';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -10690,13 +10690,18 @@ function csListOpen(key){
   var item = CS_ALL.find(function(c){ return c._key === key; });
   if(!item) return;
   csCurrentKey = key;
-  csLoadSnapshot(item.snapshot || item);
-  csRenderAllRows();
-  csCalc();
-  csUpdateHeader();
-  /* ไปที่ tab ตั้งค่า */
+  /* ไปที่ tab ตั้งค่าก่อน เพื่อให้ element ในหน้าพร้อมก่อนโหลดข้อมูล */
   csSwTab('setup', document.querySelector('.cs-tab.cs-tab-on') || document.querySelector('.cs-tab'));
-  showToast('✓ โหลด "'+( item.name||'')+ '" แล้ว','var(--green)');
+  try{
+    csLoadSnapshot(item.snapshot || item);
+    csRenderAllRows();
+    csCalc();
+    csUpdateHeader();
+    showToast('✓ โหลด "'+( item.name||'')+ '" แล้ว','var(--green)');
+  }catch(err){
+    console.error('[csListOpen] error:', err);
+    showToast('⚠ เปิดมีปัญหา: '+((err&&err.message)||err),'var(--red)');
+  }
 }
 
 /* สร้างใหม่ */

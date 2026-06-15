@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-11T-ch -->
+<!-- v2026-06-11T-ci -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260612ch'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260612ci'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2331,7 +2331,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260612ch';
+var APP_VERSION = '20260612ci';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6183,7 +6183,7 @@ function _renderWeekly(){
     var skuCompTh = opts.showSkuComp ? '<th rowspan="2" style="padding:8px 10px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:12px;font-weight:800;text-align:center;white-space:nowrap;color:var(--text)">ครบ<br>SKU</th>' : '';
     /* header แถว 1: period span 3 — ขอบซ้ายหนาแบ่งแต่ละ period */
     var h1='<tr><th rowspan="2" style="padding:8px 12px;background:'+bg+';border:1px solid '+bd+';position:sticky;left:0;z-index:3;font-size:12px;text-align:left;font-weight:700">'+esc(dimLabel)+'</th>'+
-      periodList.map(function(per){ return '<th colspan="3" style="padding:8px 8px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:14px;font-weight:800;text-align:center;white-space:nowrap;color:var(--text)">'+esc(_perLabel(per))+'</th>'; }).join('')+skuCompTh+'</tr>';
+      periodList.map(function(per){ return '<th colspan="3" style="padding:9px 8px;background:#3730a3;border:1px solid #3730a3;border-left:2px solid #fff;font-size:14px;font-weight:800;text-align:center;white-space:nowrap;color:#fff">'+esc(_perLabel(per))+'</th>'; }).join('')+skuCompTh+'</tr>';
     /* header แถว 2: Plan|Actual|% */
     var h2='<tr>'+periodList.map(function(){ return '<th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';border-left:'+PB+';font-size:11px;color:var(--text2);font-weight:600">Plan</th><th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';font-size:11px;color:var(--text2);font-weight:600">Actual</th><th style="padding:5px 8px;background:'+bg+';border:1px solid '+bd+';font-size:11px;color:var(--text2);font-weight:600">%</th>'; }).join('')+'</tr>';
     /* แถวข้อมูล */

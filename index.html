@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-15T-ck -->
+<!-- v2026-06-15T-cl -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -274,7 +274,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
 .ac-wrap{position:relative;display:block}
 .cs-pane{display:none}.cs-pane-on{display:flex;flex-direction:column}
 .cs-tab{color:var(--text3);border-bottom:2px solid transparent;background:transparent}.cs-tab.cs-tab-on{color:var(--text);border-bottom-color:#1a1a2e;font-weight:700;background:var(--card-bg)}
-.cs-sec-open{display:block}.cs-bom-row{display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:center}.cs-bom-row:hover{background:var(--bg2)}
+.cs-sec-open{display:block}.cs-bom-row{display:grid;grid-template-columns:1.4fr 1fr 132px 64px 64px 88px 26px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:center}.cs-bom-row:hover{background:var(--bg2)}
 .cs-del-btn{width:24px;height:24px;border-radius:5px;background:transparent;border:0.5px solid var(--border);color:var(--text3);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}.cs-del-btn:hover{background:#FCEBEB;border-color:#F09595;color:#791F1F}
 .ac-list{position:fixed;min-width:220px;max-width:400px;background:var(--card-bg);border:1px solid var(--border2);border-radius:10px;max-height:220px;overflow-y:auto;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none}
 .ac-list.show{display:block;animation:acIn .12s ease}
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260615ck'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260615cl'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -976,8 +976,9 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-fabric" style="font-size:11px;color:var(--text3);margin-left:8px">▼</span>
         </div>
         <div class="cs-sec-open" id="cs-body-fabric">
-          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+          <div style="display:grid;grid-template-columns:1.4fr 1fr 132px 64px 64px 88px 26px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span>
+            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">Supplier</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย</span>
@@ -998,8 +999,9 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-trim" style="font-size:11px;color:var(--text3);margin-left:8px">▼</span>
         </div>
         <div class="cs-sec-open" id="cs-body-trim">
-          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+          <div style="display:grid;grid-template-columns:1.4fr 1fr 132px 64px 64px 88px 26px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span>
+            <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">Supplier</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span>
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span>
@@ -1020,7 +1022,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-pkg" style="font-size:11px;color:var(--text3);margin-left:8px">▲</span>
         </div>
         <div id="cs-body-pkg">
-          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+          <div style="display:grid;grid-template-columns:1.4fr 1fr 132px 64px 64px 88px 26px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
           </div>
           <div id="cs-rows-pkg"></div>
@@ -1037,7 +1039,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-labor" style="font-size:11px;color:var(--text3);margin-left:8px">▼</span>
         </div>
         <div class="cs-sec-open" id="cs-body-labor">
-          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+          <div style="display:grid;grid-template-columns:1.4fr 1fr 132px 64px 64px 88px 26px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
           </div>
           <div id="cs-rows-labor"></div>
@@ -1054,7 +1056,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <span id="cs-arr-shipping" style="font-size:11px;color:var(--text3);margin-left:8px">▼</span>
         </div>
         <div class="cs-sec-open" id="cs-body-shipping">
-          <div style="display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
+          <div style="display:grid;grid-template-columns:1.4fr 1fr 132px 64px 64px 88px 26px;background:var(--bg3);border-bottom:0.5px solid var(--border);padding:5px 10px;gap:6px">
             <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ชื่อ / รายการ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase">ราคา / หน่วย</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">ปริมาณ</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">หน่วย/pc</span><span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;text-align:right">รวม (THB)</span><span></span>
           </div>
           <div id="cs-rows-shipping"></div>
@@ -2331,7 +2333,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260615ck';
+var APP_VERSION = '20260615cl';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -9917,12 +9919,17 @@ function csRenderSec(sec){
     var thb=csToTHB(r.price,r.cur)*(parseFloat(r.qty)||0);
     var div=document.createElement('div');
     div.className='cs-bom-row';
-    div.style.cssText='display:grid;grid-template-columns:1.5fr 140px 75px 72px 95px 28px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:start';
+    div.style.cssText='display:grid;grid-template-columns:1.4fr 1fr 132px 64px 64px 88px 26px;padding:7px 10px;gap:6px;border-bottom:0.5px solid var(--border);align-items:start';
     /* name (autocomplete จาก Master Data วัตถุดิบ) */
     var nameInp=document.createElement('input'); nameInp.className='finput'; nameInp.value=r.name||''; nameInp.placeholder='พิมพ์เพื่อค้นจาก Master Data…'; nameInp.setAttribute('list','cs-mat-list'); nameInp.style.cssText='font-size:11px;background:var(--input-bg);display:block;width:100%';
     nameInp.dataset.sec=sec; nameInp.dataset.idx=i; nameInp.dataset.field='name';
     nameInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].name=this.value;};
     div.appendChild(nameInp);
+    /* supplier (autocomplete จาก Vendors) */
+    var supInp=document.createElement('input'); supInp.className='finput'; supInp.value=r.sup||''; supInp.placeholder='Supplier'; supInp.setAttribute('list','cs-factory-list'); supInp.style.cssText='font-size:11px;background:var(--input-bg);display:block;width:100%';
+    supInp.dataset.sec=sec; supInp.dataset.idx=i; supInp.dataset.field='sup';
+    supInp.oninput=function(){csBomData[csEditVer][this.dataset.sec][parseInt(this.dataset.idx)].sup=this.value;};
+    div.appendChild(supInp);
     /* price + cur */
     var priceWrap=document.createElement('div'); priceWrap.style.cssText='display:flex;gap:3px';
     var priceInp=document.createElement('input'); priceInp.className='finput'; priceInp.value=r.price; priceInp.style.cssText='flex:1;min-width:0;text-align:right;font-size:11px;background:var(--input-bg)';
@@ -10580,6 +10587,7 @@ function csPrintPDF(){
   var cur=csCalcVer(csEditVer);
   var sp=parseFloat(snap.sellprice)||0;
   var qty=parseFloat(snap.qty)||500;
+  var skuCount=(snap.skuRows||[]).filter(function(r){return r&&r.sku&&String(r.sku).trim();}).length;
   var markup=cur.cost>0?(sp/cur.cost):0;
   var d=new Date();
   var thDate=d.getDate()+'/'+(d.getMonth()+1)+'/'+(d.getFullYear()+543);
@@ -10594,7 +10602,6 @@ function csPrintPDF(){
     var line=unitTHB*(parseFloat(r.qty)||0);
     return '<tr>'+
       '<td style="text-align:center">'+(i+1)+'</td>'+
-      '<td>'+esc(r.type||'')+'</td>'+
       '<td>'+esc(r.name||'')+'</td>'+
       '<td></td>'+              /* Position */
       '<td></td>'+              /* COLOR Lab */
@@ -10607,10 +10614,10 @@ function csPrintPDF(){
   }
   function emptyRows(n){
     var s='';
-    for(var k=0;k<n;k++) s+='<tr><td style="height:20px"></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+    for(var k=0;k<n;k++) s+='<tr><td style="height:20px"></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
     return s;
   }
-  var COLH='<tr class="pcs-colh"><th style="width:26px">No</th><th style="width:74px">Cate</th><th>Description</th><th style="width:54px">Position</th><th style="width:62px">COLOR Lab</th><th style="width:90px">Supplier</th><th style="width:70px">contact</th><th style="width:58px">Fab px</th><th style="width:46px">Cons</th><th style="width:74px">Total Cost</th></tr>';
+  var COLH='<tr class="pcs-colh"><th style="width:26px">No</th><th>Description</th><th style="width:54px">Position</th><th style="width:62px">COLOR Lab</th><th style="width:90px">Supplier</th><th style="width:70px">contact</th><th style="width:58px">Fab px</th><th style="width:46px">Cons</th><th style="width:74px">Total Cost</th></tr>';
 
   var fabTotal=cur.fab||0;
   var accTotal=(cur.trm||0)+(cur.pkg||0);
@@ -10643,7 +10650,7 @@ function csPrintPDF(){
           '<tr><td class="k">Program</td><td>'+esc(snap.season||'')+'</td></tr>'+
           '<tr><td class="k">Style</td><td>'+esc((snap.code||'')+' '+(snap.name||''))+'</td></tr>'+
           '<tr><td class="k">Fabric</td><td>'+esc((fabRows[0]&&fabRows[0].name)||'')+'</td></tr>'+
-          '<tr><td class="k">Est. Qty</td><td>'+esc(qty.toLocaleString())+' pcs.</td></tr>'+
+          '<tr><td class="k">Est. Qty</td><td>'+esc(qty.toLocaleString())+' pcs.'+(skuCount?' · '+skuCount+' SKU':'')+'</td></tr>'+
           '<tr><td class="k">Size</td><td></td></tr>'+
           '<tr><td class="k" style="color:#c0392b">Remark</td><td></td></tr>'+
           '<tr><td class="k">ประมาณการ เรท</td><td><b>'+(markup?markup.toFixed(2):'—')+'</b></td></tr>'+
@@ -10660,7 +10667,7 @@ function csPrintPDF(){
           '<tr><td class="k">Factory</td><td>'+esc(snap.factory||'')+'</td></tr>'+
           '<tr><td class="k">Update</td><td>'+thDate+'</td></tr>'+
           '<tr><td class="k" style="background:#fff3cd">Shipment</td><td></td></tr>'+
-          '<tr><td class="k">Merchandiser</td><td>'+esc(snap.mer||'')+'</td></tr>'+
+          '<tr><td class="k">Design</td><td>'+esc(snap.designer||'')+'</td></tr>'+
           '<tr><td class="k">Mode</td><td>'+esc(cur.mode||'CMT')+' · '+esc(V)+'</td></tr>'+
         '</table>'+
       '</td>'+
@@ -10674,22 +10681,22 @@ function csPrintPDF(){
     '<div class="pcs-sec-bar">Cost Sheet — ผ้า (Fabric)</div>'+
     '<table class="pcs-cost">'+COLH+
       (fabRows.length?fabRows.map(rowCells).join(''):'')+emptyRows(Math.max(0,2-fabRows.length))+
-      '<tr class="pcs-total"><td colspan="9" style="text-align:right">Cons. รวมผ้า</td><td style="text-align:right">฿ '+csFmt(fabTotal)+'</td></tr>'+
+      '<tr class="pcs-total"><td colspan="8" style="text-align:right">Cons. รวมผ้า</td><td style="text-align:right">฿ '+csFmt(fabTotal)+'</td></tr>'+
     '</table>'+
 
     /* ══ ACCESSORY COST ══ */
     '<div class="pcs-sec-bar">Accessory Cost — อะไหล่ &amp; บรรจุภัณฑ์</div>'+
     '<table class="pcs-cost">'+COLH+
       (accRows.length?accRows.map(rowCells).join(''):'')+emptyRows(Math.max(0,2-accRows.length))+
-      '<tr class="pcs-total"><td colspan="9" style="text-align:right">ACC รวม</td><td style="text-align:right">฿ '+csFmt(accTotal)+'</td></tr>'+
+      '<tr class="pcs-total"><td colspan="8" style="text-align:right">ACC รวม</td><td style="text-align:right">฿ '+csFmt(accTotal)+'</td></tr>'+
     '</table>'+
 
     /* ══ OTHER / CMT COST ══ */
     '<div class="pcs-sec-bar">Other Cost — ค่าแรง / CMT</div>'+
     '<table class="pcs-cost">'+COLH+
       (othRows.length?othRows.map(rowCells).join(''):'')+emptyRows(Math.max(0,2-othRows.length))+
-      '<tr><td colspan="9" style="text-align:right">Overhead &amp; Logistics ('+esc(snap.ohPct||'10')+'%)</td><td style="text-align:right">฿ '+csFmt(cur.oh||0)+'</td></tr>'+
-      '<tr class="pcs-total"><td colspan="9" style="text-align:right">Cmt + ดีเทล รวม</td><td style="text-align:right">฿ '+csFmt(othTotal)+'</td></tr>'+
+      '<tr><td colspan="8" style="text-align:right">Overhead &amp; Logistics ('+esc(snap.ohPct||'10')+'%)</td><td style="text-align:right">฿ '+csFmt(cur.oh||0)+'</td></tr>'+
+      '<tr class="pcs-total"><td colspan="8" style="text-align:right">Cmt + ดีเทล รวม</td><td style="text-align:right">฿ '+csFmt(othTotal)+'</td></tr>'+
     '</table>'+
 
     /* ══ SUMMARY ══ */
@@ -10704,7 +10711,7 @@ function csPrintPDF(){
     /* ══ SIGNATURE ══ */
     '<table class="pcs-sign"><tr>'+
       '<th>ผู้จัดทำ</th><th>ผู้ตรวจสอบ</th><th>ผู้อนุมัติ</th></tr>'+
-      '<tr><td class="nm">'+esc(snap.designer||'')+'</td><td class="nm"></td><td class="nm"></td></tr>'+
+      '<tr><td class="nm">'+esc(snap.mer||'')+'</td><td class="nm"></td><td class="nm"></td></tr>'+
       '<tr><td>Date: '+thDate+'</td><td>Date:</td><td>Date:</td></tr>'+
     '</table>'+
   '</div>';

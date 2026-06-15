@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-15T-cl -->
+<!-- v2026-06-15T-cm -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260615cl'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260615cm'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2333,7 +2333,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260615cl';
+var APP_VERSION = '20260615cm';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -6675,7 +6675,7 @@ function navTo(pg) {
     if(pg==='masterdata') initMasterDataPage();
     if(pg==='fabric')     applyFab();
     if(pg==='shipping'){ if(typeof renderShipping==='function') renderShipping(); else if(typeof renderShip==='function') renderShip(); }
-    if(pg==='tracking'){ if(typeof window._bindTrackImport==='function') window._bindTrackImport(); }
+    if(pg==='tracking'){ if(typeof window._bindTrackImport==='function') window._bindTrackImport(); if(typeof csLoadCostMap==='function') csLoadCostMap(); }
     if(pg==='insights')  renderInsights();
     if(pg==='stock')     initStock();
   }catch(e){
@@ -8357,8 +8357,18 @@ function renderTable(){
       '<td style="font-family:ui-monospace,monospace;color:var(--green)">'+(x.price_thb?'฿'+x.price_thb:'—')+'</td>'+
       '<td style="font-family:ui-monospace,monospace;color:var(--purple);font-size:11px" title="ต้นทุนที่จ่ายจริง">'+(x.cost_thb?'฿'+x.cost_thb:'—')+'</td>'+
       '<td style="font-family:ui-monospace,monospace;font-size:11px;background:#fffbeb" title="ต้นทุนประมาณการจาก Cost Sheet (BOM)">'+(function(){
-        if(!x.costSheet) return '<span style="color:var(--text3)">—</span>';
-        /* คำนวณ diff vs cost_thb (จ่ายจริง) */
+        var M=(typeof CS_COST_BY_SKU!=='undefined'&&CS_COST_BY_SKU)?CS_COST_BY_SKU:{};
+        var skk=(x.sku||'').trim();
+        var sg=(skk && M[skk])?(parseFloat(M[skk].cost)||0):0;
+        /* ยังไม่มีค่า → ถ้ามี Cost Sheet ของ SKU นี้ ให้ suggest จางๆ + ปุ่ม apply เลือกแถวเอง */
+        if(!x.costSheet){
+          if(sg>0){
+            return '<span style="color:#b45309;opacity:.5;font-size:11px" title="ต้นทุน/ชิ้นจาก Cost Sheet ของ SKU นี้ — กดปุ่มเพื่อใส่ลงแถวนี้">~฿'+sg+'</span>'
+              +'<button onclick="csApplyCostToRow('+ri+')" title="ใส่ต้นทุน Cost Sheet ลงแถวนี้" style="margin-left:4px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:4px;padding:0 5px;font-size:11px;line-height:1.4;cursor:pointer;font-weight:700">↧</button>';
+          }
+          return '<span style="color:var(--text3)">—</span>';
+        }
+        /* มีค่าแล้ว → แสดง + diff vs cost_thb (จ่ายจริง) */
         var cs = parseFloat(x.costSheet)||0;
         var actual = parseFloat(x.cost_thb)||0;
         var html = '<span style="color:#92400e;font-weight:600">฿'+cs+'</span>';
@@ -10396,6 +10406,54 @@ function csFbLoad(){
 var CS_LIST_PATH = FB_PATH + '/costsheet_list';
 var csCurrentKey = null;
 var CS_ALL = []; /* array ของ cost sheets ทั้งหมด */
+var CS_COST_BY_SKU = {}; /* map: SKU → {cost,savedAt,name} ต้นทุน/ชิ้นจาก Cost Sheet ล่าสุด — เชื่อมหน้า Tracking */
+
+/* สร้าง map ต้นทุน/ชิ้นตาม SKU (ตรงตัว) จาก costsheet_list — ใช้ suggest ในหน้า Tracking */
+function csLoadCostMap(){
+  if(!fbDB) return;
+  fbDB.ref(CS_LIST_PATH).once('value', function(snap){
+    var val = snap.val()||{};
+    var map = {};
+    Object.keys(val).forEach(function(k){
+      var it = val[k]; if(!it) return;
+      var cost = parseFloat(it.cost)||0; if(!cost) return;
+      var savedAt = it.savedAt||0;
+      var sn = it.snapshot||{};
+      var skus = [];
+      if(sn.skuRows && sn.skuRows.length){ sn.skuRows.forEach(function(r){ if(r&&r.sku) skus.push(String(r.sku).trim()); }); }
+      else if(it.code){ String(it.code).split(',').forEach(function(s){ var t=s.trim(); if(t) skus.push(t); }); }
+      skus.forEach(function(sk){
+        if(!sk) return;
+        /* SKU ซ้ำหลาย Cost Sheet → ใช้ตัวที่บันทึกล่าสุด */
+        if(!map[sk] || savedAt >= map[sk].savedAt) map[sk] = {cost:cost, savedAt:savedAt, name:it.name||''};
+      });
+    });
+    CS_COST_BY_SKU = map;
+    /* ถ้าอยู่หน้า tracking → re-render เพื่อโชว์ suggest ทันที */
+    if(typeof applyFilters==='function' && document.getElementById('ttbody')) applyFilters(true);
+  });
+}
+
+/* ใส่ต้นทุนจาก Cost Sheet ลง Tracking เฉพาะแถวที่เลือก (กดปุ่ม ↧) */
+window.csApplyCostToRow = function(ri){
+  var item = (typeof filtered!=='undefined' && filtered && filtered[ri]) ? filtered[ri] : DATA[ri];
+  if(!item) return;
+  var sku=(item.sku||'').trim();
+  var e = sku && CS_COST_BY_SKU[sku];
+  if(!e || !e.cost){ showToast('ไม่พบต้นทุน Cost Sheet ของ SKU นี้','var(--amber)'); return; }
+  item.costSheet = e.cost;
+  item.editedBy = currentUser?currentUser.user:''; item.editedAt = Date.now();
+  if(fbDB && item.addedAt){
+    fbDB.ref(FB_PATH+'/tracking').orderByChild('addedAt').equalTo(item.addedAt).once('value', function(snap){
+      var val=snap.val();
+      if(val){ var key=Object.keys(val)[0]; fbDB.ref(FB_PATH+'/tracking/'+key).update({costSheet:item.costSheet,editedBy:item.editedBy,editedAt:item.editedAt}).catch(function(){fbPushTracking();}); }
+      else fbPushTracking();
+    });
+  } else fbPushTracking();
+  if(typeof actLog==='function') actLog('edit','tracking','ใส่ต้นทุน Cost Sheet ฿'+e.cost+' ('+sku+')',{detail:item.model||''});
+  showToast('✓ ใส่ต้นทุน Cost Sheet ฿'+e.cost+' แล้ว','var(--green)');
+  applyFilters(true);
+};
 
 /* โหลดรายการทั้งหมดจาก Firebase */
 function csListLoad(){
@@ -10566,6 +10624,8 @@ function csSaveToList(){
   listItem._key = key;
   var _idx = CS_ALL.findIndex(function(c){ return c._key === key; });
   if(_idx > -1) CS_ALL[_idx] = listItem; else CS_ALL.unshift(listItem);
+  /* อัปเดต map ต้นทุน/SKU เพื่อให้หน้า Tracking suggest ค่าล่าสุด */
+  if(typeof csLoadCostMap==='function') csLoadCostMap();
 }
 
 /* Override csSwTab เพื่อ load list เมื่อเปิด tab */

@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-15T-cs -->
+<!-- v2026-06-15T-ct -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260615cs'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260615ct'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2353,7 +2353,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260615cs';
+var APP_VERSION = '20260615ct';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -10692,15 +10692,27 @@ function csListOpen(key){
   csCurrentKey = key;
   /* ไปที่ tab ตั้งค่าก่อน เพื่อให้ element ในหน้าพร้อมก่อนโหลดข้อมูล */
   csSwTab('setup', document.querySelector('.cs-tab.cs-tab-on') || document.querySelector('.cs-tab'));
-  try{
-    csLoadSnapshot(item.snapshot || item);
-    csRenderAllRows();
-    csCalc();
-    csUpdateHeader();
-    showToast('✓ โหลด "'+( item.name||'')+ '" แล้ว','var(--green)');
-  }catch(err){
-    console.error('[csListOpen] error:', err);
-    showToast('⚠ เปิดมีปัญหา: '+((err&&err.message)||err),'var(--red)');
+  function applySnap(snapData){
+    try{
+      csLoadSnapshot(snapData);
+      csRenderAllRows();
+      csCalc();
+      csUpdateHeader();
+      showToast('✓ โหลด "'+( item.name||'')+ '" แล้ว','var(--green)');
+    }catch(err){
+      console.error('[csListOpen] error:', err);
+      showToast('⚠ เปิดมีปัญหา: '+((err&&err.message)||err),'var(--red)');
+    }
+  }
+  /* ดึง snapshot สดจาก Firebase เฉพาะ record นี้ → ได้รูปครบเสมอ
+     (หน้ารายการดึงทุก record พร้อมกัน รูปอาจมาไม่ครบ) */
+  if(fbDB){
+    showToast('กำลังโหลด...','var(--text3)');
+    fbDB.ref(CS_LIST_PATH+'/'+key+'/snapshot').once('value', function(s){
+      applySnap(s.val() || item.snapshot || item);
+    }, function(){ applySnap(item.snapshot || item); });
+  } else {
+    applySnap(item.snapshot || item);
   }
 }
 

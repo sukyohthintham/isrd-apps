@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-15T-cv -->
+<!-- v2026-06-15T-cw -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260615cv'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260615cw'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -595,6 +595,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <button id="sync-type-btn" onclick="syncMissingMfgType()" class="sbtn no-print" style="background:#fef9c3;color:#713f12;border:1px solid #fde68a;padding:6px 12px;font-size:12px;border-radius:8px" title="Auto-detect Type TH/CN">🔄 Auto Type</button>
           <button onclick="resetOriginalMonth()" class="sbtn no-print" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;padding:6px 12px;font-size:12px;border-radius:8px" title="ล้าง originalMonth ให้ตรงกับ month ปัจจุบัน (ลบ slip history ที่ผิด)">🔧 Fix Plan Month</button>
           <button onclick="csBulkCatDialog()" class="sbtn no-print" style="background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc;padding:6px 12px;font-size:12px;border-radius:8px" title="เปลี่ยน Category หลายรายการพร้อมกัน ตามที่กรองอยู่ (กรองเดือนก่อนได้)">🏷️ เปลี่ยน Category</button>
+          <label class="sbtn no-print" style="background:#dcfce7;color:#166534;border:1px solid #86efac;padding:6px 12px;font-size:12px;border-radius:8px;cursor:pointer" title="อัปเดต Category จากไฟล์ Excel: Export → แก้คอลัมน์ Brand → อัปโหลดที่นี่ (อัปเดตเฉพาะ Category ไม่เพิ่มรายการ)">📥 อัปเดต Category (ไฟล์)<input type="file" accept=".xlsx" onchange="csUpdateCatFromFile(this)" style="display:none"></label>
           <button class="sbtn sbtn-green sbtn-sm no-print" id="track-export-btn">⬇ Export</button>
           <span class="fcnt" id="tcnt"></span>
         </div>
@@ -2354,7 +2355,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260615cv';
+var APP_VERSION = '20260615cw';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -5123,6 +5124,49 @@ window.csBulkCatApply = function(){
   var o=document.getElementById('cs-bulkcat-ov'); if(o) o.remove();
   if(typeof applyFilters==='function') applyFilters(true);
   showToast('✓ เปลี่ยน Category '+targets.length+' รายการแล้ว','var(--green)');
+};
+
+/* อัปเดต Category จากไฟล์ Excel (Export → แก้คอลัมน์ Brand → อัปโหลด) — อัปเดตเฉพาะ Category ไม่เพิ่มรายการ */
+window.csUpdateCatFromFile = function(input){
+  var f = input.files && input.files[0]; if(!f) return;
+  function run(){
+    var r = new FileReader();
+    r.onload = function(ev){
+      try{
+        var wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+        if(!rows || rows.length<2){ showToast('ไฟล์ว่าง','var(--red)'); return; }
+        var h = rows[0].map(function(c){ return (c||'').toString().trim(); });
+        function ci(){ var a=Array.from(arguments); for(var k=0;k<a.length;k++){ var i=h.indexOf(a[k]); if(i>-1) return i; } return -1; }
+        var iBrand=ci('Brand','Category'), iSku=ci('SKU'), iColor=ci('Color'), iMonth=ci('Month'), iAddedAt=ci('Added At');
+        if(iBrand<0){ showToast('ไฟล์ต้องมีคอลัมน์ Brand (Category)','var(--red)'); return; }
+        var updated=0, notfound=0, same=0;
+        for(var i=1;i<rows.length;i++){
+          var row=rows[i]; if(!row||!row.length) continue;
+          var newCat=(iBrand>-1?row[iBrand]:'').toString().trim();
+          if(!newCat) continue;
+          var sku=(iSku>-1?row[iSku]:'').toString().trim();
+          var color=(iColor>-1?row[iColor]:'').toString().trim();
+          var month=(iMonth>-1?row[iMonth]:'').toString().trim();
+          var addedAt=(iAddedAt>-1?row[iAddedAt]:'').toString().trim();
+          var item=null;
+          /* 1) match ด้วย Added At (รายตัว) */
+          if(addedAt){ item=DATA.find(function(d){ return d.addedAt && new Date(d.addedAt).toLocaleString('th-TH')===addedAt; }); }
+          /* 2) fallback: SKU + Color + Month */
+          if(!item && sku){ item=DATA.find(function(d){ return (d.sku||'').trim()===sku && (d.color||'').trim()===color && (normalizeMonth(d.month||'')||d.month||'')===(normalizeMonth(month)||month) && !isCancelled(d); }); }
+          if(!item){ notfound++; continue; }
+          if((item.brand||'')===newCat){ same++; continue; }
+          item.brand=newCat; item.editedBy=currentUser?currentUser.user:''; item.editedAt=Date.now(); updated++;
+        }
+        if(updated){ if(typeof fbPushTracking==='function') fbPushTracking(); if(typeof applyFilters==='function') applyFilters(true); if(typeof actLog==='function') actLog('import','tracking','อัปเดต Category จากไฟล์ '+updated+' รายการ',{}); }
+        showToast('✓ อัปเดต Category '+updated+' รายการ'+(same?' · เหมือนเดิม '+same:'')+(notfound?' · ไม่เจอ '+notfound:''), updated?'var(--green)':'var(--amber)');
+      }catch(e){ showToast('⚠ อ่านไฟล์ไม่ได้: '+(e.message||e),'var(--red)'); }
+    };
+    r.readAsArrayBuffer(f);
+  }
+  if(typeof XLSX==='undefined'){ var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; s.onload=run; document.head.appendChild(s); } else run();
+  input.value='';
 };
 
 /* ══ AUTO IMAGE SYSTEM ════════════════════════════════════════
@@ -8745,7 +8789,7 @@ document.getElementById('track-export-btn').onclick=function(){
   if(typeof XLSX === 'undefined'){ showToast('XLSX library ยังไม่โหลด','var(--red)'); return; }
   var headers = [
     'SKU','Model','Color','Type','Brand','Month','Month (รับจริง)',
-    'Qty (Plan)','รับจริง','% Accuracy','คงเหลือ (Stock)',
+    'Qty (Plan)','แผนรับมาแล้ว','% Accuracy','คงเหลือ (Stock)',
     'Price (¥)','Price (฿)','ต้นทุน฿ (จ่ายจริง)','Cost Sheet (BOM)',
     'Vendor','Status',
     'ETD (เวลาออก)','ETA (เวลาถึง)','ATA (เวลาถึงจริง)',
@@ -8755,7 +8799,7 @@ document.getElementById('track-export-btn').onclick=function(){
     'Note','Added By','Added At','Edited By','Edited At'
   ];
   var _expShown={}; /* กันคงเหลือซ้ำใน export: SKU เดียวออกยอดครั้งเดียว (แถวแรก) */
-  var rows = filtered.map(function(x){
+  var rows = filtered.filter(function(x){ return !isCancelled(x); }).map(function(x){
     var actual = getActualQty(x);
     var acc = getAccuracyPercent(x);
     var leadShipped = getLeadTimeShipped(x);

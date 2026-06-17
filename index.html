@@ -4836,16 +4836,17 @@ function getActualQtyInMonth(d, targetMonth){
 }
 
 /* ══ getReceiveMonths — เดือนที่ inbound บันทึกรับจริง (PO+SKU aware) คืน array ══ */
-function getReceiveMonths(d){
+function getReceiveMonths(d, _keyFn){
   if(!d || typeof IB_DATA==='undefined' || !IB_DATA.length) return [];
   var sku = (d.sku||'').trim();
   var model = (d.model||'').trim();
   var color = (d.color||'').trim();
   var podN = (d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
   var months = {};
+  var _kf = _keyFn || function(ib){ return normalizeMonth(ib.month||'') || ib.month; };
   function addM(ib){
     if((parseInt(ib.actualQty)||0) <= 0) return;
-    var mm = normalizeMonth(ib.month||'') || ib.month;
+    var mm = _kf(ib);
     if(mm) months[mm] = (months[mm]||0) + (parseInt(ib.actualQty)||0);
   }
   /* PO+SKU เป๊ะ */
@@ -4875,6 +4876,11 @@ function _sortMonthKeys(keys, qtyMap){
   return keys.sort(function(a,b){
     return parseInt((a.match(/M(\d+)/)||[0,99])[1]) - parseInt((b.match(/M(\d+)/)||[0,99])[1]);
   }).map(function(m){ return {month:m, qty:qtyMap[m]}; });
+}
+/* รับจริงแยกตามสัปดาห์ (ISO week) จากวันที่รับใน IB — ใช้กับ Matrix รายสัปดาห์ */
+function getReceiveWeeks(d){
+  if(typeof _parseDMY!=='function' || typeof _isoWeek!=='function') return [];
+  return getReceiveMonths(d, function(ib){ var dt=_parseDMY(ib.date||ib.recvDate||''); return dt?_isoWeek(dt):null; });
 }
 
 function getAccuracyPercent(d){
@@ -6230,7 +6236,11 @@ function _renderWeekly(){
   var periodList, periodLabel;
   if(mxMode==='week'){
     periodLabel = 'สัปดาห์';
-    var allWkKeys = keys.slice(); /* keys = WK ที่มีข้อมูล (จากด้านบน) */
+    var allWkKeys = keys.slice(); /* keys = WK ที่มีข้อมูล (จาก ETA) */
+    /* เพิ่มสัปดาห์ที่รับจริงเข้าไปด้วย (กัน Actual ที่ตกรอบมาคนละสัปดาห์หาย) */
+    var _wkSet={}; allWkKeys.forEach(function(k){_wkSet[k]=1;});
+    DATA.forEach(function(d){ if(isCancelled(d))return; if((parseInt(d.total)||0)<=0)return; var rw=(typeof getReceiveWeeks==='function')?getReceiveWeeks(d):[]; (rw||[]).forEach(function(rm){ if(rm.month)_wkSet[rm.month]=1; }); });
+    allWkKeys = Object.keys(_wkSet).sort();
     periodList = (mxWeeks && mxWeeks.length) ? allWkKeys.filter(function(k){ return mxWeeks.indexOf(k)!==-1; }) : allWkKeys;
   } else {
     periodLabel = 'เดือน';
@@ -6281,22 +6291,25 @@ function _renderWeekly(){
       function bucket(k){ if(!data[dim][k]) data[dim][k]={p:0,a:0}; return data[dim][k]; }
       /* Plan ลงเดือน Plan */
       if(periodList.indexOf(per)!==-1){ var bp=bucket(per); if(mxUnit==='sku') bp.p+=1; else bp.p+=p; }
-      /* Actual: รายเดือน → กระจายตามเดือนที่รับจริง ; รายสัปดาห์ → ลง per เดิม (ETA) */
-      if(mxMode==='week'){
-        if(periodList.indexOf(per)!==-1){ var bw=bucket(per); if(mxUnit==='sku'){ if(a>0) bw.a+=1; } else bw.a+=a; }
-      } else {
-        var yr=(function(){ var dt=_parseDMY(d.eta); return dt?dt.getFullYear():new Date().getFullYear(); })();
-        var rms=(typeof getReceiveMonths==='function')?getReceiveMonths(d):[];
-        var rmSum=0; (rms||[]).forEach(function(rm){ rmSum+=parseInt(rm.qty)||0; });
-        var anyA=false;
-        if(rms && rms.length && rmSum>0 && a>0){
-          rms.forEach(function(rm){
-            var rp=_perOfMonthStr(rm.month, yr);
-            if(rp && periodList.indexOf(rp)!==-1){ var ba=bucket(rp); if(mxUnit==='sku') ba.a+=1; else ba.a+=Math.round(a*((parseInt(rm.qty)||0)/rmSum)); anyA=true; }
-          });
-        }
-        if(!anyA && a>0 && periodList.indexOf(per)!==-1){ var bf=bucket(per); if(mxUnit==='sku') bf.a+=1; else bf.a+=a; }
+      /* Actual: กระจายตามสัปดาห์/เดือนที่รับจริง (week→getReceiveWeeks, month→getReceiveMonths) */
+      var yr=(function(){ var dt=_parseDMY(d.eta); return dt?dt.getFullYear():new Date().getFullYear(); })();
+      var rms = (mxMode==='week') ? (typeof getReceiveWeeks==='function'?getReceiveWeeks(d):[]) : (typeof getReceiveMonths==='function'?getReceiveMonths(d):[]);
+      var rmSum=0; (rms||[]).forEach(function(rm){ rmSum+=parseInt(rm.qty)||0; });
+      var anyA=false;
+      if(rms && rms.length && rmSum>0 && a>0){
+        rms.forEach(function(rm){
+          var rp = (mxMode==='week') ? rm.month : _perOfMonthStr(rm.month, yr);
+          if(rp && periodList.indexOf(rp)!==-1){
+            var ba=bucket(rp);
+            var add=(mxUnit==='sku')?1:Math.round(a*((parseInt(rm.qty)||0)/rmSum));
+            ba.a+=add;
+            /* ตกรอบ: รับเข้า period นี้ แต่ Plan อยู่คนละ period */
+            if(rp!==per){ if(!ba._slip) ba._slip={}; ba._slip[per]=(ba._slip[per]||0)+add; }
+            anyA=true;
+          }
+        });
       }
+      if(!anyA && a>0 && periodList.indexOf(per)!==-1){ var bf=bucket(per); if(mxUnit==='sku') bf.a+=1; else bf.a+=a; }
       data[dim].__tot++; if(a>0) data[dim].__recv++;
     });
     return data;

@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- v2026-06-15T-cw -->
+<!-- v2026-06-15T-cx -->
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>ISRD Tracking 2026</title>
@@ -366,7 +366,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20260615cw'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20260615cx'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2355,7 +2355,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20260615cw';
+var APP_VERSION = '20260615cx';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -7816,7 +7816,7 @@ function renderTrackSummary(){
       '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid '+rmCol+';border-radius:12px;padding:16px 18px;flex:1;min-width:480px">'+
       /* หัว + toggle */
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
-        '<span style="font-weight:700;color:'+rmCol+';font-size:13px">📥 รับจาก Plan '+esc(_trackSummaryMonth)+'</span>'+
+        '<span style="font-weight:700;color:'+rmCol+';font-size:13px">📥 รับจาก Plan '+esc(_trackSummaryMonth)+' <span style="font-size:9px;color:var(--text3);font-weight:400">· รับมาแล้วทุกเดือน (ไม่สนว่าเข้าคลังเดือนไหน)</span></span>'+
         '<button onclick="window._toggleTrackBrandGroup()" style="background:'+(_trackBrandGrouped?'#10b981':'#94a3b8')+'15;border:1px solid '+(_trackBrandGrouped?'#10b981':'#94a3b8')+'50;color:'+(_trackBrandGrouped?'#10b981':'#64748b')+';font-size:10px;padding:3px 9px;border-radius:6px;cursor:pointer;font-weight:600" title="สลับ แบรนด์ย่อย / รวมแบรนด์หลัก">'+
           (_trackBrandGrouped ? '🧩 รวมแบรนด์หลัก' : '🔖 แบรนด์ย่อย')+' ⇄</button>'+
       '</div>'+
@@ -7885,7 +7885,7 @@ function renderTrackSummary(){
         '</div>';
       }).join('');
       return '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid #8b5cf6;border-radius:12px;padding:16px 18px;flex:1;min-width:340px">'+
-        '<div style="font-weight:700;color:#8b5cf6;font-size:13px;margin-bottom:10px">📦 ภาระเข้าคลัง '+esc(_trackSummaryMonth)+' <span style="font-size:10px;color:var(--text3);font-weight:400">(มาจาก Plan เดือนไหน)</span></div>'+
+        '<div style="font-weight:700;color:#8b5cf6;font-size:13px;margin-bottom:10px">📦 ภาระเข้าคลัง '+esc(_trackSummaryMonth)+' <span style="font-size:10px;color:var(--text3);font-weight:400">(เข้าคลังเดือนนี้ · แยกตาม Plan เดือนไหน)</span></div>'+
         '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">รับเข้าคลังจริงทั้งหมด</div>'+
         '<div style="font-size:28px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1;margin-bottom:12px">'+totalIn.toLocaleString()+'</div>'+
         '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:4px;padding-bottom:3px;border-bottom:2px solid var(--border)">แยกตามแผนต้นทาง</div>'+

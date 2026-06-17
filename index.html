@@ -6359,7 +6359,7 @@ function _renderWeekly(){
         var pCur=(opts.dimType&&c.p>0)?'cursor:pointer;':'';
         var aCur=(opts.dimType&&c.a>0)?'cursor:pointer;':'';
         return '<td'+pOc+' style="padding:8px 10px;text-align:right;border:1px solid '+bd+';border-left:'+PB+';font-family:ui-monospace,monospace;font-size:13px;color:var(--text3);'+pCur+'">'+(c.p?c.p.toLocaleString():'—')+'</td>'+
-          '<td'+aOc+' style="padding:8px 10px;text-align:right;border:1px solid '+bd+';font-family:ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text);'+aCur+(aCur?'text-decoration:underline dotted '+col+';':'')+'">'+(c.a?c.a.toLocaleString():'—')+'</td>'+
+          '<td'+aOc+' style="padding:8px 10px;text-align:right;border:1px solid '+bd+';font-family:ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text);'+aCur+(aCur?'text-decoration:underline dotted '+col+';':'')+'">'+(c.a?c.a.toLocaleString():'—')+(c._slip?'<div style="font-size:8px;color:#b45309;font-weight:600" title="ของที่รับเข้าช่วงนี้ แต่ Plan อยู่คนละช่วง (ตกรอบ)">⤵ ตกรอบจาก '+Object.keys(c._slip).map(function(k){return _perLabel(k);}).join(', ')+'</div>':'')+'</td>'+
           '<td style="padding:8px 10px;text-align:right;border:1px solid '+bd+';font-size:13px;font-weight:700;color:'+col+'">'+(c.p>0?pct+'%':'—')+'</td>';
       }).join('');
       var clickAttr = opts.clickable ? ' onclick="_showSkuRaw(\''+esc(dim).replace(/'/g,"\\'")+'\')" style="cursor:pointer" onmouseover="this.style.background=\'var(--bg2,#f8fafc)\'" onmouseout="this.style.background=\'\'" title="คลิกดู Raw Data"' : '';

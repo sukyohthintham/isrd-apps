@@ -6255,25 +6255,46 @@ function _renderWeekly(){
   /* รายเดือน: สร้าง periodList ใหม่จาก Month field ให้ครบ (รวมของที่ยังไม่มี ETA) */
   if(mxMode==='month'){
     var _moS={};
-    DATA.forEach(function(d){ if(isCancelled(d))return; if((parseInt(d.total)||0)<=0)return; var per=_periodOf(d); if(per)_moS[per]=1; });
+    DATA.forEach(function(d){
+      if(isCancelled(d))return; if((parseInt(d.total)||0)<=0)return;
+      var per=_periodOf(d); if(per)_moS[per]=1;
+      /* รวมเดือนที่รับจริงด้วย (กัน column หายเมื่อรับต่างเดือน plan) */
+      var _yr=(function(){var dt=_parseDMY(d.eta);return dt?dt.getFullYear():new Date().getFullYear();})();
+      var _rms=(typeof getReceiveMonths==='function')?getReceiveMonths(d):[];
+      (_rms||[]).forEach(function(rm){ var mm=((rm.month||'').toString().match(/(\d+)/)||[])[1]; if(mm)_moS[_yr+'-'+(mm.length<2?'0'+mm:mm)]=1; });
+    });
     var _ml=Object.keys(_moS).sort();
     if(_ml.length){ periodList = (mxYear!=='all') ? _ml.filter(function(k){return k.indexOf(mxYear+'-')===0;}) : _ml; }
   }
 
   /* สร้างข้อมูล: dim(Brand/Cat) × period → {p, a} ; พร้อมนับ SKU completion (__tot/__recv) ต่อ dim */
+  function _perOfMonthStr(mn, yr){ var m=((mn||'').toString().match(/(\d+)/)||[])[1]; if(!m) return null; return (yr||new Date().getFullYear())+'-'+(m.length<2?'0'+m:m); }
   function buildDimData(dimFn){
     var data={};
     DATA.forEach(function(d){
       if(isCancelled(d)) return;
       var p=parseInt(d.total)||0; if(p<=0) return;
-      var per=_periodOf(d); if(!per || periodList.indexOf(per)===-1) return;
+      var per=_periodOf(d); if(!per) return;  /* per = เดือน Plan (week=ETA) */
       var dim=dimFn(d);
       var a=getActualQty(d); if(a===null) a=0;
       if(!data[dim]) data[dim]={__tot:0,__recv:0};
-      if(!data[dim][per]) data[dim][per]={p:0,a:0};
-      if(mxUnit==='sku'){ data[dim][per].p+=1; if(a>0) data[dim][per].a+=1; }  /* นับจำนวน SKU (รายการ) */
-      else { data[dim][per].p+=p; data[dim][per].a+=a; }                        /* จำนวนชิ้น */
-      data[dim].__tot++; if(a>0) data[dim].__recv++;  /* นับรายการ (SKU-order) ในกลุ่ม + ที่เริ่มรับแล้ว */
+      function bucket(k){ if(!data[dim][k]) data[dim][k]={p:0,a:0}; return data[dim][k]; }
+      /* Plan ลงเดือน Plan */
+      if(periodList.indexOf(per)!==-1){ var bp=bucket(per); if(mxUnit==='sku') bp.p+=1; else bp.p+=p; }
+      /* Actual: รายเดือน → กระจายตามเดือนที่รับจริง ; รายสัปดาห์ → ลง per เดิม (ETA) */
+      if(mxMode==='week'){
+        if(periodList.indexOf(per)!==-1){ var bw=bucket(per); if(mxUnit==='sku'){ if(a>0) bw.a+=1; } else bw.a+=a; }
+      } else {
+        var yr=(function(){ var dt=_parseDMY(d.eta); return dt?dt.getFullYear():new Date().getFullYear(); })();
+        var rms=(typeof getReceiveMonths==='function')?getReceiveMonths(d):[];
+        var anyA=false;
+        (rms||[]).forEach(function(rm){
+          var rp=_perOfMonthStr(rm.month, yr);
+          if(rp && periodList.indexOf(rp)!==-1){ var ba=bucket(rp); if(mxUnit==='sku') ba.a+=1; else ba.a+=(parseInt(rm.qty)||0); anyA=true; }
+        });
+        if(!anyA && a>0 && periodList.indexOf(per)!==-1){ var bf=bucket(per); if(mxUnit==='sku') bf.a+=1; else bf.a+=a; }
+      }
+      data[dim].__tot++; if(a>0) data[dim].__recv++;
     });
     return data;
   }

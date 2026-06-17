@@ -6287,11 +6287,14 @@ function _renderWeekly(){
       } else {
         var yr=(function(){ var dt=_parseDMY(d.eta); return dt?dt.getFullYear():new Date().getFullYear(); })();
         var rms=(typeof getReceiveMonths==='function')?getReceiveMonths(d):[];
+        var rmSum=0; (rms||[]).forEach(function(rm){ rmSum+=parseInt(rm.qty)||0; });
         var anyA=false;
-        (rms||[]).forEach(function(rm){
-          var rp=_perOfMonthStr(rm.month, yr);
-          if(rp && periodList.indexOf(rp)!==-1){ var ba=bucket(rp); if(mxUnit==='sku') ba.a+=1; else ba.a+=(parseInt(rm.qty)||0); anyA=true; }
-        });
+        if(rms && rms.length && rmSum>0 && a>0){
+          rms.forEach(function(rm){
+            var rp=_perOfMonthStr(rm.month, yr);
+            if(rp && periodList.indexOf(rp)!==-1){ var ba=bucket(rp); if(mxUnit==='sku') ba.a+=1; else ba.a+=Math.round(a*((parseInt(rm.qty)||0)/rmSum)); anyA=true; }
+          });
+        }
         if(!anyA && a>0 && periodList.indexOf(per)!==-1){ var bf=bucket(per); if(mxUnit==='sku') bf.a+=1; else bf.a+=a; }
       }
       data[dim].__tot++; if(a>0) data[dim].__recv++;

@@ -3319,6 +3319,88 @@ function exportInbound(){
     rows,'Actual Inbound','ISRD_Inbound'+moTag+'_'+new Date().toISOString().slice(0,10));
   showToast('✓ Export '+rows.length+' รายการเรียบร้อย','var(--green)');
 }
+/* ══════════════════════ MULTI-RECEIPT (รับ PO เดียวหลายรอบ) ══════════════════════ */
+/* นับว่า PO+SKU นี้ถูกรับกี่รอบ (กี่บรรทัดใน IB_DATA) */
+function _ibReceiptCount(po, sku){
+  var poN=(po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(), s=(sku||'').trim();
+  return (IB_DATA||[]).filter(function(x){
+    var xN=(x.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+    if(poN&&xN) return xN===poN && (!s || !(x.sku||'').trim() || (x.sku||'').trim()===s);
+    if(s) return (x.sku||'').trim()===s;
+    return false;
+  }).length;
+}
+
+/* ➕ รับเพิ่มรอบ — เปิดฟอร์มรับใหม่ ดึง order เดิม แต่ "ล้างวันที่+จำนวน" กันเผลอแก้ทับของเก่า */
+window.ibAddMore = function(ri){
+  var ib = IB_DATA[ri]; if(!ib) return;
+  openIbModal(-1); /* โหมดเพิ่มใหม่: ล้างฟอร์ม + ตั้งวันที่ = วันนี้ */
+  /* หา order ใน Tracking ที่ PO+SKU ตรง เพื่อ prefill ให้เหมือนเดิม */
+  var poN=(ib.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(), sku=(ib.sku||'').trim(), oi=-1;
+  for(var i=0;i<DATA.length;i++){
+    var dN=(DATA[i].pod||DATA[i].po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+    if(poN && dN===poN && (!sku || (DATA[i].sku||'').trim()===sku)){ oi=i; break; }
+  }
+  if(oi>=0){ selectIbOrder(oi); }
+  else {
+    var S=function(id,v){ var e=document.getElementById(id); if(e) e.value=v; };
+    S('ib-sku',ib.sku||''); S('ib-po',ib.po||''); S('ib-model',ib.model||''); S('ib-color',ib.color||'');
+    S('ib-brand-sel',ib.brand||'Nineties New'); S('ib-month-sel',normalizeMonth(ib.month||'')||ib.month||'');
+    S('ib-plan-qty',ib.planQty||0); S('ib-vendor',ib.vendor||'');
+  }
+  /* บังคับล้างจำนวนรอบนี้ + วันที่ = วันนี้ (เปลี่ยนเองได้) แล้ว focus ช่องจำนวน */
+  var aq=document.getElementById('ib-actual-qty'); if(aq) aq.value='';
+  var t=document.getElementById('ib-modal-title'); if(t) t.textContent='➕ รับเพิ่มรอบ — '+(ib.model||'');
+  if(typeof showToast==='function') showToast('รับเพิ่มรอบใหม่ — ใส่วันที่+จำนวนของรอบนี้ ระบบจะรวมยอดให้เอง','var(--blue)');
+  setTimeout(function(){ if(aq) aq.focus(); },120);
+};
+
+/* 🕓 ประวัติการรับ — รวมทุกรอบของ PO+SKU นี้ (กี่รอบ วันไหน เท่าไหร่ รวม + % เทียบ Plan) */
+window.ibHistory = function(ri){
+  var base = IB_DATA[ri]; if(!base) return;
+  var po=base.po, sku=base.sku;
+  var poN=(po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(), s=(sku||'').trim();
+  var rows = (IB_DATA||[]).filter(function(ib){
+    var ibN=(ib.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+    if(poN&&ibN) return ibN===poN && (!s || !(ib.sku||'').trim() || (ib.sku||'').trim()===s);
+    if(s) return (ib.sku||'').trim()===s;
+    return false;
+  }).slice().sort(function(a,b){ var da=_parseDMY(a.date)||new Date(0), db=_parseDMY(b.date)||new Date(0); return da-db; });
+  var total=rows.reduce(function(a,b){ return a+(parseInt(b.actualQty)||0); },0);
+  var plan = rows.length?(parseInt(rows[0].planQty)||0):0;
+  if(!plan){ var tr=DATA.find(function(d){ var dN=(d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); return poN&&dN===poN; }); if(tr) plan=parseInt(tr.total)||0; }
+  var pct = plan>0?Math.round(total/plan*100):0;
+  var ov=document.getElementById('ib-hist-overlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='ib-hist-overlay'; ov.className='overlay'; document.body.appendChild(ov); }
+  var bodyRows = rows.map(function(r,i){
+    var wk = (typeof _parseDMY==='function'&&typeof _isoWeek==='function'&&_parseDMY(r.date))?_isoWeek(_parseDMY(r.date)).split('-W')[1]:'';
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:6px 10px;color:var(--text3);font-size:11px">รอบ '+(i+1)+'</td>'+
+      '<td style="padding:6px 10px;font-weight:600">'+esc(_fmtDate(r.date)||'—')+(wk?' <span style="font-size:9px;color:var(--text3)">W'+wk+'</span>':'')+'</td>'+
+      '<td style="padding:6px 10px;text-align:right;font-family:ui-monospace,monospace;color:var(--blue);font-weight:700">'+(parseInt(r.actualQty)||0).toLocaleString()+'</td>'+
+      '<td style="padding:6px 10px;font-size:11px;color:var(--text3)">'+esc(r.addedBy||'—')+'</td>'+
+      '<td style="padding:6px 10px;font-size:11px;color:var(--text3)">'+esc(r.note||'')+'</td>'+
+    '</tr>';
+  }).join('');
+  ov.innerHTML = '<div class="mbox" style="max-width:600px">'+
+    '<div class="mhead"><span>🕓 ประวัติการรับ — '+esc(rows.length?(rows[0].model||''):'')+(po?' · '+esc(po):'')+'</span></div>'+
+    '<div style="padding:14px 18px">'+
+      '<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">'+
+        '<div style="flex:1;min-width:90px;background:var(--bg2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text3)">รับทั้งหมด</div><b style="font-size:18px;color:var(--blue)">'+rows.length+' รอบ</b></div>'+
+        '<div style="flex:1;min-width:90px;background:var(--bg2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text3)">รับจริงรวม</div><b style="font-size:18px;color:var(--green)">'+total.toLocaleString()+'</b></div>'+
+        '<div style="flex:1;min-width:90px;background:var(--bg2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:11px;color:var(--text3)">Plan · %</div><b style="font-size:18px;color:'+(pct>=100?'var(--green)':pct>=80?'var(--amber,#f59e0b)':'var(--red)')+'">'+plan.toLocaleString()+' · '+pct+'%</b></div>'+
+      '</div>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--border)">'+
+        ['','วันที่รับ','จำนวน','ผู้รับ','หมายเหตุ'].map(function(c){ return '<th style="padding:6px 10px;text-align:'+(c==='จำนวน'?'right':'left')+';font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">'+c+'</th>'; }).join('')+
+      '</tr></thead><tbody>'+(bodyRows||'<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text3)">ยังไม่มีการรับ</td></tr>')+'</tbody></table>'+
+      (rows.length>1?'<div style="margin-top:12px;font-size:11px;color:var(--text3);background:var(--bg2);border-radius:8px;padding:8px 10px">💡 PO นี้รับ '+rows.length+' รอบ — แต่ละรอบแยกวันที่ทำให้ Vendor Summary (รายวัน/สัปดาห์) แม่นยำ</div>':'')+
+    '</div>'+
+    '<div style="padding:0 18px 16px;text-align:right"><button class="sbtn sbtn-blue" onclick="document.getElementById(\'ib-hist-overlay\').style.display=\'none\'">ปิด</button></div>'+
+  '</div>';
+  ov.style.display='flex';
+  ov.onclick=function(e){ if(e.target===ov) ov.style.display='none'; };
+};
+
 function renderIbTable(){
   var recvStatus = (document.getElementById('ib-recv-status')||{value:'received'}).value;
   var list = _getFilteredInbound();
@@ -3358,10 +3440,12 @@ function renderIbTable(){
 
   var receivedHtml = list.map(function(d,i){
     var ri = IB_DATA.indexOf(d);
+    var _poN=(d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(), _sku2=(d.sku||'').trim();
+    var _cnt=_ibReceiptCount(d.po, d.sku);
     var pct = d.planQty > 0 ? Math.round(d.actualQty/d.planQty*100) : 100;
     var pctColor = pct >= 100 ? 'var(--green)' : pct >= 80 ? 'var(--amber)' : 'var(--red)';
     return '<tr>'+
-      '<td style="font-size:11px;color:var(--text2)">'+(_fmtDate(d.date)||'—')+'</td>'+
+      '<td style="font-size:11px;color:var(--text2)">'+(_fmtDate(d.date)||'—')+(_cnt>1?' <span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700" title="PO/SKU นี้รับ '+_cnt+' รอบ — กด 🕓 ดูประวัติ">×'+_cnt+'</span>':'')+'</td>'+
       (function(){ var sk=d.sku||(DATA.find(function(t){return t.model===d.model&&t.color===d.color;})||{}).sku||''; return '<td style="font-family:ui-monospace,monospace;font-size:10px;color:var(--text3)">'+esc(sk||'—')+'</td>'; })()+
       '<td style="font-size:11px;color:var(--text2)">'+(d.po||'—')+'</td>'+
       '<td style="font-weight:500">'+esc(d.model)+'<span style="display:block;font-size:10px;color:var(--text3)">'+esc(d.color)+'</span></td>'+
@@ -3394,8 +3478,10 @@ function renderIbTable(){
       }())+'</td>'+
       '<td style="font-size:11px;color:var(--text3)">'+(d.note||'—')+'</td>'+
       '<td style="white-space:nowrap">'+
-        '<button class="delbtn" onclick="openIbModal('+ri+')" style="color:var(--blue);font-size:14px" title="แก้ไข">✎</button>'+
-        '<button class="delbtn" onclick="deleteIbRecord('+ri+')" title="ลบ">✕</button>'+
+        '<button class="delbtn" onclick="ibAddMore('+ri+')" style="color:var(--green);font-size:14px" title="➕ รับเพิ่มรอบ (PO เดียวกัน เข้าหลายครั้ง)">➕</button>'+
+        '<button class="delbtn" onclick="ibHistory('+ri+')" style="color:var(--text2);font-size:13px" title="🕓 ประวัติการรับทุกรอบ">🕓</button>'+
+        '<button class="delbtn" onclick="openIbModal('+ri+')" style="color:var(--blue);font-size:14px" title="แก้ไขรอบนี้">✎</button>'+
+        '<button class="delbtn" onclick="deleteIbRecord('+ri+')" title="ลบรอบนี้">✕</button>'+
       '</td>'+
     '</tr>';
   }).join('');

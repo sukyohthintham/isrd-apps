@@ -7292,12 +7292,14 @@ function renderSales(){
       '<td style="padding:6px 8px;text-align:right;font-family:ui-monospace,monospace;color:var(--text2)">'+(parseInt(x.total)||0).toLocaleString()+'</td>'+
       '<td style="padding:6px 8px;text-align:right;font-family:ui-monospace,monospace;color:var(--blue);font-weight:600">'+(act!==null&&act!==undefined?act.toLocaleString():'—')+'</td>'+
       '<td style="padding:6px 8px;text-align:right;font-family:ui-monospace,monospace;font-weight:700;color:'+(((stock||0)>0)?'#007a3a':'var(--text3)')+'">'+((stock!==null&&stock!==undefined)?stock.toLocaleString():'—')+'</td>'+
+      '<td style="padding:6px 8px;text-align:center">'+(function(){ var m=(typeof getDisplayMonth==='function')?getDisplayMonth(x):''; if(!m && typeof normalizeMonth==='function') m=normalizeMonth(x.month||''); return m?'<span style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">'+m+'</span>':'<span style="color:var(--text3)">—</span>'; })()+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;color:var(--text2);white-space:nowrap">'+(x.eta?esc(x.eta):'<span style="color:var(--text3)">—</span>')+'</td>'+
       '<td style="padding:6px 8px;font-size:11px;color:var(--text2)">'+esc(x.vendor||'—')+'</td>'+
       '<td style="padding:6px 8px;white-space:nowrap">'+((typeof sbadge==='function')?sbadge(x.status):esc(x.status||''))+'</td>'+
     '</tr>';
   }).join('');
   listEl.innerHTML='<div style="overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:64vh"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead style="position:sticky;top:0;z-index:1;background:var(--bg2)"><tr>'+
-    ['รูป','SKU / Model','สี','Brand','Plan','รับแล้ว','พร้อมขาย','Vendor','สถานะ'].map(function(h){var r=(['Plan','รับแล้ว','พร้อมขาย'].indexOf(h)>-1);return '<th style="padding:7px 8px;text-align:'+(r?'right':'left')+';font-size:10px;color:var(--text3);text-transform:uppercase;white-space:nowrap">'+h+'</th>';}).join('')+
+    ['รูป','SKU / Model','สี','Brand','Plan','รับแล้ว','พร้อมขาย','M เข้า','วันเข้า (ETA)','Vendor','สถานะ'].map(function(h){var r=(['Plan','รับแล้ว','พร้อมขาย'].indexOf(h)>-1);var c=(['M เข้า'].indexOf(h)>-1);return '<th style="padding:7px 8px;text-align:'+(r?'right':(c?'center':'left'))+';font-size:10px;color:var(--text3);text-transform:uppercase;white-space:nowrap">'+h+'</th>';}).join('')+
     '</tr></thead><tbody>'+body+'</tbody></table></div>'+
     '<div style="font-size:11px;color:var(--text3);margin-top:8px">แสดง '+rows.length+' รายการ</div>';
   if(typeof preloadImagesForVisibleRows==='function'){ setTimeout(function(){ try{ preloadImagesForVisibleRows(); }catch(e){} },50); }

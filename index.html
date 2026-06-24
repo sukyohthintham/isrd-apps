@@ -6441,14 +6441,13 @@ function _renderWeekly(){
     planWk[wk].qty+=plan;
   });
 
-  /* เข้าจริง รายสัปดาห์ — ยึด ETA เหมือนตาราง Matrix (actual ของสินค้าที่ ETA สัปดาห์นั้น)
-     เพื่อให้กราฟกับตารางตรงกัน 100% (เดิมยึดวันรับจริงจาก Inbound จึงไม่ตรงกับตาราง) */
+  /* เข้าจริง รายสัปดาห์ — ยึด "วันที่รับจริง" จาก Actual Inbound (IB_DATA) ให้ตรงกับ Pivot ทุก WK
+     (เดิมยึด ETA ทำให้ตัวเลขไม่ตรงกับยอดรับจริงจริงๆ) */
   var actWk={}, actNoDate=0, actTotal=0;
-  DATA.forEach(function(d){
-    if(isCancelled(d)) return;
-    var act=getActualQty(d); if(!act || act<=0) return;
+  (IB_DATA||[]).forEach(function(ib){
+    var act=parseInt(ib.actualQty)||0; if(act<=0) return;
     actTotal+=act;
-    var dt=_parseDMY(d.eta);
+    var dt=_parseDMY(ib.date||ib.receiveDate||'');
     if(!dt){ actNoDate+=act; return; }
     var wk=_isoWeek(dt);
     if(!actWk[wk]) actWk[wk]={qty:0, range:_weekRange(dt), sort:dt.getTime()};
@@ -6656,7 +6655,7 @@ function _renderWeekly(){
           var rp = (mxMode==='week') ? rm.month : _perOfMonthStr(rm.month, yr);
           if(rp && periodList.indexOf(rp)!==-1){
             var ba=bucket(rp);
-            var add=(mxUnit==='sku')?1:Math.round(a*((parseInt(rm.qty)||0)/rmSum));
+            var add=(mxUnit==='sku')?1:(parseInt(rm.qty)||0);  /* ใช้ยอดรับจริงของสัปดาห์/เดือนนั้นตรงๆ ให้ตรง Pivot */
             ba.a+=add;
             /* ตกรอบ: รับเข้า period นี้ แต่ Plan อยู่คนละ period */
             if(rp!==per){ if(!ba._slip) ba._slip={}; ba._slip[per]=(ba._slip[per]||0)+add; }
@@ -6664,7 +6663,7 @@ function _renderWeekly(){
           }
         });
       }
-      if(!anyA && a>0 && periodList.indexOf(per)!==-1){ var bf=bucket(per); if(mxUnit==='sku') bf.a+=1; else bf.a+=a; }
+      if(!anyA && a>0 && mxMode!=='week' && periodList.indexOf(per)!==-1){ var bf=bucket(per); if(mxUnit==='sku') bf.a+=1; else bf.a+=a; }
       data[dim].__tot++; if(a>0) data[dim].__recv++;
     });
     return data;

@@ -6054,34 +6054,40 @@ function _vsRenderMonth(){
   var d=_vsDataMonth(); if(!d.months.length) return _vsEmpty();
   var months=d.months, agg=d.agg;
   var mlbl={1:'ม.ค.',2:'ก.พ.',3:'มี.ค.',4:'เม.ย.',5:'พ.ค.',6:'มิ.ย.',7:'ก.ค.',8:'ส.ค.',9:'ก.ย.',10:'ต.ค.',11:'พ.ย.',12:'ธ.ค.'};
+  var DIV='border-left:2px solid #64748b';        /* เส้นทึบแบ่งเดือน */
+  var SUB='background:#334155;color:#fff';         /* แถวรวม TH/CN เข้ม */
+  var GT ='background:#1a2060;color:#fff';          /* TOTAL ALL เข้มสุด */
+  function pctCol(p){ return p>=100?'#34d399':(p>=80?'#fbbf24':(p>0?'#f87171':'rgba(255,255,255,.5)')); }
+  function pctTxt(fc,ac){ if(fc<=0) return '<span style="color:var(--text3)">·</span>'; var p=Math.round(ac/fc*100); return '<span style="color:'+(p>=100?'#10b981':(p>=80?'#f59e0b':'#ef4444'))+';font-weight:700">'+p+'%</span>'; }
+
   var h='<tr><th rowspan="2" style="'+_vsTh()+';position:sticky;left:0;z-index:5;text-align:left;min-width:150px">Vendor</th>';
-  months.forEach(function(m,i){ var bg=i%2?'rgba(59,130,246,.07)':'rgba(245,158,11,.07)'; h+='<th colspan="5" style="'+_vsTh()+';text-align:center;background:'+bg+'">'+esc(m+' · '+(mlbl[parseInt(m.slice(1))]||''))+'</th>'; });
+  months.forEach(function(m,i){ var bg=i%2?'rgba(59,130,246,.07)':'rgba(245,158,11,.07)'; h+='<th colspan="3" style="'+_vsTh()+';text-align:center;background:'+bg+';'+DIV+'">'+esc(m+' · '+(mlbl[parseInt(m.slice(1))]||''))+'</th>'; });
   h+='</tr><tr>';
-  months.forEach(function(){ h+='<th style="'+_vsTh2()+'">Forecast</th><th style="'+_vsTh2()+'">เข้า 1-23</th><th style="'+_vsTh2()+'">เข้า 24-31</th><th style="'+_vsTh2()+';color:#ef4444">ตก Ship</th><th style="'+_vsTh2()+';color:#10b981">รับรวม</th>'; });
+  months.forEach(function(){ h+='<th style="'+_vsTh2()+';'+DIV+'">Forecast</th><th style="'+_vsTh2()+';color:#10b981">Actual</th><th style="'+_vsTh2()+'">%</th>'; });
   h+='</tr>';
+
   var body='', groups=[['TH','🇹🇭 ไทย (TH)'],['CN','🇨🇳 จีน (CN)']];
-  var grand={}; months.forEach(function(m){grand[m]={fc:0,a:0,b:0,tok:0};});
+  var grand={}; months.forEach(function(m){grand[m]={fc:0,ac:0};});
   groups.forEach(function(g){
     var gv=d.vendors.filter(function(v){return (d.tmap[v]||'CN')===g[0];}); if(!gv.length)return;
-    var sub={}; months.forEach(function(m){sub[m]={fc:0,a:0,b:0,tok:0};});
-    body+='<tr><td colspan="'+(1+months.length*5)+'" style="'+_vsGrp()+'">'+g[1]+'</td></tr>';
+    var sub={}; months.forEach(function(m){sub[m]={fc:0,ac:0};});
+    body+='<tr><td colspan="'+(1+months.length*3)+'" style="'+_vsGrp()+'">'+g[1]+'</td></tr>';
     gv.forEach(function(v){
       var row='<td style="'+_vsTdL()+'">'+esc(v)+'</td>';
       months.forEach(function(m){
-        var c=(agg[v]&&agg[v][m])||{fc:0,a:0,b:0,tok:0}, rcv=c.a+c.b+c.tok;
-        sub[m].fc+=c.fc;sub[m].a+=c.a;sub[m].b+=c.b;sub[m].tok+=c.tok;
-        grand[m].fc+=c.fc;grand[m].a+=c.a;grand[m].b+=c.b;grand[m].tok+=c.tok;
-        row+=_vsCell(c.fc,'')+_vsCell(c.a,'')+_vsCell(c.b,'')+_vsCell(c.tok,c.tok>0?'color:#ef4444;font-weight:700':'')+_vsCell(rcv,rcv>0?'color:#10b981;font-weight:700':'');
+        var c=(agg[v]&&agg[v][m])||{fc:0,a:0,b:0,tok:0}, ac=c.a+c.b+c.tok;
+        sub[m].fc+=c.fc; sub[m].ac+=ac; grand[m].fc+=c.fc; grand[m].ac+=ac;
+        row+=_vsCell(c.fc,DIV)+_vsCell(ac, ac>0?'color:#10b981;font-weight:600':'')+'<td style="'+_vsTd()+'">'+pctTxt(c.fc,ac)+'</td>';
       });
       body+='<tr style="border-bottom:1px solid var(--border)">'+row+'</tr>';
     });
-    var sr='<td style="'+_vsTdL('var(--bg2)')+';font-weight:800">รวม '+g[0]+'</td>';
-    months.forEach(function(m){ var s=sub[m],rcv=s.a+s.b+s.tok; sr+=_vsCell(s.fc,'font-weight:800')+_vsCell(s.a,'font-weight:800')+_vsCell(s.b,'font-weight:800')+_vsCell(s.tok,'font-weight:800;color:#ef4444')+_vsCell(rcv,'font-weight:800;color:#10b981'); });
-    body+='<tr style="background:var(--bg2)">'+sr+'</tr>';
+    var sr='<td style="'+_vsTdL('#334155')+';color:#fff;font-weight:800">รวม '+g[0]+'</td>';
+    months.forEach(function(m){ var s=sub[m]; sr+='<td style="'+_vsTd()+';'+SUB+';'+DIV+';font-weight:800">'+(s.fc?s.fc.toLocaleString():'·')+'</td><td style="'+_vsTd()+';'+SUB+';font-weight:800">'+(s.ac?s.ac.toLocaleString():'·')+'</td><td style="'+_vsTd()+';'+SUB+';font-weight:800;color:'+pctCol(s.fc>0?Math.round(s.ac/s.fc*100):0)+'">'+(s.fc>0?Math.round(s.ac/s.fc*100)+'%':'·')+'</td>'; });
+    body+='<tr>'+sr+'</tr>';
   });
-  var gr='<td style="'+_vsTdL('rgba(59,130,246,.15)')+';font-weight:800">TOTAL ALL</td>';
-  months.forEach(function(m){ var s=grand[m],rcv=s.a+s.b+s.tok; gr+=_vsCell(s.fc,'font-weight:800')+_vsCell(s.a,'font-weight:800')+_vsCell(s.b,'font-weight:800')+_vsCell(s.tok,'font-weight:800;color:#ef4444')+_vsCell(rcv,'font-weight:800;color:#10b981'); });
-  body+='<tr style="background:rgba(59,130,246,.12)">'+gr+'</tr>';
+  var gr='<td style="'+_vsTdL('#1a2060')+';color:#fff;font-weight:800">TOTAL ALL</td>';
+  months.forEach(function(m){ var s=grand[m]; gr+='<td style="'+_vsTd()+';'+GT+';'+DIV+';font-weight:800">'+(s.fc?s.fc.toLocaleString():'·')+'</td><td style="'+_vsTd()+';'+GT+';font-weight:800">'+(s.ac?s.ac.toLocaleString():'·')+'</td><td style="'+_vsTd()+';'+GT+';font-weight:800;color:'+pctCol(s.fc>0?Math.round(s.ac/s.fc*100):0)+'">'+(s.fc>0?Math.round(s.ac/s.fc*100)+'%':'·')+'</td>'; });
+  body+='<tr>'+gr+'</tr>';
   return _vsWrap(h, body);
 }
 
@@ -6164,11 +6170,11 @@ window._vsExport=function(){
   } else {
     d=_vsDataMonth();
     var h1=['Vendor','Type'], h2=['',''];
-    d.months.forEach(function(m){ h1.push(m,'','','',''); h2.push('Forecast','เข้า1-23','เข้า24-31','ตกShip','รับรวม'); });
+    d.months.forEach(function(m){ h1.push(m,'',''); h2.push('Forecast','Actual','%'); });
     aoa.push(h1,h2);
-    var tot={}; d.months.forEach(function(m){ tot[m]={fc:0,a:0,b:0,tok:0}; });
-    d.vendors.forEach(function(v){ var r=[v,d.tmap[v]||'CN']; d.months.forEach(function(m){ var c=(d.agg[v]&&d.agg[v][m])||{fc:0,a:0,b:0,tok:0}; tot[m].fc+=c.fc;tot[m].a+=c.a;tot[m].b+=c.b;tot[m].tok+=c.tok; r.push(c.fc,c.a,c.b,c.tok,c.a+c.b+c.tok); }); aoa.push(r); });
-    var tr=['TOTAL ALL','']; d.months.forEach(function(m){ var s=tot[m]; tr.push(s.fc,s.a,s.b,s.tok,s.a+s.b+s.tok); }); aoa.push(tr);
+    var tot={}; d.months.forEach(function(m){ tot[m]={fc:0,ac:0}; });
+    d.vendors.forEach(function(v){ var r=[v,d.tmap[v]||'CN']; d.months.forEach(function(m){ var c=(d.agg[v]&&d.agg[v][m])||{fc:0,a:0,b:0,tok:0}; var ac=c.a+c.b+c.tok; tot[m].fc+=c.fc; tot[m].ac+=ac; r.push(c.fc, ac, c.fc>0?Math.round(ac/c.fc*100)+'%':''); }); aoa.push(r); });
+    var tr=['TOTAL ALL','']; d.months.forEach(function(m){ var s=tot[m]; tr.push(s.fc, s.ac, s.fc>0?Math.round(s.ac/s.fc*100)+'%':''); }); aoa.push(tr);
   }
   var ws=XLSX.utils.aoa_to_sheet(aoa), wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Vendor Summary');
@@ -6184,7 +6190,7 @@ function _renderVendorSummary(){
     (_vsGran==='day' ? '<span style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text2)">ช่วง <input type="date" value="'+esc(_vsFrom)+'" onchange="window._vsSet(\'from\',this.value)" style="'+_vsInp()+'"> ถึง <input type="date" value="'+esc(_vsTo)+'" onchange="window._vsSet(\'to\',this.value)" style="'+_vsInp()+'"></span>' : '')+
     '<button onclick="window._vsExport()" style="margin-left:auto;background:#1d6f42;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">📥 Export Excel</button>'+
     '</div>';
-  var note=(_vsGran==='month') ? '<div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6">Forecast = ยอดสั่ง (Plan) · เข้า 1-23 / 24-31 = ของเข้าจริงตามวันที่รับในเดือนนั้น · <b style="color:#ef4444">ตก Ship</b> = Forecast เดือนนี้ที่ไปรับจริงเดือนถัดไป (ของเลื่อนส่ง) · <b style="color:#10b981">รับรวม</b> = ของเข้าจริงทั้งหมด</div>' :
+  var note=(_vsGran==='month') ? '<div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6">Forecast = ยอดสั่ง (Plan) · <b style="color:#10b981">Actual</b> = รับจริงสะสมถึงปัจจุบัน · <b>%</b> = Actual ÷ Forecast × 100</div>' :
     '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">ตัวเลข = ของเข้าจริง (Actual Inbound) ต่อ Vendor ต่อ'+(_vsGran==='week'?'สัปดาห์ (ISO week)':'วัน')+' · แยกกลุ่ม TH / CN พร้อมยอดรวม</div>';
   var view;
   if(_vsGran==='week') view=_vsRenderWeek();

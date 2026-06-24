@@ -669,6 +669,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <button class="tab" data-instab="cost" onclick="window._switchInsTab('cost')">💰 ต้นทุน</button>
           <button class="tab" data-instab="weekly" onclick="window._switchInsTab('weekly')">📅 รายสัปดาห์</button>
           <button class="tab" data-instab="brandcat" onclick="window._switchInsTab('brandcat')">🏷️ Brand/Cat</button>
+          <button class="tab" data-instab="summary" onclick="window._switchInsTab('summary')">📋 Vendor Summary</button>
         </div>
         <div id="ins-health" class="ins-tab"></div>
         <div id="ins-forecast" class="ins-tab" style="display:none"></div>
@@ -676,6 +677,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
         <div id="ins-cost" class="ins-tab" style="display:none"></div>
         <div id="ins-weekly" class="ins-tab" style="display:none"></div>
         <div id="ins-brandcat" class="ins-tab" style="display:none"></div>
+        <div id="ins-summary" class="ins-tab" style="display:none"></div>
       </div>
 
       <!-- IMPORT -->
@@ -5828,7 +5830,7 @@ var _insTab = 'health';
 window._switchInsTab = function(t){
   _insTab = t;
   document.querySelectorAll('[data-instab]').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-instab')===t); });
-  ['health','forecast','vendor','cost','weekly','brandcat'].forEach(function(k){
+  ['health','forecast','vendor','cost','weekly','brandcat','summary'].forEach(function(k){
     var el=document.getElementById('ins-'+k); if(el) el.style.display = (k===t?'block':'none');
   });
   renderInsights();
@@ -5846,7 +5848,265 @@ function renderInsights(){
   if(_insTab==='cost')     _renderCostInsight();
   if(_insTab==='weekly')   _renderWeekly();
   if(_insTab==='brandcat') _renderBrandCat();
+  if(_insTab==='summary')  _renderVendorSummary();
 }
+
+/* ══════════════════════ VENDOR SUMMARY (แยกตาม Vendor · day/wk/month) ══════════════════════ */
+var _vsGran = 'month';   /* month | week | day */
+var _vsType = 'all';     /* all | TH | CN */
+var _vsFrom = '', _vsTo = '';
+
+window._vsSet = function(k,v){
+  if(k==='gran') _vsGran=v;
+  else if(k==='type') _vsType=v;
+  else if(k==='from') _vsFrom=v;
+  else if(k==='to') _vsTo=v;
+  _renderVendorSummary();
+};
+
+function _vsN(v){ return parseInt(v)||0; }
+function _vsBE(y){ return ('0'+(((y+543)%100))).slice(-2); }
+function _vsWk(w){ var p=String(w).split('-W'); return p[1]?('W'+p[1]):w; }
+
+/* vendor -> 'TH' | 'CN' */
+function _vsTypeMap(){
+  var map={};
+  if(typeof VENDORS!=='undefined' && VENDORS.forEach){
+    VENDORS.forEach(function(v){ if(v&&v.name) map[v.name.trim()] = (v.type==='TH'?'TH':'CN'); });
+  }
+  DATA.forEach(function(d){
+    var vn=(d.vendor||'').trim(); if(!vn||map[vn]) return;
+    map[vn] = ((d.type||'').toUpperCase().indexOf('TH')>-1) ? 'TH' : 'CN';
+  });
+  (IB_DATA||[]).forEach(function(ib){
+    var vn=(ib.vendor||'').trim(); if(!vn||map[vn]) return;
+    map[vn]='CN';
+  });
+  return map;
+}
+
+function _vsVendorList(tmap){
+  var set={};
+  DATA.forEach(function(d){ if(isCancelled(d))return; var v=(d.vendor||'').trim(); if(v) set[v]=true; });
+  (IB_DATA||[]).forEach(function(ib){ var v=(ib.vendor||'').trim(); if(v&&_vsN(ib.actualQty)>0) set[v]=true; });
+  var arr=Object.keys(set);
+  if(_vsType!=='all') arr=arr.filter(function(v){ return (tmap[v]||'CN')===_vsType; });
+  arr.sort(function(a,b){
+    var ta=tmap[a]||'CN', tb=tmap[b]||'CN';
+    if(ta!==tb) return ta==='TH'?-1:1;
+    return a.localeCompare(b,'th');
+  });
+  return arr;
+}
+
+/* ── DATA BUILDERS (ใช้ทั้ง render + export ให้ตรงกันเสมอ) ── */
+function _vsDataMonth(){
+  var tmap=_vsTypeMap(), vendors=_vsVendorList(tmap);
+  var mset={};
+  DATA.forEach(function(d){ if(isCancelled(d))return; var m=normalizeMonth(d.month||''); if(m) mset[m]=true; });
+  (IB_DATA||[]).forEach(function(ib){ if(_vsN(ib.actualQty)<=0)return; var m=normalizeMonth(ib.month||''); var dt=_parseDMY(ib.date||''); if(!m&&dt)m='M'+(dt.getMonth()+1); if(m) mset[m]=true; });
+  var months=Object.keys(mset).sort(function(a,b){return parseInt(a.slice(1))-parseInt(b.slice(1));});
+  var agg={};
+  function C(v,m){ (agg[v]=agg[v]||{}); return (agg[v][m]=agg[v][m]||{fc:0,a:0,b:0,tok:0}); }
+  DATA.forEach(function(d){ if(isCancelled(d))return; var v=(d.vendor||'').trim(), m=normalizeMonth(d.month||''); if(v&&m) C(v,m).fc+=_vsN(d.total); });
+  (IB_DATA||[]).forEach(function(ib){
+    var q=_vsN(ib.actualQty); if(q<=0)return; var v=(ib.vendor||'').trim(); if(!v)return;
+    var m=normalizeMonth(ib.month||''), dt=_parseDMY(ib.date||''); if(!m&&dt)m='M'+(dt.getMonth()+1); if(!m)return;
+    var c=C(v,m), planCal=parseInt(m.slice(1));
+    if(!dt){ c.a+=q; return; }
+    var rc=dt.getMonth()+1, day=dt.getDate();
+    if(rc>planCal) c.tok+=q;             /* รับหลังเดือน Plan = ตก Ship (ของเลื่อน) */
+    else if(rc===planCal && day>=24) c.b+=q;
+    else c.a+=q;
+  });
+  return {months:months, agg:agg, vendors:vendors, tmap:tmap};
+}
+
+function _vsDataWeek(){
+  var tmap=_vsTypeMap(), vendors=_vsVendorList(tmap);
+  var wkset={}, agg={}, fc={};
+  DATA.forEach(function(d){ if(isCancelled(d))return; var v=(d.vendor||'').trim(); if(v) fc[v]=(fc[v]||0)+_vsN(d.total); });
+  (IB_DATA||[]).forEach(function(ib){ var q=_vsN(ib.actualQty); if(q<=0)return; var v=(ib.vendor||'').trim(); if(!v)return; var dt=_parseDMY(ib.date||''); if(!dt)return; var wk=_isoWeek(dt); wkset[wk]=true; (agg[v]=agg[v]||{}); agg[v][wk]=(agg[v][wk]||0)+q; });
+  var weeks=Object.keys(wkset).sort();
+  return {weeks:weeks, agg:agg, fc:fc, vendors:vendors, tmap:tmap};
+}
+
+function _vsDataDay(){
+  var tmap=_vsTypeMap(), vendors=_vsVendorList(tmap);
+  var dmap={}, agg={};
+  (IB_DATA||[]).forEach(function(ib){ var q=_vsN(ib.actualQty); if(q<=0)return; var v=(ib.vendor||'').trim(); if(!v)return; var dt=_parseDMY(ib.date||''); if(!dt)return; var key=dt.getFullYear()+'-'+('0'+(dt.getMonth()+1)).slice(-2)+'-'+('0'+dt.getDate()).slice(-2); dmap[key]=dt; (agg[v]=agg[v]||{}); agg[v][key]=(agg[v][key]||0)+q; });
+  var dates=Object.keys(dmap).sort();
+  if(_vsFrom) dates=dates.filter(function(k){return k>=_vsFrom;});
+  if(_vsTo)   dates=dates.filter(function(k){return k<=_vsTo;});
+  if(!_vsFrom && !_vsTo && dates.length>21) dates=dates.slice(-21);
+  return {dates:dates, dmap:dmap, agg:agg, vendors:vendors, tmap:tmap};
+}
+
+/* ── style helpers ── */
+function _vsTh(){ return 'padding:7px 10px;font-size:11px;font-weight:700;color:var(--text);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap'; }
+function _vsTh2(){ return 'padding:5px 10px;font-size:9px;font-weight:600;color:var(--text3);background:var(--bg2);border-bottom:2px solid var(--border);text-transform:uppercase;text-align:right;white-space:nowrap'; }
+function _vsTd(){ return 'padding:5px 10px;font-size:12px;color:var(--text2);text-align:right;white-space:nowrap;font-family:ui-monospace,monospace'; }
+function _vsTdL(bg){ return _vsTd()+';text-align:left;position:sticky;left:0;z-index:2;background:'+(bg||'var(--card,#fff)')+';font-weight:600;min-width:150px'; }
+function _vsGrp(){ return 'padding:6px 10px;font-size:11px;font-weight:700;color:var(--text);background:var(--bg2);position:sticky;left:0'; }
+function _vsCell(n,extra){ return '<td style="'+_vsTd()+';'+(extra||'')+'">'+(n?n.toLocaleString():'<span style="color:var(--text3)">·</span>')+'</td>'; }
+function _vsWrap(head, body){
+  return '<div style="overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:10px">'+
+    '<table style="border-collapse:separate;border-spacing:0;width:max-content;min-width:100%">'+
+    '<thead style="position:sticky;top:0;z-index:4">'+head+'</thead><tbody>'+body+'</tbody></table></div>';
+}
+function _vsEmpty(){ return _insCard('', '<div style="font-size:13px;color:var(--text3);text-align:center;padding:30px">ยังไม่มีข้อมูลพอจะสรุป — ต้องมี Tracking (Forecast) และ Actual Inbound ที่ระบุ Vendor ก่อนครับ</div>', '#94a3b8'); }
+function _vsSeg(key,cur,opts){
+  return '<div style="display:inline-flex;background:var(--bg2);border-radius:8px;padding:3px;gap:2px">'+
+    opts.map(function(o){ var on=o[0]===cur;
+      return '<button onclick="window._vsSet(\''+key+'\',\''+o[0]+'\')" style="border:none;cursor:pointer;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:'+(on?'700':'500')+';background:'+(on?'var(--card,#fff)':'transparent')+';color:'+(on?'var(--text)':'var(--text2)')+';'+(on?'box-shadow:0 1px 3px rgba(0,0,0,.12)':'')+'">'+o[1]+'</button>';
+    }).join('')+'</div>';
+}
+function _vsInp(){ return 'border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;background:var(--card,#fff);color:var(--text)'; }
+
+/* ── RENDER: MONTH ── */
+function _vsRenderMonth(){
+  var d=_vsDataMonth(); if(!d.months.length) return _vsEmpty();
+  var months=d.months, agg=d.agg;
+  var mlbl={1:'ม.ค.',2:'ก.พ.',3:'มี.ค.',4:'เม.ย.',5:'พ.ค.',6:'มิ.ย.',7:'ก.ค.',8:'ส.ค.',9:'ก.ย.',10:'ต.ค.',11:'พ.ย.',12:'ธ.ค.'};
+  var h='<tr><th rowspan="2" style="'+_vsTh()+';position:sticky;left:0;z-index:5;text-align:left;min-width:150px">Vendor</th>';
+  months.forEach(function(m,i){ var bg=i%2?'rgba(59,130,246,.07)':'rgba(245,158,11,.07)'; h+='<th colspan="5" style="'+_vsTh()+';text-align:center;background:'+bg+'">'+esc(m+' · '+(mlbl[parseInt(m.slice(1))]||''))+'</th>'; });
+  h+='</tr><tr>';
+  months.forEach(function(){ h+='<th style="'+_vsTh2()+'">Forecast</th><th style="'+_vsTh2()+'">เข้า 1-23</th><th style="'+_vsTh2()+'">เข้า 24-31</th><th style="'+_vsTh2()+';color:#ef4444">ตก Ship</th><th style="'+_vsTh2()+';color:#10b981">รับรวม</th>'; });
+  h+='</tr>';
+  var body='', groups=[['TH','🇹🇭 ไทย (TH)'],['CN','🇨🇳 จีน (CN)']];
+  var grand={}; months.forEach(function(m){grand[m]={fc:0,a:0,b:0,tok:0};});
+  groups.forEach(function(g){
+    var gv=d.vendors.filter(function(v){return (d.tmap[v]||'CN')===g[0];}); if(!gv.length)return;
+    var sub={}; months.forEach(function(m){sub[m]={fc:0,a:0,b:0,tok:0};});
+    body+='<tr><td colspan="'+(1+months.length*5)+'" style="'+_vsGrp()+'">'+g[1]+'</td></tr>';
+    gv.forEach(function(v){
+      var row='<td style="'+_vsTdL()+'">'+esc(v)+'</td>';
+      months.forEach(function(m){
+        var c=(agg[v]&&agg[v][m])||{fc:0,a:0,b:0,tok:0}, rcv=c.a+c.b+c.tok;
+        sub[m].fc+=c.fc;sub[m].a+=c.a;sub[m].b+=c.b;sub[m].tok+=c.tok;
+        grand[m].fc+=c.fc;grand[m].a+=c.a;grand[m].b+=c.b;grand[m].tok+=c.tok;
+        row+=_vsCell(c.fc,'')+_vsCell(c.a,'')+_vsCell(c.b,'')+_vsCell(c.tok,c.tok>0?'color:#ef4444;font-weight:700':'')+_vsCell(rcv,rcv>0?'color:#10b981;font-weight:700':'');
+      });
+      body+='<tr style="border-bottom:1px solid var(--border)">'+row+'</tr>';
+    });
+    var sr='<td style="'+_vsTdL('var(--bg2)')+';font-weight:800">รวม '+g[0]+'</td>';
+    months.forEach(function(m){ var s=sub[m],rcv=s.a+s.b+s.tok; sr+=_vsCell(s.fc,'font-weight:800')+_vsCell(s.a,'font-weight:800')+_vsCell(s.b,'font-weight:800')+_vsCell(s.tok,'font-weight:800;color:#ef4444')+_vsCell(rcv,'font-weight:800;color:#10b981'); });
+    body+='<tr style="background:var(--bg2)">'+sr+'</tr>';
+  });
+  var gr='<td style="'+_vsTdL('rgba(59,130,246,.15)')+';font-weight:800">TOTAL ALL</td>';
+  months.forEach(function(m){ var s=grand[m],rcv=s.a+s.b+s.tok; gr+=_vsCell(s.fc,'font-weight:800')+_vsCell(s.a,'font-weight:800')+_vsCell(s.b,'font-weight:800')+_vsCell(s.tok,'font-weight:800;color:#ef4444')+_vsCell(rcv,'font-weight:800;color:#10b981'); });
+  body+='<tr style="background:rgba(59,130,246,.12)">'+gr+'</tr>';
+  return _vsWrap(h, body);
+}
+
+/* ── RENDER: WEEK ── */
+function _vsRenderWeek(){
+  var d=_vsDataWeek(); if(!d.weeks.length) return _vsEmpty();
+  var weeks=d.weeks;
+  var head='<tr><th style="'+_vsTh()+';position:sticky;left:0;z-index:5;text-align:left;min-width:150px">Vendor</th>'+
+    '<th style="'+_vsTh()+';text-align:right">Forecast รวม</th>'+
+    weeks.map(function(w){ return '<th style="'+_vsTh()+';text-align:right">'+esc(_vsWk(w))+'</th>'; }).join('')+
+    '<th style="'+_vsTh()+';text-align:right;color:#10b981">รับรวม</th></tr>';
+  var body='', groups=[['TH','🇹🇭 ไทย (TH)'],['CN','🇨🇳 จีน (CN)']];
+  var gTot={fc:0,tot:0,wk:{}}; weeks.forEach(function(w){gTot.wk[w]=0;});
+  groups.forEach(function(g){
+    var gv=d.vendors.filter(function(v){return (d.tmap[v]||'CN')===g[0];}); if(!gv.length)return;
+    var sub={fc:0,tot:0,wk:{}}; weeks.forEach(function(w){sub.wk[w]=0;});
+    body+='<tr><td colspan="'+(weeks.length+3)+'" style="'+_vsGrp()+'">'+g[1]+'</td></tr>';
+    gv.forEach(function(v){
+      var fcv=d.fc[v]||0, sum=0, row='<td style="'+_vsTdL()+'">'+esc(v)+'</td>'+_vsCell(fcv,'');
+      weeks.forEach(function(w){ var q=(d.agg[v]&&d.agg[v][w])||0; sum+=q; sub.wk[w]+=q; gTot.wk[w]+=q; row+=_vsCell(q,q>0?'color:#10b981':''); });
+      sub.fc+=fcv; sub.tot+=sum; gTot.fc+=fcv; gTot.tot+=sum;
+      row+=_vsCell(sum,'color:#10b981;font-weight:700');
+      body+='<tr style="border-bottom:1px solid var(--border)">'+row+'</tr>';
+    });
+    var sr='<td style="'+_vsTdL('var(--bg2)')+';font-weight:800">รวม '+g[0]+'</td>'+_vsCell(sub.fc,'font-weight:800');
+    weeks.forEach(function(w){ sr+=_vsCell(sub.wk[w],'font-weight:800'); });
+    sr+=_vsCell(sub.tot,'font-weight:800;color:#10b981');
+    body+='<tr style="background:var(--bg2)">'+sr+'</tr>';
+  });
+  var gr='<td style="'+_vsTdL('rgba(59,130,246,.15)')+';font-weight:800">TOTAL ALL</td>'+_vsCell(gTot.fc,'font-weight:800');
+  weeks.forEach(function(w){ gr+=_vsCell(gTot.wk[w],'font-weight:800'); });
+  gr+=_vsCell(gTot.tot,'font-weight:800;color:#10b981');
+  body+='<tr style="background:rgba(59,130,246,.12)">'+gr+'</tr>';
+  return _vsWrap(head, body);
+}
+
+/* ── RENDER: DAY ── */
+function _vsRenderDay(){
+  var d=_vsDataDay(); if(!d.dates.length) return _vsEmpty();
+  var dates=d.dates;
+  var head='<tr><th style="'+_vsTh()+';position:sticky;left:0;z-index:5;text-align:left;min-width:150px">Vendor</th>'+
+    dates.map(function(k){ var dt=d.dmap[k]; return '<th style="'+_vsTh()+';text-align:right">'+dt.getDate()+'/'+(dt.getMonth()+1)+'<br><span style="font-weight:400;color:var(--text3)">'+_vsBE(dt.getFullYear())+'</span></th>'; }).join('')+
+    '<th style="'+_vsTh()+';text-align:right;color:#10b981">รวม</th></tr>';
+  var body='', groups=[['TH','🇹🇭 ไทย (TH)'],['CN','🇨🇳 จีน (CN)']];
+  var gTot={tot:0,dd:{}}; dates.forEach(function(k){gTot.dd[k]=0;});
+  groups.forEach(function(g){
+    var gv=d.vendors.filter(function(v){return (d.tmap[v]||'CN')===g[0];}); if(!gv.length)return;
+    var sub={tot:0,dd:{}}; dates.forEach(function(k){sub.dd[k]=0;});
+    body+='<tr><td colspan="'+(dates.length+2)+'" style="'+_vsGrp()+'">'+g[1]+'</td></tr>';
+    gv.forEach(function(v){
+      var sum=0, row='<td style="'+_vsTdL()+'">'+esc(v)+'</td>';
+      dates.forEach(function(k){ var q=(d.agg[v]&&d.agg[v][k])||0; sum+=q; sub.dd[k]+=q; gTot.dd[k]+=q; row+=_vsCell(q,q>0?'color:#10b981':''); });
+      sub.tot+=sum; gTot.tot+=sum; row+=_vsCell(sum,'color:#10b981;font-weight:700');
+      body+='<tr style="border-bottom:1px solid var(--border)">'+row+'</tr>';
+    });
+    var sr='<td style="'+_vsTdL('var(--bg2)')+';font-weight:800">รวม '+g[0]+'</td>';
+    dates.forEach(function(k){ sr+=_vsCell(sub.dd[k],'font-weight:800'); });
+    sr+=_vsCell(sub.tot,'font-weight:800;color:#10b981');
+    body+='<tr style="background:var(--bg2)">'+sr+'</tr>';
+  });
+  var gr='<td style="'+_vsTdL('rgba(59,130,246,.15)')+';font-weight:800">TOTAL ALL</td>';
+  dates.forEach(function(k){ gr+=_vsCell(gTot.dd[k],'font-weight:800'); });
+  gr+=_vsCell(gTot.tot,'font-weight:800;color:#10b981');
+  body+='<tr style="background:rgba(59,130,246,.12)">'+gr+'</tr>';
+  return _vsWrap(head, body);
+}
+
+/* ── EXPORT EXCEL ── */
+window._vsExport=function(){
+  if(typeof XLSX==='undefined'){ alert('ไม่พบไลบรารี XLSX'); return; }
+  var aoa=[], fname='VendorSummary_'+_vsGran, d;
+  if(_vsGran==='week'){
+    d=_vsDataWeek();
+    var hw=['Vendor','Type','Forecast รวม']; d.weeks.forEach(function(w){ hw.push(_vsWk(w)); }); hw.push('รับรวม'); aoa.push(hw);
+    d.vendors.forEach(function(v){ var r=[v,d.tmap[v]||'CN',d.fc[v]||0], s=0; d.weeks.forEach(function(w){ var q=(d.agg[v]&&d.agg[v][w])||0; s+=q; r.push(q); }); r.push(s); aoa.push(r); });
+  } else if(_vsGran==='day'){
+    d=_vsDataDay();
+    var hd=['Vendor','Type']; d.dates.forEach(function(k){ var dt=d.dmap[k]; hd.push(dt.getDate()+'/'+(dt.getMonth()+1)+'/'+_vsBE(dt.getFullYear())); }); hd.push('รวม'); aoa.push(hd);
+    d.vendors.forEach(function(v){ var r=[v,d.tmap[v]||'CN'], s=0; d.dates.forEach(function(k){ var q=(d.agg[v]&&d.agg[v][k])||0; s+=q; r.push(q); }); r.push(s); aoa.push(r); });
+  } else {
+    d=_vsDataMonth();
+    var h1=['Vendor','Type'], h2=['',''];
+    d.months.forEach(function(m){ h1.push(m,'','','',''); h2.push('Forecast','เข้า1-23','เข้า24-31','ตกShip','รับรวม'); });
+    aoa.push(h1,h2);
+    var tot={}; d.months.forEach(function(m){ tot[m]={fc:0,a:0,b:0,tok:0}; });
+    d.vendors.forEach(function(v){ var r=[v,d.tmap[v]||'CN']; d.months.forEach(function(m){ var c=(d.agg[v]&&d.agg[v][m])||{fc:0,a:0,b:0,tok:0}; tot[m].fc+=c.fc;tot[m].a+=c.a;tot[m].b+=c.b;tot[m].tok+=c.tok; r.push(c.fc,c.a,c.b,c.tok,c.a+c.b+c.tok); }); aoa.push(r); });
+    var tr=['TOTAL ALL','']; d.months.forEach(function(m){ var s=tot[m]; tr.push(s.fc,s.a,s.b,s.tok,s.a+s.b+s.tok); }); aoa.push(tr);
+  }
+  var ws=XLSX.utils.aoa_to_sheet(aoa), wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Vendor Summary');
+  XLSX.writeFile(wb, fname+'.xlsx');
+};
+
+/* ── MAIN RENDER ── */
+function _renderVendorSummary(){
+  var el=document.getElementById('ins-summary'); if(!el) return;
+  var ctrl='<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px">'+
+    _vsSeg('gran',_vsGran,[['month','📅 รายเดือน'],['week','🗓️ รายสัปดาห์'],['day','📆 รายวัน']])+
+    _vsSeg('type',_vsType,[['all','ทั้งหมด'],['TH','TH'],['CN','CN']])+
+    (_vsGran==='day' ? '<span style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text2)">ช่วง <input type="date" value="'+esc(_vsFrom)+'" onchange="window._vsSet(\'from\',this.value)" style="'+_vsInp()+'"> ถึง <input type="date" value="'+esc(_vsTo)+'" onchange="window._vsSet(\'to\',this.value)" style="'+_vsInp()+'"></span>' : '')+
+    '<button onclick="window._vsExport()" style="margin-left:auto;background:#1d6f42;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">📥 Export Excel</button>'+
+    '</div>';
+  var note=(_vsGran==='month') ? '<div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6">Forecast = ยอดสั่ง (Plan) · เข้า 1-23 / 24-31 = ของเข้าจริงตามวันที่รับในเดือนนั้น · <b style="color:#ef4444">ตก Ship</b> = Forecast เดือนนี้ที่ไปรับจริงเดือนถัดไป (ของเลื่อนส่ง) · <b style="color:#10b981">รับรวม</b> = ของเข้าจริงทั้งหมด</div>' :
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">ตัวเลข = ของเข้าจริง (Actual Inbound) ต่อ Vendor ต่อ'+(_vsGran==='week'?'สัปดาห์ (ISO week)':'วัน')+' · แยกกลุ่ม TH / CN พร้อมยอดรวม</div>';
+  var view;
+  if(_vsGran==='week') view=_vsRenderWeek();
+  else if(_vsGran==='day') view=_vsRenderDay();
+  else view=_vsRenderMonth();
+  el.innerHTML = ctrl + note + view;
+}
+
 
 /* ── กลุ่ม 1: DATA HEALTH ── */
 function _renderHealth(){

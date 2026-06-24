@@ -1613,7 +1613,7 @@ body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min
           <div class="twrap">
             <table class="dt">
               <thead><tr>
-                <th>วันที่รับ</th><th>SKU</th><th>PO</th><th>Model / Color</th><th style="width:70px">Brand</th><th>Category</th>
+                <th>วันที่รับ</th><th style="width:55px;text-align:center" title="สัปดาห์ที่รับจริง (ISO week)">WK รับ</th><th>SKU</th><th>PO</th><th>Model / Color</th><th style="width:70px">Brand</th><th>Category</th>
                 <th>Plan QTY</th><th>รับจริง QTY</th><th>% รับ</th>
                 <th style="width:80px" title="ต้นทุนที่จ่ายจริง">ต้นทุน฿<div style="font-size:9px;color:var(--text3);font-weight:400">(จ่ายจริง)</div></th>
                 <th style="width:80px;background:#fef3c7" title="ต้นทุนประมาณการจาก Cost Sheet (BOM)">Cost Sheet<div style="font-size:9px;color:#92400e;font-weight:400">(BOM)</div></th>
@@ -3308,14 +3308,15 @@ function exportInbound(){
   var rows = src.map(function(d){
     var pct = d.planQty>0?Math.round(d.actualQty/d.planQty*100):100;
     var sku = d.sku || (DATA.find(function(t){return t.model===d.model&&t.color===d.color;})||{}).sku || '';
-    return [d.date||'',sku,d.po||'',d.model||'',d.color||'',d.brand||'',d.month||'',
+    var _wk=(function(){var dt=_parseDMY(d.date); return dt?'W'+_isoWeek(dt).split('-W')[1]:'';})();
+    return [d.date||'',_wk,sku,d.po||'',d.model||'',d.color||'',d.brand||'',d.month||'',
       d.planQty||0,d.actualQty||0,pct+'%',
       d.cost_thb||0,d.costSheet||0,
       d.vendor||'',d.note||''];
   });
   /* ใส่เดือนที่ filter ในชื่อไฟล์ ให้รู้ว่า export ของเดือนไหน */
   var moTag = (document.getElementById('ib-month') && document.getElementById('ib-month').value) ? '_'+document.getElementById('ib-month').value : '_all';
-  exportXLSX(['วันที่รับ','SKU','PO','Model','Color','Brand','เดือน','Plan QTY','Actual QTY','% รับ','ต้นทุน฿ (จ่ายจริง)','Cost Sheet (BOM)','Vendor','หมายเหตุ'],
+  exportXLSX(['วันที่รับ','WK รับ','SKU','PO','Model','Color','Brand','เดือน','Plan QTY','Actual QTY','% รับ','ต้นทุน฿ (จ่ายจริง)','Cost Sheet (BOM)','Vendor','หมายเหตุ'],
     rows,'Actual Inbound','ISRD_Inbound'+moTag+'_'+new Date().toISOString().slice(0,10));
   showToast('✓ Export '+rows.length+' รายการเรียบร้อย','var(--green)');
 }
@@ -3446,6 +3447,7 @@ function renderIbTable(){
     var pctColor = pct >= 100 ? 'var(--green)' : pct >= 80 ? 'var(--amber)' : 'var(--red)';
     return '<tr>'+
       '<td style="font-size:11px;color:var(--text2)">'+(_fmtDate(d.date)||'—')+(_cnt>1?' <span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700" title="PO/SKU นี้รับ '+_cnt+' รอบ — กด 🕓 ดูประวัติ">×'+_cnt+'</span>':'')+'</td>'+
+      '<td style="text-align:center">'+(function(){var dt=_parseDMY(d.date); return dt?'<span style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700">W'+_isoWeek(dt).split('-W')[1]+'</span>':'<span style="color:var(--text3)">—</span>';})()+'</td>'+
       (function(){ var sk=d.sku||(DATA.find(function(t){return t.model===d.model&&t.color===d.color;})||{}).sku||''; return '<td style="font-family:ui-monospace,monospace;font-size:10px;color:var(--text3)">'+esc(sk||'—')+'</td>'; })()+
       '<td style="font-size:11px;color:var(--text2)">'+(d.po||'—')+'</td>'+
       '<td style="font-weight:500">'+esc(d.model)+'<span style="display:block;font-size:10px;color:var(--text3)">'+esc(d.color)+'</span></td>'+
@@ -3491,6 +3493,7 @@ function renderIbTable(){
     var ti = DATA.indexOf(d);
     return '<tr style="background:#fffbeb">'+
       '<td style="font-size:11px;color:var(--text3)">—</td>'+
+      '<td style="text-align:center;color:var(--text3)">—</td>'+
       '<td style="font-family:ui-monospace,monospace;font-size:10px;color:var(--text3)">'+esc(d.sku||'—')+'</td>'+
       '<td style="font-size:11px;color:var(--text2)">'+(d.pod||d.po||'—')+'</td>'+
       '<td style="font-weight:500">'+esc(d.model)+'<span style="display:block;font-size:10px;color:var(--text3)">'+esc(d.color)+'</span></td>'+
@@ -3519,7 +3522,7 @@ function renderIbTable(){
   document.getElementById('ib-count').textContent = countLabel;
 
   var allHtml = receivedHtml + pendingHtml;
-  document.getElementById('ib-tbody').innerHTML = allHtml || '<tr><td colspan="15" style="padding:30px;text-align:center;color:var(--text3)">ไม่มีรายการ</td></tr>';
+  document.getElementById('ib-tbody').innerHTML = allHtml || '<tr><td colspan="16" style="padding:30px;text-align:center;color:var(--text3)">ไม่มีรายการ</td></tr>';
 }
 
 window.deleteIbRecord = function(idx){
@@ -8600,6 +8603,15 @@ function _mxKeyLabel(k){
 }
 window._showMxDetail = function(dimType, dimValue, periodKey, mode){
   var mxMode = window._mxMode || 'month';
+  function _rcvYr(d){ var dt=_parseDMY(d.eta); return dt?dt.getFullYear():new Date().getFullYear(); }
+  function _rcvPeriods(d){
+    var rms = (mxMode==='week') ? (typeof getReceiveWeeks==='function'?getReceiveWeeks(d):[]) : (typeof getReceiveMonths==='function'?getReceiveMonths(d):[]);
+    var yr=_rcvYr(d);
+    return (rms||[]).map(function(rm){
+      if(mxMode==='week') return rm.month; /* 'yyyy-Www' */
+      var mm=((rm.month||'').toString().match(/(\d+)/)||[])[1]; return mm?(yr+'-'+(mm.length<2?'0'+mm:mm)):null;
+    }).filter(Boolean);
+  }
   var rows = DATA.filter(function(d){
     if(isCancelled(d)) return false;
     var p=parseInt(d.total)||0; if(p<=0) return false;
@@ -8608,9 +8620,13 @@ window._showMxDetail = function(dimType, dimValue, periodKey, mode){
     else if(dimType==='category') dm=(d.brand||'').trim()||'ไม่ระบุ';
     else dm=(d.sku||'').trim()||'(ไม่มี SKU)';
     if(dm!==dimValue) return false;
-    if(_mxPeriodKey(d,mxMode)!==periodKey) return false;
-    if(mode==='actual'){ var a=getActualQty(d); if(a===null||a<=0) return false; }
-    return true;
+    if(mode==='actual'){
+      var a=getActualQty(d); if(a===null||a<=0) return false;
+      var rp=_rcvPeriods(d);
+      if(rp.length) return rp.indexOf(periodKey)!==-1;   /* ยึดสัปดาห์/เดือนที่รับจริง */
+      return _mxPeriodKey(d,mxMode)===periodKey;          /* ไม่มีวันรับ → fallback ETA */
+    }
+    return _mxPeriodKey(d,mxMode)===periodKey;            /* plan mode: ยึด ETA/เดือน Plan */
   });
   var typeLabel = dimType==='brand'?'Brand':(dimType==='category'?'Category':'SKU');
   var modeLabel = mode==='actual'?'รับจริง (Actual)':'แผน (Plan)';

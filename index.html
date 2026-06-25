@@ -664,7 +664,7 @@ body.hide-cost .costcol{display:none!important}
       <div class="page" id="page-sales">
         <div class="ptitle">🛍️ Sale — สต๊อกขาย</div>
         <div class="psub">ดูสถานะสินค้าและจำนวนพร้อมขาย — คลิกการ์ดเพื่อดูรายการสินค้าพร้อมรูป</div>
-        <div style="margin-bottom:14px"><input id="sales-search" oninput="_saleSearch()" placeholder="🔍 ค้นหา SKU / รุ่น / สี / Vendor" style="width:100%;max-width:340px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg,#fff);color:var(--text);font-size:13px;outline:none"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px"><input id="sales-search" oninput="_saleSearch()" placeholder="🔍 ค้นหา SKU / รุ่น / สี / Vendor" style="flex:1;min-width:200px;max-width:320px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg,#fff);color:var(--text);font-size:13px;outline:none"><select id="sales-brand" onchange="_saleSearch()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg,#fff);color:var(--text);font-size:13px;outline:none"><option value="">ทุก Brand</option></select><select id="sales-month" onchange="_saleSearch()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg,#fff);color:var(--text);font-size:13px;outline:none"><option value="">ทุกเดือน (M)</option></select></div>
         <div id="sales-cards" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px"></div>
         <div id="sales-list"></div>
       </div>
@@ -7256,8 +7256,24 @@ function renderSales(){
     {k:'waiting',l:'⏳ รอดำเนินการ',sub:'Waiting',col:'var(--amber)'},
     {k:'hold',l:'⏸ Hold',sub:'พักไว้ก่อน',col:'var(--red)'}
   ];
+  /* ── populate + read filters (Brand / Month) ── */
+  var q=(((document.getElementById('sales-search')||{}).value)||'').toLowerCase().trim();
+  var brEl=document.getElementById('sales-brand'), moEl=document.getElementById('sales-month');
+  var selBr=brEl?brEl.value:'', selMo=moEl?moEl.value:'';
+  function _dBrand(d){ return (((typeof getDisplayBrand==='function')?getDisplayBrand(d):d.brand)||''); }
+  function _dMonth(d){ var m=(typeof getDisplayMonth==='function')?getDisplayMonth(d):''; if(!m && typeof normalizeMonth==='function') m=normalizeMonth(d.month||''); return m; }
+  if(brEl){ var brs={}; DATA.forEach(function(d){ var b=_dBrand(d); if(b)brs[b]=1; }); brEl.innerHTML='<option value="">ทุก Brand</option>'+Object.keys(brs).sort().map(function(b){return '<option'+(b===selBr?' selected':'')+'>'+esc(b)+'</option>';}).join(''); }
+  if(moEl){ var mos={}; DATA.forEach(function(d){ var m=_dMonth(d); if(m)mos[m]=1; }); moEl.innerHTML='<option value="">ทุกเดือน (M)</option>'+Object.keys(mos).sort(function(a,b){return (parseInt(a.slice(1))||99)-(parseInt(b.slice(1))||99);}).map(function(m){return '<option'+(m===selMo?' selected':'')+'>'+esc(m)+'</option>';}).join(''); }
+  function _saleMatch(d){
+    if((d.status||'').trim()==='Cancel') return false;
+    if(selBr && _dBrand(d)!==selBr) return false;
+    if(selMo && _dMonth(d)!==selMo) return false;
+    if(q){ var hay=((d.sku||'')+' '+(d.model||'')+' '+(d.color||'')+' '+(d.brand||'')+' '+(d.vendor||'')).toLowerCase(); if(hay.indexOf(q)===-1) return false; }
+    return true;
+  }
+  var base=DATA.filter(_saleMatch);
   var cnt={},qsum={}; groups.forEach(function(g){cnt[g.k]=0;qsum[g.k]=0;});
-  DATA.forEach(function(d){ var g=_saleGroupOf(d); if(cnt[g]!==undefined){cnt[g]++; qsum[g]+=(parseInt(d.total)||0);} });
+  base.forEach(function(d){ var g=_saleGroupOf(d); if(cnt[g]!==undefined){cnt[g]++; qsum[g]+=(parseInt(d.total)||0);} });
   cardsEl.innerHTML=groups.map(function(g){
     var on=g.k===_saleStatus;
     return '<div onclick="_salePick(\''+g.k+'\')" style="cursor:pointer;background:var(--card,#fff);border:2px solid '+(on?g.col:'var(--border)')+';border-radius:12px;padding:12px 14px;min-width:128px;flex:1;box-shadow:'+(on?'0 2px 12px rgba(0,0,0,.10)':'none')+';transition:.15s">'+
@@ -7266,13 +7282,7 @@ function renderSales(){
       '<div style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text3)">'+qsum[g.k].toLocaleString()+' ชิ้น · '+g.sub+'</div>'+
     '</div>';
   }).join('');
-  var q=(((document.getElementById('sales-search')||{}).value)||'').toLowerCase().trim();
-  var rows=DATA.filter(function(d){
-    if(_saleGroupOf(d)!==_saleStatus) return false;
-    if((d.status||'').trim()==='Cancel') return false;
-    if(q){ var hay=((d.sku||'')+' '+(d.model||'')+' '+(d.color||'')+' '+(d.brand||'')+' '+(d.vendor||'')).toLowerCase(); if(hay.indexOf(q)===-1) return false; }
-    return true;
-  });
+  var rows=base.filter(function(d){ return _saleGroupOf(d)===_saleStatus; });
   rows.sort(function(a,b){ return (a.model||'').localeCompare(b.model||'','th'); });
   var listEl=document.getElementById('sales-list'); if(!listEl) return;
   if(!rows.length){ listEl.innerHTML='<div style="padding:34px;text-align:center;color:var(--text3);font-size:13px">— ไม่มีสินค้าในสถานะนี้ —</div>'; return; }

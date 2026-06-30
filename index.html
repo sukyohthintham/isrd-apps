@@ -4971,9 +4971,14 @@ function getReceiveMonths(d, _keyFn){
   }
   /* tracking มี PO แต่ไม่เจอ → ถือว่ายังไม่รับ (ไม่ fallback SKU-only กันข้าม PO) */
   if(podN) return [];
-  /* ไม่มี PO → SKU only */
+  /* ไม่มี PO → SKU only (แต่ข้าม inbound ที่มี PO ซึ่งเป็นของแถว tracking อื่น — กันยอด/เดือนรับข้ามไปโผล่ Plan เก่าที่ไม่มี PO เช่น M4→M6) */
   if(sku){
-    IB_DATA.forEach(function(ib){ if(ib && (ib.sku||'').trim()===sku) addM(ib); });
+    IB_DATA.forEach(function(ib){
+      if(!ib || (ib.sku||'').trim()!==sku) return;
+      var ibPoN=(ib.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+      if(ibPoN && typeof _gaqTrkSet==='function' && _gaqTrkSet()[ibPoN+'\u0000'+sku]) return;
+      addM(ib);
+    });
     return _sortMonthKeys(Object.keys(months), months);
   }
   /* fallback model+color */

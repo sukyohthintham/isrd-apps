@@ -4845,6 +4845,17 @@ function getActualQty(d){
       /* ข้าม inbound ที่มี PO ชัดเจนแต่ PO ไม่ตรงกับ tracking นี้ (มันเป็นของ PO อื่น) */
       var ibPoN = (ib.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
       if(podN && ibPoN && ibPoN!==podN) continue;
+      /* tracking แถวนี้ไม่มี PO แต่ inbound มี PO → ถ้า PO+SKU นั้นมีแถว tracking อื่นรองรับอยู่
+         แปลว่า inbound เป็นของแถวนั้น ไม่ใช่แถวนี้ → ข้าม (กันยอดรับข้ามไปโผล่ Plan เก่าที่ไม่มี PO เช่น M4 ที่เลื่อนเป็น M6) */
+      if(!podN && ibPoN){
+        var _belongsElse=false;
+        for(var bi=0;bi<DATA.length;bi++){
+          var t=DATA[bi]; if(!t||t===d) continue;
+          var tPoN=(t.pod||t.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+          if(tPoN===ibPoN && (t.sku||'').trim()===sku){ _belongsElse=true; break; }
+        }
+        if(_belongsElse) continue;
+      }
       if(ibSku && ibSku === sku){
         sum += (parseInt(ib.actualQty)||0);
         found = true;

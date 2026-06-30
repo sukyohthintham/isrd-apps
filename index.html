@@ -4809,6 +4809,16 @@ function getDisplayMonth(d){
    หา actualQty ที่รับเข้าคลังจริงจาก IB_DATA ที่ match กับ tracking item
    ใช้ในตาราง Tracking column "รับจริง" และ "% Accuracy"
    ───────────────────────────────────────────────────────────── */
+/* cache: เซ็ตของ (PO+SKU) ของแถว tracking ที่ "มี PO" — ใช้เช็คเร็วๆ ว่า inbound ที่มี PO เป็นของแถวอื่นไหม
+   (กัน loop ซ้อนใน getActualQty ที่ทำให้หน้าค้างตอนข้อมูลเยอะ) */
+var _gaqSet=null, _gaqSetLen=-1, _gaqSetRef=null;
+function _gaqTrkSet(){
+  if(_gaqSetRef===DATA && _gaqSetLen===DATA.length && _gaqSet) return _gaqSet;
+  var m={};
+  for(var k=0;k<DATA.length;k++){ var t=DATA[k]; if(!t) continue; var pn=(t.pod||t.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); if(pn) m[pn+'\u0000'+((t.sku||'').trim())]=1; }
+  _gaqSet=m; _gaqSetLen=DATA.length; _gaqSetRef=DATA; return m;
+}
+function _gaqInvalidate(){ _gaqSetRef=null; }
 function getActualQty(d){
   if(!d || !d.model) return null;
   if(typeof IB_DATA === 'undefined' || !IB_DATA.length) return null;
@@ -4848,13 +4858,7 @@ function getActualQty(d){
       /* tracking แถวนี้ไม่มี PO แต่ inbound มี PO → ถ้า PO+SKU นั้นมีแถว tracking อื่นรองรับอยู่
          แปลว่า inbound เป็นของแถวนั้น ไม่ใช่แถวนี้ → ข้าม (กันยอดรับข้ามไปโผล่ Plan เก่าที่ไม่มี PO เช่น M4 ที่เลื่อนเป็น M6) */
       if(!podN && ibPoN){
-        var _belongsElse=false;
-        for(var bi=0;bi<DATA.length;bi++){
-          var t=DATA[bi]; if(!t||t===d) continue;
-          var tPoN=(t.pod||t.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
-          if(tPoN===ibPoN && (t.sku||'').trim()===sku){ _belongsElse=true; break; }
-        }
-        if(_belongsElse) continue;
+        if(_gaqTrkSet()[ibPoN+'\u0000'+sku]) continue;
       }
       if(ibSku && ibSku === sku){
         sum += (parseInt(ib.actualQty)||0);
@@ -8914,6 +8918,7 @@ window.exportDrillData = function(){
 };
 
 function renderTable(){
+  if(typeof _gaqInvalidate==='function') _gaqInvalidate();
   /* render summary cards ก่อน */
   if(typeof renderTrackSummary==='function') renderTrackSummary();
   var effectivePgSize = (pgSize==='all') ? Math.max(filtered.length,1) : pgSize;

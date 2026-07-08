@@ -11107,6 +11107,7 @@ function csLoadSnapshot(d){
   if(d.bom) csBomData=d.bom;
   /* กันรายการเก่าที่ยังไม่มี section ใหม่ (เช่น shipping) — เติม key ที่ขาดให้ครบ */
   [1,2].forEach(function(v){ if(csBomData[v]){ ['fabric','trim','pkg','labor','shipping'].forEach(function(sec){ if(!Array.isArray(csBomData[v][sec])) csBomData[v][sec]=[]; }); } });
+  if(!csBomData[csEditVer]) csEditVer=1; /* กัน crash: sheet นี้ไม่มี v2 แต่ยังค้างแท็บ v2 → กลับมา v1 */
   if(d.curMode) csSetMode(d.curMode);
   if(d.v2done){csV2done=true;var badge=document.getElementById('cs-mode-badge');if(badge){badge.textContent='v2 Confirmed ✓';badge.style.background='#E1F5EE';badge.style.color='#085041';badge.style.borderColor='#9FE1CB';}
     var cb=document.getElementById('cs-confirm-btn');if(cb){cb.textContent='✓ Confirmed';cb.style.background='#9FE1CB';cb.disabled=true;}
@@ -11373,7 +11374,7 @@ function csListNew(){
     var el = document.getElementById(id); if(el) el.value = id==='csf-qty'?'500':'';
   });
   var ohNew=document.getElementById('cs-oh-pct'); if(ohNew){ohNew.value='0';ohNew.disabled=false;ohNew.style.opacity='';}
-  csSkuRows=[{sku:'',qty:0}]; csRenderSkuRows(); csColorRows=[]; csRenderColorRows(); csShipPerPc=25; var shN=document.getElementById('csf-ship-pc'); if(shN) shN.value=25; csCurrentKey=null;
+  csSkuRows=[{sku:'',qty:0}]; csRenderSkuRows(); csColorRows=[]; csRenderColorRows(); csShipPerPc=25; var shN=document.getElementById('csf-ship-pc'); if(shN) shN.value=25; csCurrentKey='cs_'+Date.now()+'_'+Math.floor(Math.random()*10000); /* คีย์ใหม่เฉพาะตัว → Save เป็นรายการใหม่ ไม่ทับ Cost Sheet เดิมที่รหัสซ้ำกัน */
   csV2done=false;
   var reNew=document.getElementById('cs-reqedit-btn'); if(reNew) reNew.style.display='none';
   var cbNew=document.getElementById('cs-confirm-btn'); if(cbNew){cbNew.textContent='✓ Confirm v2 Cost Sheet';cbNew.style.background='#1D9E75';cbNew.disabled=false;}

@@ -8343,7 +8343,7 @@ function renderTrackSummary(){
       var skuPcCol = skuPc>=90?'#10b981':(skuPc>=60?'#f59e0b':'#ef4444');
       var dot = (typeof bchipColor==='function') ? bchipColor(bk) : '#6366f1';
       var over = bd.recv > bd.plan;
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'+
+      return '<div onclick="window._showPlanBrandSku(\''+_trackSummaryMonth.replace(/\'/g,"\\'")+'\',\''+String(bk).replace(/\'/g,"\\'")+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background .12s" onmouseover="this.style.background=\'var(--bg2,#f8fafc)\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดูรายการสินค้าในกลุ่มนี้">'+
         '<span style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0"></span>'+
         '<span style="font-size:12px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
         '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text3);min-width:54px;text-align:right">'+bd.plan.toLocaleString()+'</span>'+
@@ -8504,6 +8504,55 @@ window._toggleTrackBrandGroup = function(){
 };
 
 /* ══ POPUP: SKU ที่ยังไม่เข้า (Plan เดือนนั้น แต่รับจริง 0 ชิ้น) ══ */
+/* ── Popup: คลิก Category ในการ์ด "รับจาก Plan" → รายการสินค้า (SKU) ในกลุ่มนั้น ── */
+window._showPlanBrandSku = function(m, brandKey){
+  var src = (typeof filtered!=='undefined' && filtered && filtered.length) ? filtered : (DATA||[]);
+  var items=[], planSum=0, recvSum=0;
+  src.forEach(function(x){
+    if(isCancelled(x)) return;
+    var pm = getDisplayMonth(x) || normalizeMonth(x.month||'') || 'ไม่ระบุ';
+    if(pm!==m) return;
+    var b=(x.brand||'').trim()||'ไม่ระบุ';
+    var bKey = (typeof _trackBrandGrouped!=='undefined' && _trackBrandGrouped) ? brandGroupMain(b) : b;
+    if(bKey!==brandKey) return;
+    var plan=parseInt(x.total)||0;
+    var act=(typeof getActualQtyInMonth==='function')?(getActualQtyInMonth(x,pm)||0):0;
+    planSum+=plan; recvSum+=act;
+    items.push({sku:x.sku||'',model:x.model||'',color:x.color||'',brand:b,plan:plan,recv:act,status:x.status||'',vendor:x.vendor||''});
+  });
+  items.sort(function(a,b){ return b.recv-a.recv || b.plan-a.plan; });
+  var pctTot = planSum>0?Math.round(recvSum/planSum*100):0;
+  var totCol = pctTot>=100?'#10b981':(pctTot>=80?'#f59e0b':'#ef4444');
+  var rows = items.map(function(it){
+    var pc=it.plan>0?Math.round(it.recv/it.plan*100):(it.recv>0?100:0);
+    var pcCol=pc>=100?'#10b981':(pc>=80?'#f59e0b':(it.recv>0?'#f97316':'#ef4444'));
+    return '<tr style="border-bottom:1px solid var(--border)">'+
+      '<td style="padding:7px 8px;font-family:ui-monospace,monospace;font-size:10px;color:var(--text3)">'+esc(it.sku||'—')+'</td>'+
+      '<td style="padding:7px 8px;font-size:12px;color:var(--text);font-weight:500">'+esc(it.model)+'<span style="display:block;font-size:10px;color:var(--text3)">'+esc(it.color)+'</span></td>'+
+      '<td style="padding:7px 8px;text-align:right;font-family:ui-monospace,monospace;font-size:12px;color:var(--text2)">'+it.plan.toLocaleString()+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--text)">'+it.recv.toLocaleString()+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;font-size:11px;font-weight:700;color:'+pcCol+'">'+pc+'%</td>'+
+      '<td style="padding:7px 8px;font-size:11px;color:var(--text2)">'+esc(it.status||'—')+'</td>'+
+      '<td style="padding:7px 8px;font-size:11px;color:var(--text3)">'+esc(it.vendor||'—')+'</td>'+
+    '</tr>';
+  }).join('');
+  var modal=document.getElementById('_planBrandSkuModal');
+  if(!modal){ modal=document.createElement('div'); modal.id='_planBrandSkuModal'; modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px'; modal.onclick=function(e){if(e.target===modal)modal.style.display='none';}; document.body.appendChild(modal); }
+  modal.innerHTML='<div style="background:var(--card,#fff);border-radius:14px;max-width:840px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'+
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px">'+
+      '<div><div style="font-weight:700;font-size:15px;color:var(--text)">📦 '+esc(brandKey)+' · แผน '+esc(m)+'</div>'+
+      '<div style="font-size:12px;color:var(--text3);margin-top:2px">'+items.length+' SKU · Plan <b>'+planSum.toLocaleString()+'</b> · รับจริง <b style="color:#6366f1">'+recvSum.toLocaleString()+'</b> · <b style="color:'+totCol+'">'+pctTot+'%</b></div></div>'+
+      '<button onclick="document.getElementById(\'_planBrandSkuModal\').style.display=\'none\'" style="background:var(--bg2,#f1f5f9);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;color:var(--text2)">✕</button>'+
+    '</div>'+
+    '<div style="overflow:auto;padding:0 20px 16px">'+
+      (items.length===0?'<div style="padding:40px;text-align:center;color:var(--text3)">ไม่มีรายการ</div>':
+      '<table style="width:100%;border-collapse:collapse"><thead><tr style="position:sticky;top:0;background:var(--card,#fff);z-index:1">'+
+      ['SKU','Model / Color','Plan','รับจริง','%','Status','Vendor'].map(function(h){var r=(['Plan','รับจริง','%'].indexOf(h)>-1);return '<th style="padding:8px;text-align:'+(r?'right':'left')+';font-size:9px;color:var(--text3);text-transform:uppercase;border-bottom:2px solid var(--border)">'+h+'</th>';}).join('')+
+      '</tr></thead><tbody>'+rows+'</tbody></table>')+
+    '</div></div>';
+  modal.style.display='flex';
+};
+
 window._showPendingSku = function(m){
   /* หา tracking ที่ Plan=m, ไม่ Cancel, แล้วแยกเข้าแล้ว/ยังไม่เข้า ตาม getActualQty */
   var pending = [], received = [];

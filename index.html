@@ -7329,7 +7329,7 @@ function renderSales(){
     '</tr>';
   }).join('');
   listEl.innerHTML='<div style="overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:64vh"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead style="position:sticky;top:0;z-index:1;background:var(--bg2)"><tr>'+
-    ['รูป','SKU / Model','สี','Brand','Plan','รับแล้ว','พร้อมขาย','M เข้า','วันเข้า (ETA)','Vendor','สถานะ'].map(function(h){var r=(['Plan','รับแล้ว','พร้อมขาย'].indexOf(h)>-1);var c=(['M เข้า'].indexOf(h)>-1);return '<th style="padding:7px 8px;text-align:'+(r?'right':(c?'center':'left'))+';font-size:10px;color:var(--text3);text-transform:uppercase;white-space:nowrap">'+h+'</th>';}).join('')+
+    ['รูป','SKU / Model','สี','Brand','Plan','รับแล้ว','สต๊อกคงเหลือ','M เข้า','วันเข้า (ETA)','Vendor','สถานะ'].map(function(h){var r=(['Plan','รับแล้ว','สต๊อกคงเหลือ'].indexOf(h)>-1);var c=(['M เข้า'].indexOf(h)>-1);var sub=(h==='สต๊อกคงเหลือ')?'<div style="font-size:8px;color:var(--text3);font-weight:400;text-transform:none">ณ '+esc((typeof STOCK_META!=='undefined'&&STOCK_META&&STOCK_META.date)||'—')+'</div>':'';return '<th style="padding:7px 8px;text-align:'+(r?'right':(c?'center':'left'))+';font-size:10px;color:var(--text3);text-transform:uppercase;white-space:nowrap">'+h+sub+'</th>';}).join('')+
     '</tr></thead><tbody>'+body+'</tbody></table></div>'+
     '<div style="font-size:11px;color:var(--text3);margin-top:8px">แสดง '+rows.length+' รายการ</div>';
   if(typeof preloadImagesForVisibleRows==='function'){ setTimeout(function(){ try{ preloadImagesForVisibleRows(); }catch(e){} },50); }

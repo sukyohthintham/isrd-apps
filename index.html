@@ -8435,7 +8435,23 @@ function renderTrackSummary(){
         '<div style="font-size:28px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1;margin-bottom:12px">'+totalIn.toLocaleString()+'</div>'+
         '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:4px;padding-bottom:3px;border-bottom:2px solid var(--border)">แยกตามแผนต้นทาง</div>'+
         rows+
-        '<div style="font-size:10px;color:var(--text3);margin-top:8px;font-style:italic">💡 คลิกแต่ละแถวดู raw data ได้</div>'+
+        '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin:12px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--border)">แยกตาม Brand / Category</div>'+
+      (function(){
+        var ba={}; pKeys.forEach(function(pm){ var bs=rmData[pm]._brands||{}; Object.keys(bs).forEach(function(bk){ ba[bk]=(ba[bk]||0)+bs[bk]; }); });
+        var bk2=Object.keys(ba).sort(function(a,b){return ba[b]-ba[a];});
+        if(!bk2.length) return '';
+        return bk2.map(function(bk){
+          var q=ba[bk], pc=totalIn>0?Math.round(q/totalIn*100):0;
+          var dot=(typeof bchipColor==='function')?bchipColor(bk):'#8b5cf6';
+          return '<div onclick="window._openDrillModal(\''+_trackSummaryMonth.replace(/'/g,"\\'")+'\',\'\',\''+String(bk).replace(/'/g,"\\'")+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:5px;transition:background .12s" onmouseover="this.style.background=\'var(--bg2,#f8fafc)\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดู raw data ของกลุ่มนี้ (ทุก Plan เดือน)">'+
+            '<span style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0"></span>'+
+            '<span style="font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
+            '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700">'+q.toLocaleString()+'</span>'+
+            '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text3);min-width:38px;text-align:right">'+pc+'%</span>'+
+          '</div>';
+        }).join('');
+      })()+
+      '<div style="font-size:10px;color:var(--text3);margin-top:8px;font-style:italic">💡 คลิกแต่ละแถวดู raw data ได้</div>'+
       '</div>';
     })()+
     '</div>'; /* ปิด wrapper */
@@ -8647,7 +8663,7 @@ window._openDrillModal = function(receiveMonth, planMonth, brand){
       /* ยึด month (Plan เข้า) เป็นหลักเสมอ ให้ตรงกับการ์ด flow */
       pm = normalizeMonth(matched.month || matched.originalMonth || '') || pm;
     }
-    if(pm !== planMonth) return;
+    if(planMonth && pm !== planMonth) return; /* planMonth ว่าง = ทุกเดือน (มาจากคลิก Brand ในการ์ดภาระ) */
     /* match ทั้งหมด → เก็บ */
     rows.push({
       ib: ib,

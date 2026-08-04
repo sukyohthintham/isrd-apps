@@ -568,8 +568,8 @@ body.hide-cost .costcol{display:none!important}
           </select>
           <select class="fsel" id="tbrand">
             <option value="">ทุก Category</option>
-            <option>Nineties New</option><option>Nineties Hero</option>
-            <option>SO.ON Hero</option><option>SO.ON New</option>
+            <option>Nineties New</option><option>Nineties Hero</option><option>Nineties Adap Hero</option>
+            <option>SO.ON Hero</option><option>SO.ON Adap Hero</option><option>SO.ON New</option>
           </select>
           <select class="fsel" id="tstatus">
             <option value="">ทุก Status</option>
@@ -710,7 +710,7 @@ body.hide-cost .costcol{display:none!important}
           <div style="margin-bottom:10px">
             <span class="flabel">Brand สำหรับข้อมูลที่ import</span>
             <select class="fsel" id="import-brand">
-              <option>Nineties New</option><option>Nineties Hero</option><option>SO.ON Hero</option><option>SO.ON New</option>
+              <option>Nineties New</option><option>Nineties Hero</option><option>Nineties Adap Hero</option><option>SO.ON Hero</option><option>SO.ON Adap Hero</option><option>SO.ON New</option>
             </select>
           </div>
           <button class="sbtn sbtn-blue" id="confirm-import">✓ บันทึก <span id="import-count"></span> รายการ</button>
@@ -743,7 +743,7 @@ body.hide-cost .costcol{display:none!important}
             <div class="mfield"><label>Size</label><input class="finput" id="bom_size" placeholder="Free Size"></div>
             <div class="mfield"><label>Brand</label>
               <select class="finput" id="bom_brand" style="background:var(--input-bg)">
-                <option>Nineties New</option><option>Nineties Hero</option><option>SO.ON Hero</option><option>SO.ON New</option>
+                <option>Nineties New</option><option>Nineties Hero</option><option>Nineties Adap Hero</option><option>SO.ON Hero</option><option>SO.ON Adap Hero</option><option>SO.ON New</option>
               </select>
             </div>
             <div class="mfield"><label>Order QTY (ชิ้น)</label><input class="finput" type="number" id="bom_qty" value="300" oninput="calcBOM()"></div>
@@ -1403,9 +1403,9 @@ body.hide-cost .costcol{display:none!important}
           <input class="fsch" id="prodsearch" placeholder="ค้นหารหัส, ชื่อสินค้า...">
           <select class="fsel" id="prodcat">
             <option value="">ทุกหมวดหมู่</option>
-            <option>Nineties Sale</option><option>Nineties Hero</option><option>Nineties New</option>
+            <option>Nineties Sale</option><option>Nineties Hero</option><option>Nineties Adap Hero</option><option>Nineties New</option>
             <option>Nineties Basic</option><option>Nineties Acc</option><option>Nineties non Sale</option>
-            <option>SOON Hero</option><option>SOON New</option><option>SOON Basic</option><option>SOON Acc</option><option>Soon Sale</option>
+            <option>SOON Hero</option><option>SOON Adap Hero</option><option>SOON New</option><option>SOON Basic</option><option>SOON Acc</option><option>Soon Sale</option>
             <option>Multibrand</option><option>NINE Brand</option><option>Material</option>
           </select>
           <button class="sbtn sbtn-blue sbtn-sm" onclick="openProdModal(-1)">+ เพิ่มสินค้า</button>
@@ -1440,9 +1440,9 @@ body.hide-cost .costcol{display:none!important}
       <div class="mfield"><label>หมวดหมู่</label>
         <select class="finput" id="pf-cat" style="background:var(--input-bg)">
           <option value="">— เลือก —</option>
-          <option>Nineties New</option><option>Nineties Hero</option><option>Nineties Basic</option>
+          <option>Nineties New</option><option>Nineties Hero</option><option>Nineties Adap Hero</option><option>Nineties Basic</option>
           <option>Nineties Acc</option><option>Nineties Sale</option><option>Nineties non Sale</option>
-          <option>SOON New</option><option>SOON Hero</option><option>SOON Basic</option>
+          <option>SOON New</option><option>SOON Hero</option><option>SOON Adap Hero</option><option>SOON Basic</option>
           <option>Soon Sale</option><option>Multibrand</option><option>Material</option>
         </select>
       </div>
@@ -1602,8 +1602,8 @@ body.hide-cost .costcol{display:none!important}
             <input class="fsch" id="ib-search" placeholder="ค้นหา Model / SKU / PO / Vendor / Color..." oninput="renderIbTable()" style="min-width:280px">
             <select class="fsel" id="ib-brand" onchange="renderIbTable()">
               <option value="">ทุก Category</option>
-              <option>Nineties New</option><option>Nineties Hero</option>
-              <option>SO.ON Hero</option><option>SO.ON New</option>
+              <option>Nineties New</option><option>Nineties Hero</option><option>Nineties Adap Hero</option>
+              <option>SO.ON Hero</option><option>SO.ON Adap Hero</option><option>SO.ON New</option>
             </select>
             <select class="fsel" id="ib-recv-status" onchange="renderIbTable()" title="กรองตามสถานะการรับเข้าคลัง">
               <option value="received">✅ รับเข้าคลังแล้ว</option>
@@ -1651,8 +1651,8 @@ body.hide-cost .costcol{display:none!important}
             </select>
             <select class="fsel" id="ib-daily-brand" onchange="renderIbDaily()">
               <option value="">ทุก Category</option>
-              <option>Nineties New</option><option>Nineties Hero</option>
-              <option>SO.ON Hero</option><option>SO.ON New</option>
+              <option>Nineties New</option><option>Nineties Hero</option><option>Nineties Adap Hero</option>
+              <option>SO.ON Hero</option><option>SO.ON Adap Hero</option><option>SO.ON New</option>
             </select>
           </div>
           <div class="crow">

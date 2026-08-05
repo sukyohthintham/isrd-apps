@@ -2978,6 +2978,9 @@ var _ibOrderItems = []; /* cached list สำหรับ filter */
 function populateIbOrderSelect(){
   /* กรองเฉพาะ order ที่ยังไม่ได้บันทึกรับ (model+color ไม่ซ้ำกับ IB_DATA) */
   _ibOrderItems = [];
+  /* นับจำนวน SKU ต่อ PO — ใช้ตัดสินว่า inbound ที่ "ไม่มี SKU" จะเหมาว่าตรงได้ไหม (เฉพาะ PO ที่มี SKU เดียว) */
+  var _poSku={};
+  DATA.forEach(function(d){ var pn=(d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); if(pn){ (_poSku[pn]=_poSku[pn]||{})[(d.sku||'').trim()]=1; } });
   DATA.forEach(function(d,i){
     /* เช็คว่า "PO ใบนี้" รับเข้าคลังแล้วหรือยัง — ต้องดู PO+SKU ให้ตรงเป๊ะ
        ไม่ใช่แค่ model+color (เพราะรุ่น+สีเดียวกันมีได้หลาย PO หลายล็อต)
@@ -2990,7 +2993,10 @@ function populateIbOrderSelect(){
       /* order นี้มี PO → นับว่า "รับแล้ว" เฉพาะเมื่อมี inbound ที่ PO+SKU ตรงเท่านั้น
          (กัน inbound ที่ไม่มี PO / คนละ PO แต่ SKU เดียวกัน มาบังไม่ให้ order นี้ขึ้นให้รับ) */
       if(dPodN){
-        return ibPoN===dPodN && (!dSku || !ibSku || ibSku===dSku);
+        if(ibPoN!==dPodN) return false;
+        if(dSku && ibSku) return ibSku===dSku; /* มี SKU ทั้งคู่ → ต้องตรงกัน */
+        /* ฝั่งใดฝั่งไม่มี SKU → เหมาว่าตรงเฉพาะ PO ที่มี SKU เดียว (กัน PO หลาย SKU โดน inbound ไม่มี SKU บังทั้งหมด) */
+        return Object.keys(_poSku[dPodN]||{}).length<=1;
       }
       /* order ไม่มี PO → fallback SKU (ถ้ามี) ไม่งั้น model+color */
       if(dSku && ibSku) return ibSku===dSku;

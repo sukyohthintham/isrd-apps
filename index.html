@@ -2987,11 +2987,12 @@ function populateIbOrderSelect(){
     var alreadyInbound = IB_DATA.some(function(ib){
       var ibPoN = (ib.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
       var ibSku = (ib.sku||'').trim();
-      /* ถ้ามี PO ทั้งคู่ → ต้อง PO+SKU ตรง (แม่นสุด แยกล็อตได้) */
-      if(dPodN && ibPoN){
+      /* order นี้มี PO → นับว่า "รับแล้ว" เฉพาะเมื่อมี inbound ที่ PO+SKU ตรงเท่านั้น
+         (กัน inbound ที่ไม่มี PO / คนละ PO แต่ SKU เดียวกัน มาบังไม่ให้ order นี้ขึ้นให้รับ) */
+      if(dPodN){
         return ibPoN===dPodN && (!dSku || !ibSku || ibSku===dSku);
       }
-      /* ไม่มี PO ฝั่งใดฝั่งหนึ่ง → fallback SKU (ถ้ามี) ไม่งั้น model+color */
+      /* order ไม่มี PO → fallback SKU (ถ้ามี) ไม่งั้น model+color */
       if(dSku && ibSku) return ibSku===dSku;
       return ib.model===d.model && ib.color===d.color;
     });

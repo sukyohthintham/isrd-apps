@@ -1442,8 +1442,8 @@ body.hide-cost .costcol{display:none!important}
           <option value="">— เลือก —</option>
           <option>Nineties New</option><option>Nineties Hero</option><option>Nineties Adap Hero</option><option>Nineties Basic</option>
           <option>Nineties Acc</option><option>Nineties Sale</option><option>Nineties non Sale</option>
-          <option>SOON New</option><option>SOON Hero</option><option>SOON Adap Hero</option><option>SOON Basic</option>
-          <option>Soon Sale</option><option>Multibrand</option><option>Material</option>
+          <option>SOON New</option><option>SOON Hero</option><option>SOON Adap Hero</option><option>SOON Basic</option><option>SOON Acc</option>
+          <option>Soon Sale</option><option>Multibrand</option><option>NINE Brand</option><option>Material</option>
         </select>
       </div>
       <div class="mfield"><label>หมวดหมู่ย่อย</label><input class="finput" id="pf-sub" placeholder="เช่น Hero, Basic Online" style="background:var(--input-bg)"></div>
@@ -12544,7 +12544,7 @@ function renderProds(){
   var sl=prodFiltered.slice(start,start+prodPageSize);
   document.getElementById('prodtbody').innerHTML=sl.map(function(p,i){
     var qty=p[4];
-    var ri = start+i;
+    var ri = PRODUCTS.indexOf(p); /* index จริงใน PRODUCTS (กันเปิด/ลบผิดตัวตอนกรอง/ค้นหา) */
     return'<tr><td style="color:var(--text3);font-size:11px">'+(start+i+1)+'</td>'+
       '<td style="font-family:ui-monospace,monospace;font-size:11px;color:var(--cyan)">'+esc(p[0]||'')+'</td>'+
       '<td style="font-weight:500">'+esc(p[1]||'')+'</td>'+

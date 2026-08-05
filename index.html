@@ -8173,9 +8173,9 @@ function renderTrackSummary(){
     var b  = (x.brand||'').trim() || 'ไม่ระบุ';
     var bKey = _trackBrandGrouped ? brandGroupMain(b) : b;
     var plan = parseInt(x.total)||0;
-    /* รับจริงเฉพาะที่ "รับตรงเดือน Plan" — Plan M5 รับ M5 เท่านั้น (Plan M5 รับ M6 ไม่นับ) */
-    var act  = getActualQtyInMonth(x, pm);
-    var skuReceived = act > 0 ? 1 : 0; /* SKU นี้รับตรงเดือนแล้ว (≥1 ชิ้น) */
+    /* รับจริง = ของแผนเดือนนี้ที่ "รับมาแล้วทุกเดือน" (ตรงกับหัวการ์ด + mini card แผนรับมาแล้ว) */
+    var act  = getActualQty(x); if(act===null) act=0;
+    var skuReceived = act > 0 ? 1 : 0; /* SKU นี้รับมาแล้ว (≥1 ชิ้น ทุกเดือน) */
     if(!byPlanMonth[pm]) byPlanMonth[pm] = {_plan:0, _recv:0, _skuTotal:0, _skuRecv:0, _brands:{}};
     byPlanMonth[pm]._plan += plan;
     byPlanMonth[pm]._recv += act;

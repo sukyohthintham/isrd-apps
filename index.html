@@ -9412,8 +9412,8 @@ document.getElementById('track-export-btn').onclick=function(){
   /* Export ครบทุก column (ยกเว้นรูป base64) เป็น Excel .xlsx */
   if(typeof XLSX === 'undefined'){ showToast('XLSX library ยังไม่โหลด','var(--red)'); return; }
   var headers = [
-    'SKU','Model','Color','Type','Brand','Month','Month (รับจริง)',
-    'Qty (Plan)','แผนรับมาแล้ว','% Accuracy','คงเหลือ (Stock)',
+    'SKU','Model','Color','Type','Brand','Month','เดือนรับจริง',
+    'Qty (Plan)','รับจริงสะสม (ทุกเดือน)','รับตรงเดือน Plan','% Accuracy','คงเหลือ (Stock)',
     'Price (¥)','Price (฿)','ต้นทุน฿ (จ่ายจริง)','Cost Sheet (BOM)',
     'Vendor','Status',
     'ETD (เวลาออก)','ETA (เวลาถึง)','ATA (เวลาถึงจริง)',
@@ -9435,9 +9435,10 @@ document.getElementById('track-export-btn').onclick=function(){
       getDisplayMfgType(x)||'',
       getDisplayBrand(x)||'',
       getDisplayMonth(x)||'',
-      (function(){ var rms=getReceiveMonths(x); return rms.length ? rms.map(function(r){return r.month+'('+r.qty+')';}).join(', ') : ''; })(),
+      (function(){ var rms=getReceiveMonths(x); return rms.length ? rms.map(function(r){return r.month;}).join(', ') : ''; })(),
       x.total||0,
       actual===null ? '' : actual,
+      (function(){ var pm=getDisplayMonth(x)||normalizeMonth(x.month||''); return (typeof getActualQtyInMonth==='function')?(getActualQtyInMonth(x,pm)||0):''; })(),
       acc===null ? '' : (acc+'%'),
       (function(){
         if(typeof _stockAvailForSku!=='function') return '';

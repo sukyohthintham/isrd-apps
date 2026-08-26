@@ -2075,6 +2075,7 @@ body.hide-cost .costcol{display:none!important}
     <div class="mfield"><label>Tracking No.</label><input id="m_tracking" placeholder="32287701"></div>
     <div class="mfield"><label>Request Barcode</label><input id="m_barcode" placeholder="เช่น BC-2026-0001" class="finput" style="background:var(--input-bg)"></div>
     <div class="mfield"><label>POD No.</label><input id="m_pod" placeholder="เช่น POD-2026-001" class="finput" style="background:var(--input-bg)"></div>
+              <div class="mfield"><label>Status PO</label><select id="m_postatus" class="finput" style="background:var(--input-bg)"><option value="">— เลือก —</option><option>PO Pending</option><option>PO Completed</option></select></div>
     <div class="mfield"><label>Note / หมายเหตุ</label>
       <textarea id="m_note" placeholder="รายละเอียดเพิ่มเติม..." style="height:52px"></textarea>
     </div>
@@ -9653,6 +9654,7 @@ window.editTrack=function(idx){
   var pcost=document.getElementById('m_cost_thb');if(pcost)pcost.value=x.cost_thb||'';
   var pcs=document.getElementById('m_cost_sheet');if(pcs)pcs.value=x.costSheet||'';
   var ppod=document.getElementById('m_pod');if(ppod)ppod.value=x.pod||'';
+  var ppost=document.getElementById('m_postatus');if(ppost)ppost.value=(x&&x.poStatus)||'';
   var pmfg=document.getElementById('m_mfgType');if(pmfg)pmfg.value=x.mfgType||'';
   buildVendorDrop();
   /* set brand, month, status, vendor */
@@ -9774,6 +9776,7 @@ document.getElementById('savetrackbtn').onclick=function(){
     cost_thb:parseFloat((document.getElementById('m_cost_thb')||{value:'0'}).value)||0,
     costSheet:parseFloat((document.getElementById('m_cost_sheet')||{value:'0'}).value)||0,
     pod:(document.getElementById('m_pod')||{value:''}).value.trim(),
+      poStatus:(document.getElementById('m_postatus')||{value:''}).value||'',
     mfgType:(document.getElementById('m_mfgType')||{value:''}).value||'',
     printStatus:printSt,
   };

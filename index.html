@@ -622,6 +622,7 @@ body.hide-cost .costcol{display:none!important}
   <th class="costcol" style="width:90px;background:#fef3c7" title="ต้นทุนประมาณการจากหน้า Cost Sheet (BOM + ACC + CMT)">Cost Sheet<div style="font-size:9px;color:#92400e;font-weight:400">(BOM)</div></th>
   <th style="min-width:80px">Vendor</th>
   <th style="min-width:130px">Status</th>
+  <th style="min-width:100px" title="สถานะ PO">Status PO</th>
   <th style="width:85px" title="Estimated Time of Departure - เวลาออก">ETD<div style="font-size:9px;color:var(--text3);font-weight:400">(เวลาออก)</div></th>
   <th style="width:85px" title="Estimated Time of Arrival - เวลาถึงตามแผน">ETA<div style="font-size:9px;color:var(--text3);font-weight:400">(เวลาถึง)</div></th>
   <th style="width:85px" title="Actual Time of Arrival - เวลาถึงจริง">ATA<div style="font-size:9px;color:var(--text3);font-weight:400">(เวลาถึงจริง)</div></th>
@@ -9021,7 +9022,8 @@ function renderTable(){
       /* placeholder + data-sku → preloadImagesForVisibleRows จะมาแทนที่ตอนเจอรูป */
       th = '<div class="thumb-ph tw-thumb" data-sku="'+esc(x.sku||'')+'" data-model="'+esc(x.model||'')+'">📦</div>';
     }
-    var sel='<select class="status-sel" onchange="updateStatus('+ri+',this.value)">'+STATUS_LIST.map(function(s){return'<option'+(s===x.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'+'<div style="margin-top:3px"><select onchange="updatePoStatus('+ri+',this.value)" title="Status PO — เลือกได้ในตารางเลย" style="font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid var(--border);cursor:pointer;font-weight:700;background:'+(x.poStatus==='PO Completed'?'#dcfce7':x.poStatus==='PO Pending'?'#fef3c7':'var(--input-bg,#fff)')+';color:'+(x.poStatus==='PO Completed'?'#166534':x.poStatus==='PO Pending'?'#92400e':'var(--text3)')+'"><option value=""'+(!x.poStatus?' selected':'')+'>— PO —</option><option'+(x.poStatus==='PO Pending'?' selected':'')+'>PO Pending</option><option'+(x.poStatus==='PO Completed'?' selected':'')+'>PO Completed</option></select></div>';
+    var sel='<select class="status-sel" onchange="updateStatus('+ri+',this.value)">'+STATUS_LIST.map(function(s){return'<option'+(s===x.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
+    var poSel='<select onchange="updatePoStatus('+ri+',this.value)" title="Status PO" style="font-size:10px;padding:2px 6px;border-radius:5px;border:1px solid var(--border);cursor:pointer;font-weight:700;background:'+(x.poStatus==='PO Completed'?'#dcfce7':x.poStatus==='PO Pending'?'#fef3c7':'var(--input-bg,#fff)')+';color:'+(x.poStatus==='PO Completed'?'#166534':x.poStatus==='PO Pending'?'#92400e':'var(--text3)')+'"><option value=""'+(!x.poStatus?' selected':'')+'>— PO —</option><option'+(x.poStatus==='PO Pending'?' selected':'')+'>PO Pending</option><option'+(x.poStatus==='PO Completed'?' selected':'')+'>PO Completed</option></select>'
     return'<tr><td>'+th+'</td><td style="font-weight:500;white-space:nowrap;cursor:pointer" onclick="openDetail('+ri+')" title="ดูรายละเอียดสินค้า">'+(x.sku?'<span style="display:block;font-size:9px;color:var(--text3);font-family:ui-monospace">'+esc(x.sku)+'</span>':'')+'<span style="color:var(--blue);text-decoration:underline">'+x.model+'</span>'+(x.note?'<span style="display:block;font-size:10px;color:var(--text3);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+x.note+'">\uD83D\uDCDD '+x.note+'</span>':'')+(x.editedBy?'<span style="display:block;font-size:9px;color:var(--text3)">✏ '+(function(){ var u=USERS.find(function(u){return u.user===x.editedBy||u.name===x.editedBy;}); return u?u.name:x.editedBy; }())+(x.editedAt?' · '+new Date(x.editedAt).toLocaleDateString('th-TH'):'')+'</span>':'')+'</td>'+
       '<td style="font-size:11px;color:var(--text2)">'+x.color+'</td>'+
       '<td style="text-align:center;white-space:nowrap">'+(function(){ var _t=getDisplayMfgType(x); return _t==='TH'?'<span style="display:inline-flex;align-items:center;gap:2px;background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;white-space:nowrap" title="'+(x.mfgType?'':'auto')+'">🇹🇭 TH</span>':_t==='CN'?'<span style="display:inline-flex;align-items:center;gap:2px;background:#fef9c3;color:#713f12;border:1px solid #fde68a;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;white-space:nowrap" title="'+(x.mfgType?'':'auto')+'">🇨🇳 CN</span>':'<span style="color:var(--text3);font-size:11px">—</span>'; }())+'</td>'+
@@ -9134,6 +9136,7 @@ function renderTable(){
       }())+'</td>'+
       '<td style="color:var(--text2);white-space:nowrap">'+(x.vendor||'—')+'</td>'+
       '<td>'+sbadge(x.status)+'<div style="margin-top:3px">'+sel+'</div></td>'+
+      '<td style="text-align:center">'+poSel+'</td>'+
       '<td style="font-size:11px;color:var(--text2);white-space:nowrap">'+(_fmtDate(x.etd)||'—')+'</td>'+
       '<td style="font-size:11px;color:var(--text2);white-space:nowrap">'+(_fmtDate(x.eta)||'—')+'</td>'+
       '<td style="font-size:11px;color:var(--text2);white-space:nowrap">'+(_fmtDate(x.plan_date)||'—')+'</td>'+
@@ -9173,7 +9176,7 @@ function renderTable(){
       '<button onclick="setStatus('+ri+',\'Hold\')" style="background:rgba(255,61,61,.12);border:none;border-radius:3px;color:var(--red);font-size:9px;padding:2px 5px;cursor:pointer;margin-left:2px">Hold</button>' +
       '<button onclick="setStatus('+ri+',\'Cancel\')" style="background:rgba(90,100,120,.12);border:none;border-radius:3px;color:var(--text2);font-size:9px;padding:2px 5px;cursor:pointer;margin-left:2px">✕</button>' +
       '</td></tr>';
-  }).join(''):'<tr><td colspan="28" style="padding:30px;text-align:center;color:var(--text3)">ไม่พบข้อมูล</td></tr>';
+  }).join(''):'<tr><td colspan="29" style="padding:30px;text-align:center;color:var(--text3)">ไม่พบข้อมูล</td></tr>';
   var total=filtered.length;
   var effectivePgSize = (pgSize==='all') ? Math.max(total,1) : pgSize;
   var pages=Math.max(1,Math.ceil(total/effectivePgSize));

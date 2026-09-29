@@ -11198,10 +11198,23 @@ function csLoadSnapshot(d){
   csShipPerPc = (d.shipPerPc!=null&&d.shipPerPc!=='') ? parseFloat(d.shipPerPc) : 25;
   var shEl=document.getElementById('csf-ship-pc'); if(shEl) shEl.value=csShipPerPc;
   csRenderColorRows();
-  if(d.bom) csBomData=d.bom;
-  /* กันรายการเก่าที่ยังไม่มี section ใหม่ (เช่น shipping) — เติม key ที่ขาดให้ครบ */
-  [1,2].forEach(function(v){ if(csBomData[v]){ ['fabric','trim','pkg','labor','shipping'].forEach(function(sec){ if(!Array.isArray(csBomData[v][sec])) csBomData[v][sec]=[]; }); } });
-  if(!csBomData[csEditVer]) csEditVer=1; /* กัน crash: sheet นี้ไม่มี v2 แต่ยังค้างแท็บ v2 → กลับมา v1 */
+  /* ── โหลด BOM แบบทนทาน: Firebase จะ 'ตัด' array/ค่าที่ว่างทิ้ง ทำให้ csBomData[1] หรือ section หายไป → กัน crash 'reading fabric' ── */
+  function _csArr(x){ if(Array.isArray(x))return x; if(x&&typeof x==='object'){return Object.keys(x).sort(function(a,b){return a-b;}).map(function(k){return x[k];});} return []; }
+  function _csDefVer(){ return {fabric:[],trim:[],pkg:[],labor:[],shipping:[],fob:{price:0,cur:'USD'},freight:{price:0,cur:'THB'},duty:0,agent:{price:0,cur:'THB'},ohPct:0}; }
+  var _bom=(d.bom&&typeof d.bom==='object')?d.bom:{};
+  csBomData={ 1:(_bom[1]&&typeof _bom[1]==='object')?_bom[1]:_csDefVer(), 2:(_bom[2]&&typeof _bom[2]==='object')?_bom[2]:null };
+  [1,2].forEach(function(v){
+    if(csBomData[v]&&typeof csBomData[v]==='object'){
+      ['fabric','trim','pkg','labor','shipping'].forEach(function(sec){ csBomData[v][sec]=_csArr(csBomData[v][sec]); });
+      if(!csBomData[v].fob||typeof csBomData[v].fob!=='object')       csBomData[v].fob={price:0,cur:'USD'};
+      if(!csBomData[v].freight||typeof csBomData[v].freight!=='object')csBomData[v].freight={price:0,cur:'THB'};
+      if(!csBomData[v].agent||typeof csBomData[v].agent!=='object')    csBomData[v].agent={price:0,cur:'THB'};
+      if(csBomData[v].duty==null)  csBomData[v].duty=0;
+      if(csBomData[v].ohPct==null) csBomData[v].ohPct=0;
+    }
+  });
+  if(!csBomData[1]) csBomData[1]=_csDefVer(); /* กันสุดท้าย: v1 ต้องมีเสมอ */
+  if(!csBomData[csEditVer]) csEditVer=1;      /* กัน crash: sheet นี้ไม่มี v2 แต่ยังค้างแท็บ v2 → กลับมา v1 */
   if(d.curMode) csSetMode(d.curMode);
   if(d.v2done){csV2done=true;var badge=document.getElementById('cs-mode-badge');if(badge){badge.textContent='v2 Confirmed ✓';badge.style.background='#E1F5EE';badge.style.color='#085041';badge.style.borderColor='#9FE1CB';}
     var cb=document.getElementById('cs-confirm-btn');if(cb){cb.textContent='✓ Confirmed';cb.style.background='#9FE1CB';cb.disabled=true;}

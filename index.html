@@ -10783,7 +10783,8 @@ function csAddRowSec(sec){
 
 /* ── Calc section total ── */
 function csCalcSec(ver,sec){
-  return (csBomData[ver][sec]||[]).reduce(function(sum,r){return sum+csToTHB(r.price,r.cur)*(parseFloat(r.qty)||0);},0);
+  var vd=csBomData[ver]; if(!vd) return 0; /* v2 อาจเป็น null (ยังไม่ทำ) — กัน crash 'reading fabric' */
+  return (vd[sec]||[]).reduce(function(sum,r){return sum+csToTHB(r.price,r.cur)*(parseFloat(r.qty)||0);},0);
 }
 
 /* ── Calc version ── */
@@ -11585,9 +11586,10 @@ function csPrintPDF(){
   var V=(csEditVer===2)?'v2 หลัง Sample':'v1 ประมาณการ';
 
   /* ── BOM rows helpers ── */
-  var fabRows=(csBomData[csEditVer].fabric||[]);
-  var accRows=(csBomData[csEditVer].trim||[]).concat(csBomData[csEditVer].pkg||[]);
-  var othRows=(csBomData[csEditVer].labor||[]).concat(csBomData[csEditVer].shipping||[]);
+  var _bd=csBomData[csEditVer]||csBomData[1]||{fabric:[],trim:[],pkg:[],labor:[],shipping:[]};
+  var fabRows=(_bd.fabric||[]);
+  var accRows=(_bd.trim||[]).concat(_bd.pkg||[]);
+  var othRows=(_bd.labor||[]).concat(_bd.shipping||[]);
   function rowCells(r,i){
     var unitTHB=csToTHB(r.price,r.cur);
     var line=unitTHB*(parseFloat(r.qty)||0);

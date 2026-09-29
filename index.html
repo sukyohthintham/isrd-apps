@@ -11343,7 +11343,7 @@ window.csPickCostDialog = function(ri){
 /* โหลดรายการทั้งหมดจาก Firebase */
 function csListLoad(){
   if(!fbDB) return;
-  fbDB.ref(CS_LIST_PATH).orderByChild('savedAt').limitToLast(100).once('value', function(snap){
+  fbDB.ref(CS_LIST_PATH).orderByChild('savedAt').once('value', function(snap){  /* โหลดทั้งหมด ไม่จำกัด 100 (ข้อมูลเดิมไม่เคยถูกลบ แค่ไม่โหลดมาแสดง) */
     var val = snap.val();
     CS_ALL = [];
     if(val){

@@ -1975,20 +1975,20 @@ body.hide-cost .costcol{display:none!important}
     <div style="padding:18px 22px">
       <div id="dm-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px"></div>
       <div style="margin-bottom:18px">
-        <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">📦 ประวัติการสั่ง (Order History)</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">📦 ประวัติการสั่ง (Order History)</div>
         <div id="dm-orders" style="border:1px solid var(--border);border-radius:10px;overflow:hidden"></div>
       </div>
       <div style="margin-bottom:18px">
-        <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">🏭 ประวัติรับเข้าคลัง (Inbound)</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">🏭 ประวัติรับเข้าคลัง (Inbound)</div>
         <div id="dm-inbounds" style="border:1px solid var(--border);border-radius:10px;overflow:hidden"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div style="background:var(--bg2);border-radius:10px;padding:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">💰 ราคา & ต้นทุน</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">💰 ราคา & ต้นทุน</div>
           <div id="dm-cost"></div>
         </div>
         <div style="background:var(--bg2);border-radius:10px;padding:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px">ℹ️ ข้อมูลทั่วไป</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">ℹ️ ข้อมูลทั่วไป</div>
           <div id="dm-info"></div>
         </div>
       </div>
@@ -13593,51 +13593,51 @@ function openDetail(ri){
   function fs(s){return (s||'').replace(/-/g,'/');}
 
   document.getElementById('dm-orders').innerHTML = orders.length ?
-    '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--bg2)">'
-    +'<th style="padding:6px 10px;text-align:left;color:var(--text3)">#</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">เดือน</th>'
-    +'<th style="padding:6px 10px;text-align:left;color:var(--text3)">QTY</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">Status</th>'
-    +'<th style="padding:6px 10px;text-align:left;color:var(--text3)">ETA</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">Vendor</th>'
-    +'<th style="padding:6px 10px;text-align:left;color:var(--text3)">Tracking</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">ต้นทุน ฿</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">เพิ่มโดย</th>'
+    '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg2)">'
+    +'<th style="padding:8px 11px;text-align:left;color:var(--text3)">#</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">เดือน</th>'
+    +'<th style="padding:8px 11px;text-align:left;color:var(--text3)">QTY</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">Status</th>'
+    +'<th style="padding:8px 11px;text-align:left;color:var(--text3)">ETA</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">Vendor</th>'
+    +'<th style="padding:8px 11px;text-align:left;color:var(--text3)">Tracking</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">ต้นทุน ฿</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">เพิ่มโดย</th>'
     +'</tr></thead><tbody>'+orders.map(function(d,i){
       var bg=i%2===0?'var(--card-bg)':'var(--bg2)';
       var u=USERS.find(function(u){return u.user===d.addedBy||u.name===d.addedBy;});
-      return '<tr style="background:'+bg+'"><td style="padding:6px 10px;color:var(--text3)">'+(i+1)+'</td>'
-        +'<td style="padding:6px 10px">'+esc(d.month||'—')+'</td>'
-        +'<td style="padding:6px 10px;font-weight:600">'+( d.total||'—')+'</td>'
-        +'<td style="padding:6px 10px"><span style="font-size:10px;padding:1px 6px;border-radius:50px;background:var(--bg3);border:1px solid var(--border)">'+esc(d.status||'')+'</span></td>'
-        +'<td style="padding:6px 10px;color:var(--text2)">'+fs(d.eta)+'</td>'
-        +'<td style="padding:6px 10px;color:var(--text2)">'+esc(d.vendor||'—')+'</td>'
-        +'<td style="padding:6px 10px;font-family:ui-monospace;font-size:10px;color:var(--text3)">'+esc(d.tracking||'—')+'</td>'
-        +'<td style="padding:6px 10px;font-weight:600;color:var(--purple)">'+(d.cost_thb?'฿'+d.cost_thb:'—')+'</td>'
-        +'<td style="padding:6px 10px;font-size:10px;color:var(--text3)">'+(u?u.name:(d.addedBy||'—'))+(d.addedAt?'<br>'+fd(d.addedAt):'')+'</td>'
+      return '<tr style="background:'+bg+'"><td style="padding:8px 11px;color:var(--text3)">'+(i+1)+'</td>'
+        +'<td style="padding:8px 11px">'+esc(d.month||'—')+'</td>'
+        +'<td style="padding:8px 11px;font-weight:600">'+( d.total||'—')+'</td>'
+        +'<td style="padding:8px 11px"><span style="font-size:12px;padding:1px 6px;border-radius:50px;background:var(--bg3);border:1px solid var(--border)">'+esc(d.status||'')+'</span></td>'
+        +'<td style="padding:8px 11px;color:var(--text2)">'+fs(d.eta)+'</td>'
+        +'<td style="padding:8px 11px;color:var(--text2)">'+esc(d.vendor||'—')+'</td>'
+        +'<td style="padding:8px 11px;font-family:ui-monospace;font-size:12px;color:var(--text3)">'+esc(d.tracking||'—')+'</td>'
+        +'<td style="padding:8px 11px;font-weight:600;color:var(--purple)">'+(d.cost_thb?'฿'+d.cost_thb:'—')+'</td>'
+        +'<td style="padding:8px 11px;font-size:12px;color:var(--text3)">'+(u?u.name:(d.addedBy||'—'))+(d.addedAt?'<br>'+fd(d.addedAt):'')+'</td>'
         +'</tr>';
     }).join('')+'</tbody></table>'
     : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">ไม่มีประวัติ</div>';
 
   document.getElementById('dm-inbounds').innerHTML = ibs.length ?
-    '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--bg2)">'
-    +'<th style="padding:6px 10px;text-align:left;color:var(--text3)">#</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">วันที่รับ</th>'
-    +'<th style="padding:6px 10px;text-align:left;color:var(--text3)">Plan</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">รับจริง</th>'
-    +'<th style="padding:6px 10px;text-align:left;color:var(--text3)">%</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">SKU</th>'
-    +'<th style="padding:6px 10px;text-align:left;color:var(--text3)">PO</th><th style="padding:6px 10px;text-align:left;color:var(--text3)">บันทึกโดย</th>'
+    '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg2)">'
+    +'<th style="padding:8px 11px;text-align:left;color:var(--text3)">#</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">วันที่รับ</th>'
+    +'<th style="padding:8px 11px;text-align:left;color:var(--text3)">Plan</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">รับจริง</th>'
+    +'<th style="padding:8px 11px;text-align:left;color:var(--text3)">%</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">SKU</th>'
+    +'<th style="padding:8px 11px;text-align:left;color:var(--text3)">PO</th><th style="padding:8px 11px;text-align:left;color:var(--text3)">บันทึกโดย</th>'
     +'</tr></thead><tbody>'+ibs.map(function(d,i){
       var bg=i%2===0?'var(--card-bg)':'var(--bg2)';
       var pct=d.planQty>0?Math.round(d.actualQty/d.planQty*100):0;
       var u=USERS.find(function(u){return u.user===d.addedBy||u.name===d.addedBy;});
-      return '<tr style="background:'+bg+'"><td style="padding:6px 10px;color:var(--text3)">'+(i+1)+'</td>'
-        +'<td style="padding:6px 10px;font-weight:500">'+fs(d.date)+'</td>'
-        +'<td style="padding:6px 10px;color:var(--text2)">'+(d.planQty||'—')+'</td>'
-        +'<td style="padding:6px 10px;font-weight:700;color:var(--green)">'+(d.actualQty||0)+'</td>'
-        +'<td style="padding:6px 10px;font-weight:600;color:'+(pct>=100?'var(--green)':'var(--amber)')+'">'+pct+'%</td>'
-        +'<td style="padding:6px 10px;font-family:ui-monospace;font-size:10px;color:var(--cyan)">'+esc(d.sku||'—')+'</td>'
-        +'<td style="padding:6px 10px;font-family:ui-monospace;font-size:10px;color:var(--text3)">'+esc(d.po||d.note||'—')+'</td>'
-        +'<td style="padding:6px 10px;font-size:10px;color:var(--text3)">'+(u?u.name:(d.addedBy||'—'))+(d.addedAt?'<br>'+fd(d.addedAt):'')+'</td>'
+      return '<tr style="background:'+bg+'"><td style="padding:8px 11px;color:var(--text3)">'+(i+1)+'</td>'
+        +'<td style="padding:8px 11px;font-weight:500">'+fs(d.date)+'</td>'
+        +'<td style="padding:8px 11px;color:var(--text2)">'+(d.planQty||'—')+'</td>'
+        +'<td style="padding:8px 11px;font-weight:700;color:var(--green)">'+(d.actualQty||0)+'</td>'
+        +'<td style="padding:8px 11px;font-weight:600;color:'+(pct>=100?'var(--green)':'var(--amber)')+'">'+pct+'%</td>'
+        +'<td style="padding:8px 11px;font-family:ui-monospace;font-size:12px;color:var(--cyan)">'+esc(d.sku||'—')+'</td>'
+        +'<td style="padding:8px 11px;font-family:ui-monospace;font-size:12px;color:var(--text3)">'+esc(d.po||d.note||'—')+'</td>'
+        +'<td style="padding:8px 11px;font-size:12px;color:var(--text3)">'+(u?u.name:(d.addedBy||'—'))+(d.addedAt?'<br>'+fd(d.addedAt):'')+'</td>'
         +'</tr>';
     }).join('')+'</tbody></table>'
     : '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">ยังไม่มีการรับเข้าคลัง</div>';
 
   function ir(label,val){
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--text3)">'+label+'</span><span style="font-size:11px;font-weight:600;color:var(--text)">'+val+'</span></div>';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px;color:var(--text3)">'+label+'</span><span style="font-size:13px;font-weight:600;color:var(--text)">'+val+'</span></div>';
   }
   /* ── คำนวณต้นทุนเฉลี่ยจากทุก order ที่มีข้อมูล ── */
   var ordersWithCost = orders.filter(function(d){ return d.cost_thb > 0; });
@@ -13659,15 +13659,15 @@ function openDetail(ri){
     ir('% รับ', rate+'%')+
     (ordersWithCost.length > 0 ?
       '<div style="margin-top:10px;padding:10px;background:var(--purple)11;border:1px solid var(--purple)33;border-radius:8px">'+
-        '<div style="font-size:10px;font-weight:700;color:var(--purple);margin-bottom:6px">📊 ต้นทุนเฉลี่ย (จาก '+ordersWithCost.length+'/'+orders.length+' orders)</div>'+
+        '<div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:6px">📊 ต้นทุนเฉลี่ย (จาก '+ordersWithCost.length+'/'+orders.length+' orders)</div>'+
         '<div style="font-size:16px;font-weight:800;color:var(--purple)">฿'+(Math.round(avgCost*100)/100).toLocaleString()+'</div>'+
-        '<div style="font-size:10px;color:var(--text3);margin-top:2px">ต่อ order (ไม่ถ่วง QTY)</div>'+
-        '<div style="font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:4px 6px;margin-top:4px;line-height:1.5">'
+        '<div style="font-size:12px;color:var(--text3);margin-top:2px">ต่อ order (ไม่ถ่วง QTY)</div>'+
+        '<div style="font-size:11px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:4px 6px;margin-top:4px;line-height:1.5">'
         +'💡 หาร order ทั้งหมดเท่าๆ กัน ไม่สนว่า QTY มากน้อยแค่ไหน</div>'+
         (weightedAvg > 0 ?
           '<div style="font-size:14px;font-weight:700;color:var(--purple);margin-top:8px">฿'+(Math.round(weightedAvg*100)/100).toLocaleString()+'</div>'+
-          '<div style="font-size:10px;color:var(--text3)">เฉลี่ยถ่วงน้ำหนัก QTY รวม '+totalCostQty.toLocaleString()+' ตัว</div>'+
-          '<div style="font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:4px 6px;margin-top:4px;line-height:1.5">'
+          '<div style="font-size:12px;color:var(--text3)">เฉลี่ยถ่วงน้ำหนัก QTY รวม '+totalCostQty.toLocaleString()+' ตัว</div>'+
+          '<div style="font-size:11px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:4px 6px;margin-top:4px;line-height:1.5">'
           +'💡 Order ที่สั่ง <b>เยอะกว่า</b> มีผลต่อค่าเฉลี่ยมากกว่า — แม่นยำกว่า แนะนำใช้คำนวณ Margin</div>'
         : '') +
       '</div>'
@@ -13678,77 +13678,93 @@ function openDetail(ri){
     ir('Plan เข้าคลัง', fs(x.plan_date))+
     ir('Tracking No.', x.tracking||'—')+
     ir('เพิ่มโดย',(function(){var u=USERS.find(function(u){return u.user===x.addedBy||u.name===x.addedBy;});return u?u.name:(x.addedBy||'—');}()));
-  /* รูป & เอกสารแนบ — ผูกกับ SKU + เดือน (ไฟล์ของเดือนไหน อยู่เฉพาะเดือนนั้น) */
-  _dmAttachBase = _attKey(x.sku || (x.model+'|'+(x.color||'')));
+  /* รูป & เอกสารแนบ — ผูกกับ "รายการ (order แถวนี้)" ตรงๆ ด้วย id ของแถว (addedAt)
+     แต่ละ order/เดือน เก็บเอกสารต้นทุนแยกกันได้ ไม่ปนกัน แม้ SKU เดียวกัน */
+  _dmAttachBase  = _attKey(x.sku || (x.model+'|'+(x.color||'')));
   _dmAttachMonth = getDisplayMonth(x) || x.month || '';
-  _dmAttachKey = _dmAttachMonth ? (_dmAttachBase+'__'+_attKey(_dmAttachMonth)) : _dmAttachBase;
+  var _rid = x.addedAt ? ('r'+x.addedAt) : _attKey('row_'+(x.sku||'')+'_'+_dmAttachMonth+'_'+(x.pod||x.po||''));
+  _dmAttachKey = _dmAttachBase + '__' + _rid;
+  /* ป้ายระบุรายการ (ให้รู้ว่าไฟล์เป็นของ order ไหน) */
+  _dmRowLabel = [ _dmAttachMonth, (x.pod||x.po||''), ((x.total!=null&&x.total!=='')?(x.total+' ตัว'):''), x.vendor ].filter(Boolean).join(' · ');
+  /* คีย์เก่าที่อาจมีไฟล์ค้าง (ก่อนเปลี่ยนเป็นรายแถว) → ให้ย้ายมาได้ */
+  _dmLegacyKeys = [ _dmAttachBase ];
+  if(_dmAttachMonth) _dmLegacyKeys.push(_dmAttachBase+'__'+_attKey(_dmAttachMonth));
+  _dmLegacyKeys = _dmLegacyKeys.filter(function(k){ return k!==_dmAttachKey; });
   dmLoadAttach(_dmAttachKey);
 
   document.getElementById('detail-modal').style.display='flex';
 }
 
 /* ═══════════════════════════════════════════
-   รูป & เอกสารแนบใน Product Detail (เก็บใน Firebase: attachments/<key>)
+   รูป & เอกสารแนบใน Product Detail — ผูกราย "รายการ (order แถว)"
+   (เก็บใน Firebase: attachments/<base>__<rowId>)
 ═══════════════════════════════════════════ */
-var _dmAttachKey = '';
-var _dmAttachBase = '';   /* คีย์ SKU อย่างเดียว (ของเก่า/legacy) */
-var _dmAttachMonth = '';  /* เดือนของ order ที่เปิดดู */
-var ATTACH_DATA = {};   /* { key: { id:{name,mime,data,size,by,at}, ... } } */
+var _dmAttachKey = '';     /* คีย์ของ order แถวที่เปิดอยู่ (base__rRowId) */
+var _dmAttachBase = '';     /* คีย์ SKU อย่างเดียว */
+var _dmAttachMonth = '';    /* เดือนของ order ที่เปิดดู */
+var _dmRowLabel = '';       /* ป้ายระบุ order แถวนี้ */
+var _dmLegacyKeys = [];     /* คีย์เก่าที่อาจมีไฟล์ค้าง (SKU-only / SKU+เดือน) */
+var ATTACH_DATA = {};       /* { key: { id:{name,mime,data,size,by,at}, ... } } */
 
 function _attKey(s){ return String(s||'').trim().replace(/[.#$\[\]\/]/g,'_').replace(/\s+/g,'_') || 'nokey'; }
 
 function dmLoadAttach(key){
-  var box=document.getElementById('dm-attach'); if(box) box.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">⏳ กำลังโหลด...</div>';
+  var box=document.getElementById('dm-attach'); if(box) box.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:10px">⏳ กำลังโหลด...</div>';
   if(!fbDB){ dmRenderAttach(); return; }
-  var done=0, need=(_dmAttachBase && _dmAttachBase!==key)?2:1;
-  var fin=function(){ done++; if(done>=need && _dmAttachKey===key) dmRenderAttach(); };
-  fbDB.ref(FB_PATH+'/attachments/'+key).once('value',function(snap){ ATTACH_DATA[key]=snap.val()||{}; fin(); },
-    function(err){ console.warn('[attach] load:',err.message); fin(); });
-  if(need===2){
-    fbDB.ref(FB_PATH+'/attachments/'+_dmAttachBase).once('value',function(snap){ ATTACH_DATA[_dmAttachBase]=snap.val()||{}; fin(); },
-      function(){ fin(); });
-  }
+  var keys=[key].concat(_dmLegacyKeys||[]);
+  var done=0;
+  var fin=function(){ done++; if(done>=keys.length && _dmAttachKey===key) dmRenderAttach(); };
+  keys.forEach(function(k){
+    fbDB.ref(FB_PATH+'/attachments/'+k).once('value',function(snap){ ATTACH_DATA[k]=snap.val()||{}; fin(); },
+      function(err){ console.warn('[attach] load:',err&&err.message); ATTACH_DATA[k]=ATTACH_DATA[k]||{}; fin(); });
+  });
 }
 
-function _dmFileCard(obj,id,opts){
-  opts=opts||{};
-  var a=obj[id]; var isImg=(a.mime||'').indexOf('image/')===0;
+function _dmFileCard(srcKey,id,legacy){
+  var obj=ATTACH_DATA[srcKey]||{}; var a=obj[id]; if(!a) return '';
+  var isImg=(a.mime||'').indexOf('image/')===0;
   var kb=a.size?(a.size>1048576?(Math.round(a.size/104857.6)/10)+' MB':Math.round(a.size/1024)+' KB'):'';
   var icon=isImg?'🖼️':((a.mime||'').indexOf('pdf')>-1?'📕':'📄');
-  var srcExpr=opts.legacy?'ATTACH_DATA[_dmAttachBase]':'ATTACH_DATA[_dmAttachKey]';
   var thumb = isImg
-    ? '<img src="'+a.data+'" class="lbthumb" data-name="'+esc(a.name||'')+'" style="width:100%;height:78px;object-fit:cover;cursor:zoom-in;display:block">'
-    : '<div onclick="dmOpenDoc(\''+id+'\','+(opts.legacy?'true':'false')+')" style="height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bg2)"><div style="font-size:28px">'+icon+'</div></div>';
-  var delFn=opts.legacy?'dmDelAttach(\''+id+'\',true)':'dmDelAttach(\''+id+'\')';
-  var migBtn=opts.legacy?'<button onclick="dmMigrateLegacy(\''+id+'\')" title="ย้ายมาเดือนนี้" style="position:absolute;top:3px;left:3px;z-index:2;background:#1D9E75;color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;padding:2px 6px;cursor:pointer">→ '+esc(_dmAttachMonth||'')+'</button>':'';
-  return '<div style="width:112px;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card-bg);position:relative">'
-    + '<button onclick="'+delFn+'" title="ลบ" style="position:absolute;top:3px;right:3px;z-index:2;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;cursor:pointer;padding:0">✕</button>'
-    + migBtn
+    ? '<img src="'+a.data+'" class="lbthumb" data-name="'+esc(a.name||'')+'" style="width:100%;height:92px;object-fit:cover;cursor:zoom-in;display:block">'
+    : '<div onclick="dmOpenDoc(\''+srcKey+'\',\''+id+'\')" style="height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bg2)"><div style="font-size:34px">'+icon+'</div></div>';
+  var openExpr=isImg?('lbOpen(ATTACH_DATA[\''+srcKey+'\'][\''+id+'\'].data,\''+esc(a.name||'')+'\')'):('dmOpenDoc(\''+srcKey+'\',\''+id+'\')');
+  var migCtl = legacy
+    ? '<button onclick="dmMoveFile(\''+srcKey+'\',\''+id+'\')" style="width:100%;border:none;border-top:1px solid var(--border);background:#1D9E75;color:#fff;font-size:11px;font-weight:700;padding:5px 4px;cursor:pointer">→ ย้ายมารายการนี้</button>'
+    : '';
+  return '<div style="width:132px;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card-bg);position:relative">'
+    + '<button onclick="dmDelAttach(\''+srcKey+'\',\''+id+'\')" title="ลบ" style="position:absolute;top:4px;right:4px;z-index:2;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;line-height:22px;cursor:pointer;padding:0">✕</button>'
     + thumb
-    + '<div style="padding:5px 6px;border-top:1px solid var(--border)">'
-    + '<div onclick="'+(isImg?'lbOpen('+srcExpr+'[\''+id+'\'].data,\''+esc(a.name||'')+'\')':'dmOpenDoc(\''+id+'\','+(opts.legacy?'true':'false')+')')+'" style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="'+esc(a.name||'')+'">'+esc(a.name||'(ไม่มีชื่อ)')+'</div>'
-    + '<div style="font-size:9px;color:var(--text3)">'+kb+'</div>'
-    + '</div></div>';
+    + '<div style="padding:6px 7px;border-top:1px solid var(--border)">'
+    + '<div onclick="'+openExpr+'" style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="'+esc(a.name||'')+'">'+esc(a.name||'(ไม่มีชื่อ)')+'</div>'
+    + '<div style="font-size:10px;color:var(--text3)">'+kb+'</div>'
+    + '</div>'
+    + migCtl
+    + '</div>';
 }
 
 function dmRenderAttach(){
   var box=document.getElementById('dm-attach'); if(!box) return;
   var obj=ATTACH_DATA[_dmAttachKey]||{};
   var ids=Object.keys(obj).sort(function(a,b){return (obj[a].at||0)-(obj[b].at||0);});
-  var monLbl=_dmAttachMonth?('<span style="font-size:11px;font-weight:700;color:#0C447C;background:#E6F1FB;border:1px solid #85B7EB;border-radius:50px;padding:1px 9px">เดือน '+esc(_dmAttachMonth)+'</span>'):'';
-  var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+monLbl+'<span style="font-size:10px;color:var(--text3)">ไฟล์ด้านล่างเป็นของเดือนนี้เท่านั้น</span></div>';
+  var rowLbl=_dmRowLabel?('<span style="font-size:12px;font-weight:700;color:#0C447C;background:#E6F1FB;border:1px solid #85B7EB;border-radius:50px;padding:2px 11px">รายการนี้: '+esc(_dmRowLabel)+'</span>'):'';
+  var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap">'+rowLbl+'<span style="font-size:11px;color:var(--text3)">ไฟล์ด้านล่างเป็นของ order แถวนี้เท่านั้น</span></div>';
 
   html += ids.length
-    ? ('<div style="display:flex;flex-wrap:wrap;gap:10px">'+ids.map(function(id){return _dmFileCard(obj,id,{});}).join('')+'</div>')
-    : '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">ยังไม่มีไฟล์แนบสำหรับเดือนนี้ — กด “แนบรูป” หรือ “แนบเอกสาร” ด้านบน</div>';
+    ? ('<div style="display:flex;flex-wrap:wrap;gap:11px">'+ids.map(function(id){return _dmFileCard(_dmAttachKey,id,false);}).join('')+'</div>')
+    : '<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">ยังไม่มีไฟล์แนบสำหรับรายการนี้ — กด “แนบรูป” หรือ “แนบเอกสาร” ด้านบน</div>';
 
-  /* ── ไฟล์เก่า (เคยแนบแบบไม่ระบุเดือน) → ให้ย้ายมาเดือนนี้ได้ ── */
-  var leg=(_dmAttachBase && _dmAttachBase!==_dmAttachKey) ? (ATTACH_DATA[_dmAttachBase]||{}) : {};
-  var legIds=Object.keys(leg);
-  if(legIds.length){
-    html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--amber)">'+
-      '<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">⚠ ไฟล์เก่า (ไม่ระบุเดือน) '+legIds.length+' ไฟล์ — กดปุ่มเขียวเพื่อย้ายมา'+(_dmAttachMonth?(' เดือน '+esc(_dmAttachMonth)):'')+'</div>'+
-      '<div style="display:flex;flex-wrap:wrap;gap:10px">'+legIds.map(function(id){return _dmFileCard(leg,id,{legacy:true});}).join('')+'</div></div>';
+  /* ── ไฟล์เก่าที่ค้างในคีย์เดิม (SKU-only / SKU+เดือน) → ย้ายมารายการนี้ ── */
+  var legCards=[];
+  (_dmLegacyKeys||[]).forEach(function(lk){
+    var lo=ATTACH_DATA[lk]||{};
+    Object.keys(lo).forEach(function(id){ legCards.push(_dmFileCard(lk,id,true)); });
+  });
+  if(legCards.length){
+    html += '<div style="margin-top:14px;padding-top:11px;border-top:1px dashed var(--amber)">'+
+      '<div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:3px">⚠ ไฟล์เก่า '+legCards.length+' ไฟล์ (แนบไว้ก่อนระบบแยกรายการ)</div>'+
+      '<div style="font-size:11px;color:var(--text3);margin-bottom:7px">👉 กด “→ ย้ายมารายการนี้” ถ้าเป็นของ order แถวนี้ · หรือกด ✕ ลบทิ้ง</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:11px">'+legCards.join('')+'</div></div>';
   }
   box.innerHTML=html;
 }
@@ -13768,8 +13784,7 @@ function dmUploadFile(f){
   if(!isImg && f.size>5*1024*1024){ showToast('❌ "'+f.name+'" ใหญ่เกิน 5 MB — ย่อไฟล์ก่อนนะครับ','var(--red)'); return; }
   var save=function(dataURL,mime,name,size){
     if(!fbDB){ showToast('ยังไม่ได้เชื่อม Firebase','var(--red)'); return; }
-    var obj={ name:name, mime:mime, data:dataURL, size:size,
-      by:(currentUser?currentUser.user:'—'), at:Date.now() };
+    var obj={ name:name, mime:mime, data:dataURL, size:size, by:(currentUser?currentUser.user:'—'), at:Date.now() };
     var ref=fbDB.ref(FB_PATH+'/attachments/'+key).push();
     ref.set(obj).then(function(){
       if(!ATTACH_DATA[key])ATTACH_DATA[key]={}; ATTACH_DATA[key][ref.key]=obj;
@@ -13802,37 +13817,36 @@ function dmUploadFile(f){
   }
 }
 
-function dmDelAttach(id,legacy){
-  var key=legacy?_dmAttachBase:_dmAttachKey; var a=(ATTACH_DATA[key]||{})[id]; if(!a) return;
+function dmDelAttach(srcKey,id){
+  var a=(ATTACH_DATA[srcKey]||{})[id]; if(!a) return;
   if(!confirm('ลบไฟล์ "'+(a.name||'')+'" ?')) return;
   if(!fbDB){ return; }
-  fbDB.ref(FB_PATH+'/attachments/'+key+'/'+id).remove().then(function(){
-    if(ATTACH_DATA[key]) delete ATTACH_DATA[key][id];
+  fbDB.ref(FB_PATH+'/attachments/'+srcKey+'/'+id).remove().then(function(){
+    if(ATTACH_DATA[srcKey]) delete ATTACH_DATA[srcKey][id];
     dmRenderAttach();
     showToast('ลบไฟล์แล้ว','var(--text2)');
-    if(typeof actLog==='function') actLog('delete','attach','ลบไฟล์: '+(a.name||''),{detail:key});
+    if(typeof actLog==='function') actLog('delete','attach','ลบไฟล์: '+(a.name||''),{detail:srcKey});
   }).catch(function(e){ showToast('❌ ลบไม่สำเร็จ: '+e.message,'var(--red)'); });
 }
 
-/* ย้ายไฟล์เก่า (คีย์ SKU อย่างเดียว) → มาเดือนที่กำลังเปิดดู */
-function dmMigrateLegacy(id){
-  if(!_dmAttachMonth){ showToast('order นี้ไม่มีเดือน ย้ายไม่ได้','var(--amber)'); return; }
-  var a=(ATTACH_DATA[_dmAttachBase]||{})[id]; if(!a) return;
+/* ย้ายไฟล์เก่า (จากคีย์เดิม) → มายัง order แถวที่เปิดอยู่ */
+function dmMoveFile(fromKey,id){
+  var a=(ATTACH_DATA[fromKey]||{})[id]; if(!a) return;
   if(!fbDB) return;
   var ref=fbDB.ref(FB_PATH+'/attachments/'+_dmAttachKey).push();
   ref.set(a).then(function(){
-    return fbDB.ref(FB_PATH+'/attachments/'+_dmAttachBase+'/'+id).remove();
+    return fbDB.ref(FB_PATH+'/attachments/'+fromKey+'/'+id).remove();
   }).then(function(){
     if(!ATTACH_DATA[_dmAttachKey])ATTACH_DATA[_dmAttachKey]={}; ATTACH_DATA[_dmAttachKey][ref.key]=a;
-    if(ATTACH_DATA[_dmAttachBase]) delete ATTACH_DATA[_dmAttachBase][id];
+    if(ATTACH_DATA[fromKey]) delete ATTACH_DATA[fromKey][id];
     dmRenderAttach();
-    showToast('✓ ย้าย "'+(a.name||'')+'" มาเดือน '+_dmAttachMonth+' แล้ว','var(--green)');
-    if(typeof actLog==='function') actLog('edit','attach','ย้ายไฟล์มาเดือน '+_dmAttachMonth+': '+(a.name||''),{detail:_dmAttachKey});
+    showToast('✓ ย้าย "'+(a.name||'')+'" มารายการนี้แล้ว','var(--green)');
+    if(typeof actLog==='function') actLog('edit','attach','ย้ายไฟล์มารายการ '+(_dmRowLabel||''),{detail:_dmAttachKey});
   }).catch(function(e){ showToast('❌ ย้ายไม่สำเร็จ: '+e.message,'var(--red)'); });
 }
 
-function dmOpenDoc(id,legacy){
-  var a=(ATTACH_DATA[legacy?_dmAttachBase:_dmAttachKey]||{})[id]; if(!a||!a.data) return;
+function dmOpenDoc(srcKey,id){
+  var a=(ATTACH_DATA[srcKey]||{})[id]; if(!a||!a.data) return;
   try{
     var parts=a.data.split(','); var bstr=atob(parts[1]||''); var n=bstr.length; var u8=new Uint8Array(n);
     while(n--) u8[n]=bstr.charCodeAt(n);
@@ -13840,7 +13854,7 @@ function dmOpenDoc(id,legacy){
     var url=URL.createObjectURL(blob);
     var w=window.open(url,'_blank');
     setTimeout(function(){ URL.revokeObjectURL(url); },60000);
-    if(!w){ /* popup ถูกบล็อก → ดาวน์โหลดแทน */ var ln=document.createElement('a'); ln.href=a.data; ln.download=a.name||'file'; ln.click(); }
+    if(!w){ var ln=document.createElement('a'); ln.href=a.data; ln.download=a.name||'file'; ln.click(); }
   }catch(e){ var ln2=document.createElement('a'); ln2.href=a.data; ln2.download=a.name||'file'; ln2.click(); }
 }
 

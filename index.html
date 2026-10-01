@@ -8243,10 +8243,10 @@ function renderTrackSummary(){
 
   function _miniCard(opts){
     var pct = opts.plan > 0 ? Math.round(opts.actual/opts.plan*100) : 0;
-    var pctColor = pct >= 100 ? '#10b981' : (pct >= 90 ? '#f59e0b' : (pct > 0 ? '#ef4444' : '#94a3b8'));
+    var pctColor = pct >= 100 ? '#10b981' : (pct >= 80 ? '#0ea5e9' : (pct >= 40 ? '#f59e0b' : (pct > 0 ? '#ef4444' : '#94a3b8')));
     var bg = opts.color + '12';
     var br = opts.color + '35';
-    var activeRing = opts.active ? 'box-shadow:0 0 0 2px '+opts.color+',0 4px 12px '+opts.color+'40;transform:translateY(-1px);' : '';
+    var activeRing = opts.active ? 'box-shadow:0 0 0 2px var(--blue,#3b82f6);transform:translateY(-1px);' : '';
     var clickProp = opts.onClick ? 'cursor:pointer;' : '';
     var clickAttr = opts.onClick ? ' onclick="'+opts.onClick+'"' : '';
 
@@ -8265,19 +8265,19 @@ function renderTrackSummary(){
       var pa=opts.planAcc, paColor=pa.pct>=90?'#10b981':(pa.pct>=70?'#f59e0b':'#ef4444');
       foot.push({lbl:'🎯 สำเร็จ', val:pa.pct+'%', sub:'ตรงเดือน', col:paColor, tip:'แผนเข้า '+esc(opts.label)+' สำเร็จกี่ % = ของที่ Plan เดือนนี้และมาตรงเดือน ('+pa.onTime.toLocaleString()+') / Plan ทั้งหมด ('+pa.planQty.toLocaleString()+') — ไม่รวมตัวตกรอบ'});
     }
-    var footHtml = foot.length ? ('<div style="margin-top:9px;padding-top:8px;border-top:1px solid '+opts.color+'22;display:flex;gap:4px">'+
+    var footHtml = foot.length ? ('<div style="margin-top:9px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:4px">'+
       foot.map(function(f,i){
-        return '<div title="'+esc(f.tip)+'" style="flex:1;text-align:center'+(i>0?';border-left:1px solid '+opts.color+'20':'')+'">'+
+        return '<div title="'+esc(f.tip)+'" style="flex:1;text-align:center'+(i>0?';border-left:1px solid var(--border)':'')+'">'+
           '<div style="font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.lbl+'</div>'+
           '<div style="font-size:16px;font-weight:800;color:'+f.col+';font-family:ui-monospace,monospace;line-height:1.1">'+f.val+'</div>'+
           '<div style="font-size:9px;color:var(--text3);font-family:ui-monospace,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.sub+'</div>'+
         '</div>';
       }).join('')+'</div>') : '';
 
-    return '<div'+clickAttr+' style="background:'+bg+';border:1px solid '+br+';border-left:4px solid '+opts.color+';border-radius:10px;padding:13px 15px;min-width:0;transition:all 0.15s;'+activeRing+clickProp+'">'+
+    return '<div'+clickAttr+' style="background:var(--card-bg);border:1px solid var(--border);border-left:3px solid '+pctColor+';border-radius:12px;padding:13px 15px;min-width:0;box-shadow:var(--card-shadow);transition:all 0.15s;'+activeRing+clickProp+'">'+
       /* หัวการ์ด */
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:9px">'+
-        '<div style="font-size:14px;font-weight:800;color:'+opts.color+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(opts.label)+(opts.onClick?' — คลิกเพื่อดู Brand':'')+'">'+opts.icon+' '+esc(opts.label)+'</div>'+
+        '<div style="font-size:14px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(opts.label)+(opts.onClick?' — คลิกเพื่อดู Brand':'')+'">'+opts.icon+' '+esc(opts.label)+'</div>'+
         '<div style="font-size:12px;color:var(--text3);font-family:ui-monospace,monospace;flex-shrink:0;font-weight:600">'+opts.sku+' SKU</div>'+
       '</div>'+
       /* พระเอก: รับจริง ตัวใหญ่ + /Plan + % badge */
@@ -8289,7 +8289,7 @@ function renderTrackSummary(){
         '<div style="font-size:22px;font-weight:800;color:'+pctColor+';font-family:ui-monospace,monospace;line-height:1;flex-shrink:0">'+pct+'%</div>'+
       '</div>'+
       /* progress */
-      '<div style="margin-top:8px;height:7px;background:'+opts.color+'20;border-radius:4px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+pctColor+';transition:width 0.3s"></div></div>'+
+      '<div style="margin-top:8px;height:7px;background:var(--bg4);border-radius:99px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;border-radius:99px;background:'+pctColor+';transition:width 0.3s"></div></div>'+
       footHtml+
     '</div>';
   }

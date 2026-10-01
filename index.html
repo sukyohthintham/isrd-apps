@@ -2001,7 +2001,7 @@ body.hide-cost .costcol{display:none!important}
           <button type="button" onclick="dmPickAttach('doc')" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--card-bg);color:var(--text2);cursor:pointer">📄 แนบเอกสาร</button>
         </div>
         <div id="dm-attach" style="border:1px dashed var(--border);border-radius:10px;padding:12px;min-height:54px"></div>
-        <div style="font-size:9px;color:var(--text3);margin-top:4px">💡 รูปจะถูกย่อให้เล็กอัตโนมัติ · เอกสาร (PDF ฯลฯ) จำกัดไฟล์ละไม่เกิน 5 MB · ไฟล์ผูกกับ SKU นี้ ทุกคนที่เปิดดูจะเห็นเหมือนกัน</div>
+        <div style="font-size:9px;color:var(--text3);margin-top:4px">💡 รูปจะถูกย่อให้เล็กอัตโนมัติ · เอกสาร (PDF ฯลฯ) จำกัดไฟล์ละไม่เกิน 5 MB · ไฟล์ผูกกับ SKU + เดือนของ order นี้ (แนบเดือนไหน อยู่เฉพาะเดือนนั้น) · ทุกคนที่เปิดดูจะเห็นเหมือนกัน</div>
       </div>
     </div>
   </div>
@@ -13678,8 +13678,10 @@ function openDetail(ri){
     ir('Plan เข้าคลัง', fs(x.plan_date))+
     ir('Tracking No.', x.tracking||'—')+
     ir('เพิ่มโดย',(function(){var u=USERS.find(function(u){return u.user===x.addedBy||u.name===x.addedBy;});return u?u.name:(x.addedBy||'—');}()));
-  /* รูป & เอกสารแนบ — ผูกกับ SKU (ถ้าไม่มี SKU ใช้ model|color แทน) */
-  _dmAttachKey = _attKey(x.sku || (x.model+'|'+(x.color||'')));
+  /* รูป & เอกสารแนบ — ผูกกับ SKU + เดือน (ไฟล์ของเดือนไหน อยู่เฉพาะเดือนนั้น) */
+  _dmAttachBase = _attKey(x.sku || (x.model+'|'+(x.color||'')));
+  _dmAttachMonth = getDisplayMonth(x) || x.month || '';
+  _dmAttachKey = _dmAttachMonth ? (_dmAttachBase+'__'+_attKey(_dmAttachMonth)) : _dmAttachBase;
   dmLoadAttach(_dmAttachKey);
 
   document.getElementById('detail-modal').style.display='flex';
@@ -13689,6 +13691,8 @@ function openDetail(ri){
    รูป & เอกสารแนบใน Product Detail (เก็บใน Firebase: attachments/<key>)
 ═══════════════════════════════════════════ */
 var _dmAttachKey = '';
+var _dmAttachBase = '';   /* คีย์ SKU อย่างเดียว (ของเก่า/legacy) */
+var _dmAttachMonth = '';  /* เดือนของ order ที่เปิดดู */
 var ATTACH_DATA = {};   /* { key: { id:{name,mime,data,size,by,at}, ... } } */
 
 function _attKey(s){ return String(s||'').trim().replace(/[.#$\[\]\/]/g,'_').replace(/\s+/g,'_') || 'nokey'; }
@@ -13696,32 +13700,57 @@ function _attKey(s){ return String(s||'').trim().replace(/[.#$\[\]\/]/g,'_').rep
 function dmLoadAttach(key){
   var box=document.getElementById('dm-attach'); if(box) box.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">⏳ กำลังโหลด...</div>';
   if(!fbDB){ dmRenderAttach(); return; }
-  fbDB.ref(FB_PATH+'/attachments/'+key).once('value',function(snap){
-    ATTACH_DATA[key]=snap.val()||{};
-    if(_dmAttachKey===key) dmRenderAttach();
-  },function(err){ console.warn('[attach] load:',err.message); if(_dmAttachKey===key) dmRenderAttach(); });
+  var done=0, need=(_dmAttachBase && _dmAttachBase!==key)?2:1;
+  var fin=function(){ done++; if(done>=need && _dmAttachKey===key) dmRenderAttach(); };
+  fbDB.ref(FB_PATH+'/attachments/'+key).once('value',function(snap){ ATTACH_DATA[key]=snap.val()||{}; fin(); },
+    function(err){ console.warn('[attach] load:',err.message); fin(); });
+  if(need===2){
+    fbDB.ref(FB_PATH+'/attachments/'+_dmAttachBase).once('value',function(snap){ ATTACH_DATA[_dmAttachBase]=snap.val()||{}; fin(); },
+      function(){ fin(); });
+  }
+}
+
+function _dmFileCard(obj,id,opts){
+  opts=opts||{};
+  var a=obj[id]; var isImg=(a.mime||'').indexOf('image/')===0;
+  var kb=a.size?(a.size>1048576?(Math.round(a.size/104857.6)/10)+' MB':Math.round(a.size/1024)+' KB'):'';
+  var icon=isImg?'🖼️':((a.mime||'').indexOf('pdf')>-1?'📕':'📄');
+  var srcExpr=opts.legacy?'ATTACH_DATA[_dmAttachBase]':'ATTACH_DATA[_dmAttachKey]';
+  var thumb = isImg
+    ? '<img src="'+a.data+'" class="lbthumb" data-name="'+esc(a.name||'')+'" style="width:100%;height:78px;object-fit:cover;cursor:zoom-in;display:block">'
+    : '<div onclick="dmOpenDoc(\''+id+'\','+(opts.legacy?'true':'false')+')" style="height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bg2)"><div style="font-size:28px">'+icon+'</div></div>';
+  var delFn=opts.legacy?'dmDelAttach(\''+id+'\',true)':'dmDelAttach(\''+id+'\')';
+  var migBtn=opts.legacy?'<button onclick="dmMigrateLegacy(\''+id+'\')" title="ย้ายมาเดือนนี้" style="position:absolute;top:3px;left:3px;z-index:2;background:#1D9E75;color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;padding:2px 6px;cursor:pointer">→ '+esc(_dmAttachMonth||'')+'</button>':'';
+  return '<div style="width:112px;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card-bg);position:relative">'
+    + '<button onclick="'+delFn+'" title="ลบ" style="position:absolute;top:3px;right:3px;z-index:2;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;cursor:pointer;padding:0">✕</button>'
+    + migBtn
+    + thumb
+    + '<div style="padding:5px 6px;border-top:1px solid var(--border)">'
+    + '<div onclick="'+(isImg?'lbOpen('+srcExpr+'[\''+id+'\'].data,\''+esc(a.name||'')+'\')':'dmOpenDoc(\''+id+'\','+(opts.legacy?'true':'false')+')')+'" style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="'+esc(a.name||'')+'">'+esc(a.name||'(ไม่มีชื่อ)')+'</div>'
+    + '<div style="font-size:9px;color:var(--text3)">'+kb+'</div>'
+    + '</div></div>';
 }
 
 function dmRenderAttach(){
   var box=document.getElementById('dm-attach'); if(!box) return;
   var obj=ATTACH_DATA[_dmAttachKey]||{};
   var ids=Object.keys(obj).sort(function(a,b){return (obj[a].at||0)-(obj[b].at||0);});
-  if(!ids.length){ box.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">ยังไม่มีไฟล์แนบ — กด “แนบรูป” หรือ “แนบเอกสาร” ด้านบน</div>'; return; }
-  box.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px">'+ids.map(function(id){
-    var a=obj[id]; var isImg=(a.mime||'').indexOf('image/')===0;
-    var kb=a.size?(a.size>1048576?(Math.round(a.size/104857.6)/10)+' MB':Math.round(a.size/1024)+' KB'):'';
-    var icon=isImg?'🖼️':((a.mime||'').indexOf('pdf')>-1?'📕':'📄');
-    var thumb = isImg
-      ? '<img src="'+a.data+'" class="lbthumb" data-name="'+esc(a.name||'')+'" style="width:100%;height:78px;object-fit:cover;cursor:zoom-in;display:block">'
-      : '<div onclick="dmOpenDoc(\''+id+'\')" style="height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bg2)"><div style="font-size:28px">'+icon+'</div></div>';
-    return '<div style="width:112px;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card-bg);position:relative">'
-      + '<button onclick="dmDelAttach(\''+id+'\')" title="ลบ" style="position:absolute;top:3px;right:3px;z-index:2;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;cursor:pointer;padding:0">✕</button>'
-      + thumb
-      + '<div style="padding:5px 6px;border-top:1px solid var(--border)">'
-      + '<div onclick="'+(isImg?'lbOpen(ATTACH_DATA[_dmAttachKey][\''+id+'\'].data,\''+esc(a.name||'')+'\')':'dmOpenDoc(\''+id+'\')')+'" style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="'+esc(a.name||'')+'">'+esc(a.name||'(ไม่มีชื่อ)')+'</div>'
-      + '<div style="font-size:9px;color:var(--text3)">'+kb+'</div>'
-      + '</div></div>';
-  }).join('')+'</div>';
+  var monLbl=_dmAttachMonth?('<span style="font-size:11px;font-weight:700;color:#0C447C;background:#E6F1FB;border:1px solid #85B7EB;border-radius:50px;padding:1px 9px">เดือน '+esc(_dmAttachMonth)+'</span>'):'';
+  var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+monLbl+'<span style="font-size:10px;color:var(--text3)">ไฟล์ด้านล่างเป็นของเดือนนี้เท่านั้น</span></div>';
+
+  html += ids.length
+    ? ('<div style="display:flex;flex-wrap:wrap;gap:10px">'+ids.map(function(id){return _dmFileCard(obj,id,{});}).join('')+'</div>')
+    : '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">ยังไม่มีไฟล์แนบสำหรับเดือนนี้ — กด “แนบรูป” หรือ “แนบเอกสาร” ด้านบน</div>';
+
+  /* ── ไฟล์เก่า (เคยแนบแบบไม่ระบุเดือน) → ให้ย้ายมาเดือนนี้ได้ ── */
+  var leg=(_dmAttachBase && _dmAttachBase!==_dmAttachKey) ? (ATTACH_DATA[_dmAttachBase]||{}) : {};
+  var legIds=Object.keys(leg);
+  if(legIds.length){
+    html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--amber)">'+
+      '<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">⚠ ไฟล์เก่า (ไม่ระบุเดือน) '+legIds.length+' ไฟล์ — กดปุ่มเขียวเพื่อย้ายมา'+(_dmAttachMonth?(' เดือน '+esc(_dmAttachMonth)):'')+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:10px">'+legIds.map(function(id){return _dmFileCard(leg,id,{legacy:true});}).join('')+'</div></div>';
+  }
+  box.innerHTML=html;
 }
 
 function dmPickAttach(kind){
@@ -13773,20 +13802,37 @@ function dmUploadFile(f){
   }
 }
 
-function dmDelAttach(id){
-  var key=_dmAttachKey; var a=(ATTACH_DATA[key]||{})[id]; if(!a) return;
+function dmDelAttach(id,legacy){
+  var key=legacy?_dmAttachBase:_dmAttachKey; var a=(ATTACH_DATA[key]||{})[id]; if(!a) return;
   if(!confirm('ลบไฟล์ "'+(a.name||'')+'" ?')) return;
   if(!fbDB){ return; }
   fbDB.ref(FB_PATH+'/attachments/'+key+'/'+id).remove().then(function(){
     if(ATTACH_DATA[key]) delete ATTACH_DATA[key][id];
-    if(_dmAttachKey===key) dmRenderAttach();
+    dmRenderAttach();
     showToast('ลบไฟล์แล้ว','var(--text2)');
     if(typeof actLog==='function') actLog('delete','attach','ลบไฟล์: '+(a.name||''),{detail:key});
   }).catch(function(e){ showToast('❌ ลบไม่สำเร็จ: '+e.message,'var(--red)'); });
 }
 
-function dmOpenDoc(id){
-  var a=(ATTACH_DATA[_dmAttachKey]||{})[id]; if(!a||!a.data) return;
+/* ย้ายไฟล์เก่า (คีย์ SKU อย่างเดียว) → มาเดือนที่กำลังเปิดดู */
+function dmMigrateLegacy(id){
+  if(!_dmAttachMonth){ showToast('order นี้ไม่มีเดือน ย้ายไม่ได้','var(--amber)'); return; }
+  var a=(ATTACH_DATA[_dmAttachBase]||{})[id]; if(!a) return;
+  if(!fbDB) return;
+  var ref=fbDB.ref(FB_PATH+'/attachments/'+_dmAttachKey).push();
+  ref.set(a).then(function(){
+    return fbDB.ref(FB_PATH+'/attachments/'+_dmAttachBase+'/'+id).remove();
+  }).then(function(){
+    if(!ATTACH_DATA[_dmAttachKey])ATTACH_DATA[_dmAttachKey]={}; ATTACH_DATA[_dmAttachKey][ref.key]=a;
+    if(ATTACH_DATA[_dmAttachBase]) delete ATTACH_DATA[_dmAttachBase][id];
+    dmRenderAttach();
+    showToast('✓ ย้าย "'+(a.name||'')+'" มาเดือน '+_dmAttachMonth+' แล้ว','var(--green)');
+    if(typeof actLog==='function') actLog('edit','attach','ย้ายไฟล์มาเดือน '+_dmAttachMonth+': '+(a.name||''),{detail:_dmAttachKey});
+  }).catch(function(e){ showToast('❌ ย้ายไม่สำเร็จ: '+e.message,'var(--red)'); });
+}
+
+function dmOpenDoc(id,legacy){
+  var a=(ATTACH_DATA[legacy?_dmAttachBase:_dmAttachKey]||{})[id]; if(!a||!a.data) return;
   try{
     var parts=a.data.split(','); var bstr=atob(parts[1]||''); var n=bstr.length; var u8=new Uint8Array(n);
     while(n--) u8[n]=bstr.charCodeAt(n);

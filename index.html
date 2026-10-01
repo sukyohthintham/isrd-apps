@@ -8509,7 +8509,7 @@ function renderTrackSummary(){
   if(!document.getElementById('track-summary-brands')){
     var brandBox = document.createElement('div');
     brandBox.id = 'track-summary-brands';
-    brandBox.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:14px';
+    brandBox.style.cssText = 'display:block;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);overflow:hidden;margin-bottom:14px';
     box.parentNode.insertBefore(brandBox, document.getElementById('track-summary-brands-header').nextSibling);
   }
   var hdrEl = document.getElementById('track-summary-brands-header');
@@ -8535,19 +8535,36 @@ function renderTrackSummary(){
       '<span style="font-size:11px;color:var(--text3);flex:1">'+scopeKeys.length+' brand · คลิกที่เดือนด้านบนเพื่อดูแยกเดือน</span>'+
       '<span style="font-size:13px;font-weight:700;color:var(--text2);background:var(--bg3);border-radius:7px;padding:3px 10px;white-space:nowrap">'+(brandsOpen?'▼ ซ่อน':'▶ แสดง')+'</span>'+
     '</div>';
-  brandBoxEl.style.display = brandsOpen ? 'grid' : 'none';
+  brandBoxEl.style.display = brandsOpen ? 'block' : 'none';
   if(!brandsOpen) return;
 
   if(!scopeKeys.length){
-    brandBoxEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;grid-column:1/-1">ไม่มีข้อมูล Brand</div>';
+    brandBoxEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px">ไม่มีข้อมูล Brand</div>';
   } else {
-    var bhtml = '';
-    scopeKeys.slice(0, 12).forEach(function(b, i){
-      var c = brandColors[i % 8];
+    var _bsort = scopeKeys.slice().sort(function(a,b){ return scopeData[b].actual - scopeData[a].actual; });
+    var _bst = function(p){ return p>=100?['#10b981','เกินแผน']:(p>=80?['#0ea5e9','ใกล้แผน']:(p>=40?['#f59e0b','กำลังมา']:(p>0?['#ef4444','ต่ำ']:['#94a3b8','ยังไม่มา']))); };
+    var bhtml = _bsort.map(function(b, i){
       var d = scopeData[b];
-      var labelShort = b.length > 14 ? b.substr(0,12)+'…' : b;
-      bhtml += _miniCard({label:labelShort, icon:'🏷️', color:c, sku:d.sku, plan:d.qty, actual:d.actual, recvSku:d.recvSku});
-    });
+      var pct = d.qty>0?Math.round(d.actual/d.qty*100):0;
+      var skuPct = d.sku>0?Math.round(d.recvSku/d.sku*100):0;
+      var st = _bst(pct); var fam = /^SOON/i.test(b)?'#0d9488':'#6366f1';
+      var last = i===_bsort.length-1;
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px'+(last?'':';border-bottom:1px solid var(--border)')+'">'+
+        '<span style="width:7px;height:7px;border-radius:50%;background:'+fam+';flex:none"></span>'+
+        '<div style="width:150px;flex:none;min-width:0">'+
+          '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b)+'</div>'+
+          '<div style="font-size:10px;color:var(--text3);font-family:ui-monospace,monospace">'+d.recvSku+'/'+d.sku+' SKU · '+skuPct+'%</div>'+
+        '</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="height:7px;background:var(--bg4);border-radius:99px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;border-radius:99px;background:'+st[0]+'"></div></div>'+
+          '<div style="font-size:10px;color:var(--text3);font-family:ui-monospace,monospace;margin-top:3px">'+d.actual.toLocaleString()+' / Plan '+d.qty.toLocaleString()+'</div>'+
+        '</div>'+
+        '<div style="width:60px;text-align:right;flex:none">'+
+          '<div style="font-size:15px;font-weight:800;color:'+st[0]+';font-family:ui-monospace,monospace;line-height:1.1">'+pct+'%</div>'+
+          '<div style="font-size:9px;color:'+st[0]+'">'+st[1]+'</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
     brandBoxEl.innerHTML = bhtml;
   }
 }

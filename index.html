@@ -1992,6 +1992,17 @@ body.hide-cost .costcol{display:none!important}
           <div id="dm-info"></div>
         </div>
       </div>
+
+      <!-- รูป & เอกสารแนบ (ต้นทุน ฯลฯ) -->
+      <div style="margin-top:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--text);flex:1">📎 รูป & เอกสารแนบ <span style="font-weight:400;color:var(--text3)">(เอกสารต้นทุน / ใบเสนอราคา / Invoice ฯลฯ)</span></div>
+          <button type="button" onclick="dmPickAttach('img')" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--card-bg);color:var(--text2);cursor:pointer">🖼️ แนบรูป</button>
+          <button type="button" onclick="dmPickAttach('doc')" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:var(--card-bg);color:var(--text2);cursor:pointer">📄 แนบเอกสาร</button>
+        </div>
+        <div id="dm-attach" style="border:1px dashed var(--border);border-radius:10px;padding:12px;min-height:54px"></div>
+        <div style="font-size:9px;color:var(--text3);margin-top:4px">💡 รูปจะถูกย่อให้เล็กอัตโนมัติ · เอกสาร (PDF ฯลฯ) จำกัดไฟล์ละไม่เกิน 5 MB · ไฟล์ผูกกับ SKU นี้ ทุกคนที่เปิดดูจะเห็นเหมือนกัน</div>
+      </div>
     </div>
   </div>
 </div>
@@ -13633,7 +13644,124 @@ function openDetail(ri){
     ir('Plan เข้าคลัง', fs(x.plan_date))+
     ir('Tracking No.', x.tracking||'—')+
     ir('เพิ่มโดย',(function(){var u=USERS.find(function(u){return u.user===x.addedBy||u.name===x.addedBy;});return u?u.name:(x.addedBy||'—');}()));
+  /* รูป & เอกสารแนบ — ผูกกับ SKU (ถ้าไม่มี SKU ใช้ model|color แทน) */
+  _dmAttachKey = _attKey(x.sku || (x.model+'|'+(x.color||'')));
+  dmLoadAttach(_dmAttachKey);
+
   document.getElementById('detail-modal').style.display='flex';
+}
+
+/* ═══════════════════════════════════════════
+   รูป & เอกสารแนบใน Product Detail (เก็บใน Firebase: attachments/<key>)
+═══════════════════════════════════════════ */
+var _dmAttachKey = '';
+var ATTACH_DATA = {};   /* { key: { id:{name,mime,data,size,by,at}, ... } } */
+
+function _attKey(s){ return String(s||'').trim().replace(/[.#$\[\]\/]/g,'_').replace(/\s+/g,'_') || 'nokey'; }
+
+function dmLoadAttach(key){
+  var box=document.getElementById('dm-attach'); if(box) box.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">⏳ กำลังโหลด...</div>';
+  if(!fbDB){ dmRenderAttach(); return; }
+  fbDB.ref(FB_PATH+'/attachments/'+key).once('value',function(snap){
+    ATTACH_DATA[key]=snap.val()||{};
+    if(_dmAttachKey===key) dmRenderAttach();
+  },function(err){ console.warn('[attach] load:',err.message); if(_dmAttachKey===key) dmRenderAttach(); });
+}
+
+function dmRenderAttach(){
+  var box=document.getElementById('dm-attach'); if(!box) return;
+  var obj=ATTACH_DATA[_dmAttachKey]||{};
+  var ids=Object.keys(obj).sort(function(a,b){return (obj[a].at||0)-(obj[b].at||0);});
+  if(!ids.length){ box.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px">ยังไม่มีไฟล์แนบ — กด “แนบรูป” หรือ “แนบเอกสาร” ด้านบน</div>'; return; }
+  box.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px">'+ids.map(function(id){
+    var a=obj[id]; var isImg=(a.mime||'').indexOf('image/')===0;
+    var kb=a.size?(a.size>1048576?(Math.round(a.size/104857.6)/10)+' MB':Math.round(a.size/1024)+' KB'):'';
+    var icon=isImg?'🖼️':((a.mime||'').indexOf('pdf')>-1?'📕':'📄');
+    var thumb = isImg
+      ? '<img src="'+a.data+'" class="lbthumb" data-name="'+esc(a.name||'')+'" style="width:100%;height:78px;object-fit:cover;cursor:zoom-in;display:block">'
+      : '<div onclick="dmOpenDoc(\''+id+'\')" style="height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--bg2)"><div style="font-size:28px">'+icon+'</div></div>';
+    return '<div style="width:112px;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card-bg);position:relative">'
+      + '<button onclick="dmDelAttach(\''+id+'\')" title="ลบ" style="position:absolute;top:3px;right:3px;z-index:2;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:20px;cursor:pointer;padding:0">✕</button>'
+      + thumb
+      + '<div style="padding:5px 6px;border-top:1px solid var(--border)">'
+      + '<div onclick="'+(isImg?'lbOpen(ATTACH_DATA[_dmAttachKey][\''+id+'\'].data,\''+esc(a.name||'')+'\')':'dmOpenDoc(\''+id+'\')')+'" style="font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="'+esc(a.name||'')+'">'+esc(a.name||'(ไม่มีชื่อ)')+'</div>'
+      + '<div style="font-size:9px;color:var(--text3)">'+kb+'</div>'
+      + '</div></div>';
+  }).join('')+'</div>';
+}
+
+function dmPickAttach(kind){
+  if(!_dmAttachKey){ showToast('เปิดรายการสินค้าก่อน','var(--amber)'); return; }
+  var inp=document.createElement('input'); inp.type='file'; inp.multiple=true;
+  inp.accept = kind==='img' ? 'image/*' : '.pdf,.doc,.docx,.xls,.xlsx,.csv,image/*';
+  inp.onchange=function(){ var fs=Array.prototype.slice.call(inp.files||[]); fs.forEach(dmUploadFile); };
+  inp.click();
+}
+
+function dmUploadFile(f){
+  if(!f) return;
+  var key=_dmAttachKey;
+  var isImg=(f.type||'').indexOf('image/')===0;
+  if(!isImg && f.size>5*1024*1024){ showToast('❌ "'+f.name+'" ใหญ่เกิน 5 MB — ย่อไฟล์ก่อนนะครับ','var(--red)'); return; }
+  var save=function(dataURL,mime,name,size){
+    if(!fbDB){ showToast('ยังไม่ได้เชื่อม Firebase','var(--red)'); return; }
+    var obj={ name:name, mime:mime, data:dataURL, size:size,
+      by:(currentUser?currentUser.user:'—'), at:Date.now() };
+    var ref=fbDB.ref(FB_PATH+'/attachments/'+key).push();
+    ref.set(obj).then(function(){
+      if(!ATTACH_DATA[key])ATTACH_DATA[key]={}; ATTACH_DATA[key][ref.key]=obj;
+      if(_dmAttachKey===key) dmRenderAttach();
+      showToast('✓ แนบ "'+name+'" แล้ว','var(--green)');
+      if(typeof actLog==='function') actLog('add','attach','แนบไฟล์: '+name,{detail:key});
+    }).catch(function(e){ showToast('❌ บันทึกไม่สำเร็จ: '+e.message,'var(--red)'); });
+  };
+  if(isImg){
+    var r=new FileReader();
+    r.onload=function(ev){
+      var img=new Image();
+      img.onload=function(){
+        var maxW=1400,maxH=1400,w=img.width,h=img.height;
+        if(w>maxW||h>maxH){ var sc=Math.min(maxW/w,maxH/h); w=Math.round(w*sc); h=Math.round(h*sc); }
+        var c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        var d=c.toDataURL('image/jpeg',0.82);
+        save(d,'image/jpeg',f.name,d.length);
+      };
+      img.onerror=function(){ showToast('❌ อ่านรูปไม่ได้: '+f.name,'var(--red)'); };
+      img.src=ev.target.result;
+    };
+    r.readAsDataURL(f);
+  } else {
+    var r2=new FileReader();
+    r2.onload=function(ev){ save(ev.target.result, f.type||'application/octet-stream', f.name, (ev.target.result||'').length); };
+    r2.onerror=function(){ showToast('❌ อ่านไฟล์ไม่ได้: '+f.name,'var(--red)'); };
+    r2.readAsDataURL(f);
+  }
+}
+
+function dmDelAttach(id){
+  var key=_dmAttachKey; var a=(ATTACH_DATA[key]||{})[id]; if(!a) return;
+  if(!confirm('ลบไฟล์ "'+(a.name||'')+'" ?')) return;
+  if(!fbDB){ return; }
+  fbDB.ref(FB_PATH+'/attachments/'+key+'/'+id).remove().then(function(){
+    if(ATTACH_DATA[key]) delete ATTACH_DATA[key][id];
+    if(_dmAttachKey===key) dmRenderAttach();
+    showToast('ลบไฟล์แล้ว','var(--text2)');
+    if(typeof actLog==='function') actLog('delete','attach','ลบไฟล์: '+(a.name||''),{detail:key});
+  }).catch(function(e){ showToast('❌ ลบไม่สำเร็จ: '+e.message,'var(--red)'); });
+}
+
+function dmOpenDoc(id){
+  var a=(ATTACH_DATA[_dmAttachKey]||{})[id]; if(!a||!a.data) return;
+  try{
+    var parts=a.data.split(','); var bstr=atob(parts[1]||''); var n=bstr.length; var u8=new Uint8Array(n);
+    while(n--) u8[n]=bstr.charCodeAt(n);
+    var blob=new Blob([u8],{type:a.mime||'application/octet-stream'});
+    var url=URL.createObjectURL(blob);
+    var w=window.open(url,'_blank');
+    setTimeout(function(){ URL.revokeObjectURL(url); },60000);
+    if(!w){ /* popup ถูกบล็อก → ดาวน์โหลดแทน */ var ln=document.createElement('a'); ln.href=a.data; ln.download=a.name||'file'; ln.click(); }
+  }catch(e){ var ln2=document.createElement('a'); ln2.href=a.data; ln2.download=a.name||'file'; ln2.click(); }
 }
 
 /* ═══════════════════════════════════════════

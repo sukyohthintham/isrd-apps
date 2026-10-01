@@ -8385,12 +8385,12 @@ function renderTrackSummary(){
       var over = bd.recv > bd.plan;
       return '<div onclick="window._showPlanBrandSku(\''+_trackSummaryMonth.replace(/\'/g,"\\'")+'\',\''+String(bk).replace(/\'/g,"\\'")+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background .12s" onmouseover="this.style.background=\'var(--bg2,#f8fafc)\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดูรายการสินค้าในกลุ่มนี้">'+
         '<span style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0"></span>'+
-        '<span style="font-size:12px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text3);min-width:54px;text-align:right">'+bd.plan.toLocaleString()+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;min-width:54px;text-align:right"'+(over?' title="รับเกิน Plan"':'')+'>'+bd.recv.toLocaleString()+(over?' <span style=\'color:#10b981;font-size:9px\'>▲</span>':'')+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+pcCol+';font-weight:700;min-width:42px;text-align:right">'+pc+'%</span>'+
-        '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right" title="SKU รับแล้ว '+bd.skuRecv+' / ทั้งหมด '+bd.skuTotal+'">'+bd.skuRecv+'/'+bd.skuTotal+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+skuPcCol+';font-weight:700;min-width:42px;text-align:right">'+skuPc+'%</span>'+
+        '<span style="font-size:14px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:var(--text3);min-width:54px;text-align:right">'+bd.plan.toLocaleString()+'</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;min-width:54px;text-align:right"'+(over?' title="รับเกิน Plan"':'')+'>'+bd.recv.toLocaleString()+(over?' <span style=\'color:#10b981;font-size:11px\'>▲</span>':'')+'</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+pcCol+';font-weight:700;min-width:42px;text-align:right">'+pc+'%</span>'+
+        '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right" title="SKU รับแล้ว '+bd.skuRecv+' / ทั้งหมด '+bd.skuTotal+'">'+bd.skuRecv+'/'+bd.skuTotal+'</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+skuPcCol+';font-weight:700;min-width:42px;text-align:right">'+skuPc+'%</span>'+
       '</div>';
     }).join('');
 
@@ -8399,26 +8399,26 @@ function renderTrackSummary(){
       '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid '+rmCol+';border-radius:12px;padding:16px 18px;flex:1;min-width:480px">'+
       /* หัว + toggle */
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
-        '<span style="font-weight:700;color:'+rmCol+';font-size:13px">📥 รับจาก Plan '+esc(_trackSummaryMonth)+' <span style="font-size:9px;color:var(--text3);font-weight:400">· รับมาแล้วทุกเดือน (ไม่สนว่าเข้าคลังเดือนไหน)</span></span>'+
-        '<button onclick="window._toggleTrackBrandGroup()" style="background:'+(_trackBrandGrouped?'#10b981':'#94a3b8')+'15;border:1px solid '+(_trackBrandGrouped?'#10b981':'#94a3b8')+'50;color:'+(_trackBrandGrouped?'#10b981':'#64748b')+';font-size:10px;padding:3px 9px;border-radius:6px;cursor:pointer;font-weight:600" title="สลับ แบรนด์ย่อย / รวมแบรนด์หลัก">'+
+        '<span style="font-weight:700;color:'+rmCol+';font-size:15px">📥 รับจาก Plan '+esc(_trackSummaryMonth)+' <span style="font-size:11px;color:var(--text3);font-weight:400">· รับมาแล้วทุกเดือน (ไม่สนว่าเข้าคลังเดือนไหน)</span></span>'+
+        '<button onclick="window._toggleTrackBrandGroup()" style="background:'+(_trackBrandGrouped?'#10b981':'#94a3b8')+'15;border:1px solid '+(_trackBrandGrouped?'#10b981':'#94a3b8')+'50;color:'+(_trackBrandGrouped?'#10b981':'#64748b')+';font-size:12px;padding:3px 9px;border-radius:6px;cursor:pointer;font-weight:600" title="สลับ แบรนด์ย่อย / รวมแบรนด์หลัก">'+
           (_trackBrandGrouped ? '🧩 รวมแบรนด์หลัก' : '🔖 แบรนด์ย่อย')+' ⇄</button>'+
       '</div>'+
       /* 2 เลขใหญ่: จำนวนชิ้น + SKU */
       '<div style="display:flex;gap:24px;margin-bottom:12px;flex-wrap:wrap">'+
         '<div>'+
-          '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">จำนวน (ชิ้น)</div>'+
-          '<div style="font-size:28px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+recvTot.toLocaleString()+'</div>'+
-          '<div style="font-size:10px;color:var(--text3);margin-top:2px">/ '+planTot.toLocaleString()+' = <b style="color:'+totPctCol+'">'+pctTot+'%</b></div>'+
-          '<div style="font-size:9px;color:var(--text3);margin-top:3px">'+(function(){ var pa=_planAccuracy(_trackSummaryMonth); var ot=pa?pa.onTime:0; var df=Math.max(0,recvTot-ot); return 'แยก → ✓ตรงเดือน <b style="color:#10b981">'+ot.toLocaleString()+'</b> + ⏩มาต่างเดือน <b style="color:#f59e0b">'+df.toLocaleString()+'</b>'; })()+'</div>'+
+          '<div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">จำนวน (ชิ้น)</div>'+
+          '<div style="font-size:34px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1">'+recvTot.toLocaleString()+'</div>'+
+          '<div style="font-size:12px;color:var(--text3);margin-top:2px">/ '+planTot.toLocaleString()+' = <b style="color:'+totPctCol+'">'+pctTot+'%</b></div>'+
+          '<div style="font-size:11px;color:var(--text3);margin-top:3px">'+(function(){ var pa=_planAccuracy(_trackSummaryMonth); var ot=pa?pa.onTime:0; var df=Math.max(0,recvTot-ot); return 'แยก → ✓ตรงเดือน <b style="color:#10b981">'+ot.toLocaleString()+'</b> + ⏩มาต่างเดือน <b style="color:#f59e0b">'+df.toLocaleString()+'</b>'; })()+'</div>'+
         '</div>'+
         '<div onclick="window._showPendingSku(\''+_trackSummaryMonth.replace(/'/g,"\\'")+'\')" style="border-left:1px solid var(--border);padding-left:24px;cursor:pointer;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background=\''+skuPctCol+'10\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดู SKU ที่ยังไม่เข้า">'+
-          '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">SKU (รับ ≥1 ชิ้น) 🔍</div>'+
-          '<div style="font-size:28px;font-weight:800;color:'+skuPctCol+';font-family:ui-monospace,monospace;line-height:1">'+skuRecvTot+'<span style="font-size:16px;color:var(--text3)">/'+skuTot+'</span></div>'+
-          '<div style="font-size:10px;color:var(--text3);margin-top:2px">= <b style="color:'+skuPctCol+'">'+skuPctTot+'%</b> · คลิกดูที่ยังไม่เข้า</div>'+
+          '<div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">SKU (รับ ≥1 ชิ้น) 🔍</div>'+
+          '<div style="font-size:34px;font-weight:800;color:'+skuPctCol+';font-family:ui-monospace,monospace;line-height:1">'+skuRecvTot+'<span style="font-size:19px;color:var(--text3)">/'+skuTot+'</span></div>'+
+          '<div style="font-size:12px;color:var(--text3);margin-top:2px">= <b style="color:'+skuPctCol+'">'+skuPctTot+'%</b> · คลิกดูที่ยังไม่เข้า</div>'+
         '</div>'+
       '</div>'+
       /* หัวตาราง */
-      '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:2px solid var(--border);font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">'+
+      '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:2px solid var(--border);font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase">'+
         '<span style="width:9px;flex-shrink:0"></span>'+
         '<span style="flex:1">Category</span>'+
         '<span style="min-width:54px;text-align:right">Plan</span>'+
@@ -8431,12 +8431,12 @@ function renderTrackSummary(){
       /* แถวรวม */
       '<div style="display:flex;align-items:center;gap:8px;padding:8px 0 0;font-weight:800">'+
         '<span style="width:9px;flex-shrink:0"></span>'+
-        '<span style="font-size:12px;color:var(--text);flex:1">รวม</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text2);min-width:54px;text-align:right">'+planTot.toLocaleString()+'</span>'+
-        '<span style="font-size:13px;font-family:ui-monospace,monospace;color:'+rmCol+';min-width:54px;text-align:right">'+recvTot.toLocaleString()+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+totPctCol+';min-width:42px;text-align:right">'+pctTot+'%</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right">'+skuRecvTot+'/'+skuTot+'</span>'+
-        '<span style="font-size:12px;font-family:ui-monospace,monospace;color:'+skuPctCol+';min-width:42px;text-align:right">'+skuPctTot+'%</span>'+
+        '<span style="font-size:14px;color:var(--text);flex:1">รวม</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:var(--text2);min-width:54px;text-align:right">'+planTot.toLocaleString()+'</span>'+
+        '<span style="font-size:15px;font-family:ui-monospace,monospace;color:'+rmCol+';min-width:54px;text-align:right">'+recvTot.toLocaleString()+'</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+totPctCol+';min-width:42px;text-align:right">'+pctTot+'%</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right">'+skuRecvTot+'/'+skuTot+'</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+skuPctCol+';min-width:42px;text-align:right">'+skuPctTot+'%</span>'+
       '</div>'+
     '</div>'+ /* ปิดการ์ดซ้าย */
     /* ═══ การ์ดขวา: ภาระที่เข้าคลัง M5 (ยึดเดือนรับ — มาจาก Plan เดือนไหน) ═══ */
@@ -8462,19 +8462,19 @@ function renderTrackSummary(){
         var pmEsc = pm.replace(/'/g,"\\'");
         return '<div onclick="window._openDrillModal(\''+rmEsc+'\',\''+pmEsc+'\',\'\')" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:5px;transition:background 0.15s" onmouseover="this.style.background=\''+pmCol+'10\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดู raw data">'+
           '<span style="width:10px;height:10px;border-radius:3px;background:'+pmCol+';flex-shrink:0"></span>'+
-          '<span style="font-size:12px;color:var(--text);font-weight:600;min-width:62px">Plan '+esc(pm)+'</span>'+
-          '<span style="font-size:9px;color:'+lblCol+';font-weight:700;background:'+lblCol+'15;padding:1px 6px;border-radius:4px;white-space:nowrap">'+lbl+'</span>'+
-          '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;margin-left:auto">'+q.toLocaleString()+'</span>'+
-          '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text3);min-width:38px;text-align:right">'+pc+'%</span>'+
+          '<span style="font-size:14px;color:var(--text);font-weight:600;min-width:62px">Plan '+esc(pm)+'</span>'+
+          '<span style="font-size:11px;color:'+lblCol+';font-weight:700;background:'+lblCol+'15;padding:1px 6px;border-radius:4px;white-space:nowrap">'+lbl+'</span>'+
+          '<span style="font-size:15px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700;margin-left:auto">'+q.toLocaleString()+'</span>'+
+          '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text3);min-width:38px;text-align:right">'+pc+'%</span>'+
         '</div>';
       }).join('');
       return '<div style="background:#fff;border:1px solid '+rmCol+'40;border-left:4px solid #8b5cf6;border-radius:12px;padding:16px 18px;flex:1;min-width:340px">'+
-        '<div style="font-weight:700;color:#8b5cf6;font-size:13px;margin-bottom:10px">📦 ภาระเข้าคลัง '+esc(_trackSummaryMonth)+' <span style="font-size:10px;color:var(--text3);font-weight:400">(เข้าคลังเดือนนี้ · แยกตาม Plan เดือนไหน)</span></div>'+
-        '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">รับเข้าคลังจริงทั้งหมด</div>'+
-        '<div style="font-size:28px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1;margin-bottom:12px">'+totalIn.toLocaleString()+'</div>'+
-        '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:4px;padding-bottom:3px;border-bottom:2px solid var(--border)">แยกตามแผนต้นทาง</div>'+
+        '<div style="font-weight:700;color:#8b5cf6;font-size:15px;margin-bottom:10px">📦 ภาระเข้าคลัง '+esc(_trackSummaryMonth)+' <span style="font-size:12px;color:var(--text3);font-weight:400">(เข้าคลังเดือนนี้ · แยกตาม Plan เดือนไหน)</span></div>'+
+        '<div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">รับเข้าคลังจริงทั้งหมด</div>'+
+        '<div style="font-size:34px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1;margin-bottom:12px">'+totalIn.toLocaleString()+'</div>'+
+        '<div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:4px;padding-bottom:3px;border-bottom:2px solid var(--border)">แยกตามแผนต้นทาง</div>'+
         rows+
-        '<div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;margin:12px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--border)">แยกตาม Brand / Category</div>'+
+        '<div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;margin:12px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--border)">แยกตาม Brand / Category</div>'+
       (function(){
         var ba={}; pKeys.forEach(function(pm){ var bs=rmData[pm]._brands||{}; Object.keys(bs).forEach(function(bk){ ba[bk]=(ba[bk]||0)+bs[bk]; }); });
         var bk2=Object.keys(ba).sort(function(a,b){return ba[b]-ba[a];});
@@ -8484,13 +8484,13 @@ function renderTrackSummary(){
           var dot=(typeof bchipColor==='function')?bchipColor(bk):'#8b5cf6';
           return '<div onclick="window._openDrillModal(\''+_trackSummaryMonth.replace(/'/g,"\\'")+'\',\'\',\''+String(bk).replace(/'/g,"\\'")+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:5px;transition:background .12s" onmouseover="this.style.background=\'var(--bg2,#f8fafc)\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดู raw data ของกลุ่มนี้ (ทุก Plan เดือน)">'+
             '<span style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0"></span>'+
-            '<span style="font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
-            '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700">'+q.toLocaleString()+'</span>'+
-            '<span style="font-size:11px;font-family:ui-monospace,monospace;color:var(--text3);min-width:38px;text-align:right">'+pc+'%</span>'+
+            '<span style="font-size:14px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(bk)+'</span>'+
+            '<span style="font-size:15px;font-family:ui-monospace,monospace;color:var(--text);font-weight:700">'+q.toLocaleString()+'</span>'+
+            '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text3);min-width:38px;text-align:right">'+pc+'%</span>'+
           '</div>';
         }).join('');
       })()+
-      '<div style="font-size:10px;color:var(--text3);margin-top:8px;font-style:italic">💡 คลิกแต่ละแถวดู raw data ได้</div>'+
+      '<div style="font-size:12px;color:var(--text3);margin-top:8px;font-style:italic">💡 คลิกแต่ละแถวดู raw data ได้</div>'+
       '</div>';
     })()+
     '</div>'; /* ปิด wrapper */
@@ -13580,7 +13580,7 @@ function openDetail(ri){
   var rate = totalPlan>0?Math.round(totalRecv/totalPlan*100):0;
 
   function sc2(icon,label,val,sub,color){
-    return '<div style="background:var(--bg2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:16px">'+icon+'</div><div style="font-size:20px;font-weight:800;color:'+(color||'var(--text)')+'">'+val+'</div><div style="font-size:10px;color:var(--text3)">'+label+'</div>'+(sub?'<div style="font-size:9px;color:var(--text3)">'+sub+'</div>':'')+'</div>';
+    return '<div style="background:var(--bg2);border-radius:12px;padding:16px 12px;text-align:center"><div style="font-size:22px">'+icon+'</div><div style="font-size:28px;font-weight:800;color:'+(color||'var(--text)')+';line-height:1.1;margin-top:2px">'+val+'</div><div style="font-size:12px;color:var(--text3);margin-top:3px">'+label+'</div>'+(sub?'<div style="font-size:11px;color:var(--text3);margin-top:1px">'+sub+'</div>':'')+'</div>';
   }
   document.getElementById('dm-stats').innerHTML =
     sc2('📋','ครั้งที่สั่ง',orders.length+' ครั้ง','','var(--blue)')+

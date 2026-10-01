@@ -8317,7 +8317,7 @@ function renderTrackSummary(){
   /* ── OVERVIEW BAR (แสดงตลอด) + การ์ดเดือน (ยุบ/กางได้) ── */
   var _ovPct = totalQty>0?Math.round(totalActual/totalQty*100):0;
   var _ovCol = _ovPct>=100?'#10b981':(_ovPct>=90?'#f59e0b':(_ovPct>0?'#3b82f6':'#94a3b8'));
-  var monthsOpen=_trkGetOpen('isrd_trk_months',true);
+  var monthsOpen=(_trkGetView()==='months');
   var monthSel = _trackSummaryMonth;
   var _selChip = monthSel ? '<span onclick="event.stopPropagation();window._setTrackSummaryMonth(null)" style="font-size:11px;font-weight:700;color:#1e40af;background:#dbeafe;border:1px solid #93c5fd;border-radius:50px;padding:2px 10px;cursor:pointer;white-space:nowrap" title="ล้างการเลือกเดือน">กำลังดู: '+esc(monthSel)+' ✕</span>' : '';
   var ovHeader = document.getElementById('track-summary-ov');
@@ -8333,6 +8333,15 @@ function renderTrackSummary(){
       '<span style="font-size:13px;font-weight:700;background:rgba(255,255,255,0.2);border-radius:7px;padding:3px 10px;white-space:nowrap">'+(monthsOpen?'▼':'▶')+' ตามเดือน ('+monthKeys.length+')</span>'+
     '</div>';
 
+  /* ── TAB: ตามเดือน / ตามแบรนด์ (ดูทีละอัน) ── */
+  var _trkView = _trkGetView();
+  var tabsEl = document.getElementById('track-summary-tabs');
+  if(!tabsEl){ tabsEl=document.createElement('div'); tabsEl.id='track-summary-tabs'; tabsEl.style.cssText='display:flex;gap:8px;margin-bottom:12px'; box.parentNode.insertBefore(tabsEl, box); }
+  var _tabBase='padding:7px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border);transition:all .15s;';
+  var _tabOn='background:var(--text);color:var(--card-bg);border-color:var(--text)', _tabOff='background:var(--card-bg);color:var(--text2)';
+  tabsEl.innerHTML =
+    '<button onclick="window._setTrkView(\'months\')" style="'+_tabBase+(_trkView==='months'?_tabOn:_tabOff)+'">📅 ตามเดือน</button>'+
+    '<button onclick="window._setTrkView(\'brands\')" style="'+_tabBase+(_trkView==='brands'?_tabOn:_tabOff)+'">🏷️ ตามแบรนด์</button>';
   var html = '';
   var monthColors = ['#10b981','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#f43f5e','#f97316','#f59e0b','#eab308'];
   monthKeys.forEach(function(m){
@@ -8518,7 +8527,7 @@ function renderTrackSummary(){
 
   /* เลือกเดือนแล้ว → ซ่อนการ์ด Brand แถวนี้ (ตาราง "รับจาก Plan" ด้านล่างแสดงรายแบรนด์ครบแล้ว ไม่ซ้ำ)
      ภาพรวม (ไม่เลือกเดือน) → แสดง Brand รวมทั้งหมด */
-  if(_trackSummaryMonth){
+  if(_trackSummaryMonth || _trkGetView()!=='brands'){
     hdrEl.style.display = 'none';
     brandBoxEl.style.display = 'none';
     return;
@@ -8526,7 +8535,7 @@ function renderTrackSummary(){
   hdrEl.style.display = '';
 
   var scopeKeys = brandKeys, scopeData = byBrand;
-  var brandsOpen=_trkGetOpen('isrd_trk_brands',false);
+  var brandsOpen=(_trkGetView()==='brands');
   /* หัวข้อ Brand = แถบกดยุบ/กางได้ */
   hdrEl.style.cssText='margin:2px 0 8px;display:block';
   hdrEl.innerHTML =
@@ -8571,6 +8580,8 @@ function renderTrackSummary(){
 
 function _trkGetOpen(key,def){ try{var v=localStorage.getItem(key);return v===null?def:(v==='1');}catch(e){return def;} }
 function _trkSetOpen(key,val){ try{localStorage.setItem(key,val?'1':'0');}catch(e){} }
+function _trkGetView(){ try{ return localStorage.getItem('isrd_trk_view')||'months'; }catch(e){ return 'months'; } }
+window._setTrkView = function(v){ try{ localStorage.setItem('isrd_trk_view', v); localStorage.setItem('isrd_trk_months', v==='months'?'1':'0'); localStorage.setItem('isrd_trk_brands', v==='brands'?'1':'0'); }catch(e){} renderTrackSummary(); };
 window._toggleTrackSection = function(which){
   if(which==='months') _trkSetOpen('isrd_trk_months', !_trkGetOpen('isrd_trk_months',true));
   else _trkSetOpen('isrd_trk_brands', !_trkGetOpen('isrd_trk_brands',false));

@@ -8611,6 +8611,35 @@ function renderTrackSummary(){
         '</div>'+
       '</div>';
 
+    /* ── กราฟ: ค้างรับเข้าคลัง (Plan − รับจริง) เรียงมากไปน้อย ── */
+    var _gapRows = scopeKeys.map(function(b){ var d=scopeData[b]; return { b:b, gap:Math.max(0,(d.qty||0)-(d.actual||0)) }; })
+      .filter(function(x){ return x.gap>0; })
+      .sort(function(a,b){ return b.gap-a.gap; });
+    var _totGap = _gapRows.reduce(function(s,x){ return s+x.gap; }, 0);
+    var _gapTop = _gapRows.slice(0,8);
+    var _gapMax = _gapTop.length ? _gapTop[0].gap : 1;
+    var _gapLegend = '<span style="font-size:10px;color:var(--text3);display:inline-flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:#6366f1"></span>Nineties<span style="width:7px;height:7px;border-radius:50%;background:#0d9488;margin-left:6px"></span>SOON</span>';
+    var remainHtml =
+      '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);padding:13px 15px;margin-bottom:12px">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+          '<span style="font-size:13px;font-weight:800;color:var(--text)">📦 ค้างรับเข้าคลัง</span>'+
+          '<span style="font-size:11px;color:var(--text3)">Plan − รับจริง · เรียงมากไปน้อย</span>'+
+          '<span style="flex:1;min-width:8px"></span>'+
+          _gapLegend+
+          '<span style="font-size:11px;color:var(--text3);margin-left:10px">รวมค้าง <b style="color:var(--text);font-family:ui-monospace,monospace">'+_totGap.toLocaleString()+'</b> ชิ้น</span>'+
+        '</div>'+
+        ( _gapTop.length ? _gapTop.map(function(x){
+            var w = _gapMax>0?Math.max(3,Math.round(x.gap/_gapMax*100)):0;
+            return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+
+              '<span style="width:118px;flex:none;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(x.b)+'">'+esc(x.b)+'</span>'+
+              '<div style="flex:1;min-width:0;height:13px;background:var(--bg4);border-radius:99px;overflow:hidden"><div style="width:'+w+'%;height:100%;border-radius:99px;background:'+_fam(x.b)+'"></div></div>'+
+              '<span style="width:66px;flex:none;text-align:right;font-size:11px;font-weight:700;color:var(--text);font-family:ui-monospace,monospace">'+x.gap.toLocaleString()+'</span>'+
+            '</div>';
+          }).join('')+
+          '<div style="font-size:10px;color:var(--text3);margin-top:10px">ยิ่งแถบยาว = ยังรอเข้าคลังอีกมาก (ไล่ของ/ตามโรงงานก่อน)'+(_gapRows.length>8?' · แสดง Top 8 จาก '+_gapRows.length:'')+'</div>'
+          : '<div style="font-size:11px;color:#10b981;text-align:center;padding:6px">✅ รับครบตามแผนทุกแบรนด์แล้ว</div>' )+
+      '</div>';
+
     /* ── list: การ์ดแบรนด์ 2 คอลัมน์ (มือถือ 1) เรียงตามรับจริง ── */
     var _bsort = scopeKeys.slice().sort(function(a,b){ return scopeData[b].actual - scopeData[a].actual; });
     var cells = _bsort.map(function(b){
@@ -8635,7 +8664,7 @@ function renderTrackSummary(){
     var listHtml = '<style>.trk-bgrid{display:grid;grid-template-columns:1fr;gap:8px}@media(min-width:720px){.trk-bgrid{grid-template-columns:1fr 1fr}}</style>'+
       '<div class="trk-bgrid">'+cells+'</div>';
 
-    brandBoxEl.innerHTML = gapHtml + listHtml;
+    brandBoxEl.innerHTML = gapHtml + remainHtml + listHtml;
   }
 }
 

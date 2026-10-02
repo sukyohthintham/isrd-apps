@@ -8539,36 +8539,103 @@ function renderTrackSummary(){
   hdrEl.innerHTML =
     '<span style="font-size:11px;color:var(--text3);font-weight:600;white-space:nowrap">🏷️ '+scopeKeys.length+' แบรนด์ · เรียงตามรับจริง</span>'+
     '<span style="flex:1;height:1px;background:var(--border)"></span>';
-  brandBoxEl.style.display = 'block';
+  brandBoxEl.style.cssText = 'display:block;margin-bottom:14px';
 
   if(!scopeKeys.length){
-    brandBoxEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px">ไม่มีข้อมูล Brand</div>';
+    brandBoxEl.innerHTML = '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);padding:20px;text-align:center;color:var(--text3);font-size:11px">ไม่มีข้อมูล Brand</div>';
   } else {
-    var _bsort = scopeKeys.slice().sort(function(a,b){ return scopeData[b].actual - scopeData[a].actual; });
     var _bst = function(p){ return p>=100?['#10b981','เกินแผน']:(p>=80?['#0ea5e9','ใกล้แผน']:(p>=40?['#f59e0b','กำลังมา']:(p>0?['#ef4444','ต่ำ']:['#94a3b8','ยังไม่มา']))); };
-    var bhtml = _bsort.map(function(b, i){
+    var _fam = function(b){ return /^SOON/i.test(b)?'#0d9488':'#6366f1'; };
+
+    /* ── 2 โดนัท: สัดส่วนยอดรับจริง (ตามแบรนด์หลัก / ตามไลน์สินค้า) ── */
+    var _famColor = { 'Nineties':'#6366f1', 'SOON':'#0d9488' };
+    var _lineColor = { 'New':'#3b82f6','Hero':'#8b5cf6','Basic':'#06b6d4','Adap':'#f59e0b','GWP':'#ec4899','Acc':'#10b981','non Sale':'#94a3b8' };
+    var _famAgg = {}, _lineAgg = {};
+    scopeKeys.forEach(function(b){
+      var v = scopeData[b].actual||0; if(v<=0) return;
+      var fam = /^SOON/i.test(b) ? 'SOON' : 'Nineties';
+      _famAgg[fam] = (_famAgg[fam]||0) + v;
+      var line = b.replace(/^(Nineties|SOON)\s+/i,'').trim();
+      if(/^adap/i.test(line)) line='Adap';
+      else if(/^new/i.test(line)) line='New';
+      else if(/^hero/i.test(line)) line='Hero';
+      else if(/^basic/i.test(line)) line='Basic';
+      else if(/^gwp/i.test(line)) line='GWP';
+      else if(/^acc/i.test(line)) line='Acc';
+      else if(/non\s*sale/i.test(line)) line='non Sale';
+      _lineAgg[line] = (_lineAgg[line]||0) + v;
+    });
+    var _famItems = Object.keys(_famAgg).map(function(k){ return {name:k, val:_famAgg[k], color:_famColor[k]||'#64748b'}; }).sort(function(a,b){return b.val-a.val;});
+    var _linePal = ['#3b82f6','#8b5cf6','#06b6d4','#f59e0b','#ec4899','#10b981','#94a3b8','#64748b'];
+    var _lineItems = Object.keys(_lineAgg).map(function(k){ return {name:k, val:_lineAgg[k], color:_lineColor[k]}; }).sort(function(a,b){return b.val-a.val;});
+    _lineItems.forEach(function(it,i){ if(!it.color) it.color=_linePal[i%_linePal.length]; });
+
+    var _donut = function(title, items){
+      var total = items.reduce(function(s,x){return s+x.val;},0);
+      var r=42, C=2*Math.PI*r, off=0;
+      var arcs = items.map(function(x){
+        var frac = total>0?x.val/total:0, dash=frac*C;
+        var seg='<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="'+x.color+'" stroke-width="15" stroke-dasharray="'+dash.toFixed(2)+' '+(C-dash).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 60 60)"></circle>';
+        off+=dash; return seg;
+      }).join('');
+      var legend = items.map(function(x){
+        var p = total>0?x.val/total*100:0, ps = p>=10?Math.round(p):(Math.round(p*10)/10);
+        return '<div style="display:flex;align-items:center;gap:7px;font-size:11px;margin-bottom:5px">'+
+          '<span style="width:9px;height:9px;border-radius:2px;background:'+x.color+';flex:none"></span>'+
+          '<span style="flex:1;min-width:0;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(x.name)+'</span>'+
+          '<span style="font-family:ui-monospace,monospace;color:var(--text);font-weight:700">'+x.val.toLocaleString()+'</span>'+
+          '<span style="font-family:ui-monospace,monospace;color:var(--text3);width:44px;text-align:right">'+ps+'%</span>'+
+        '</div>';
+      }).join('');
+      return '<div style="flex:1;min-width:260px">'+
+        '<div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px">'+title+'</div>'+
+        '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'+
+          '<div style="position:relative;width:120px;height:120px;flex:none">'+
+            '<svg viewBox="0 0 120 120" style="width:120px;height:120px;display:block">'+arcs+'</svg>'+
+            '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">'+
+              '<span style="font-size:15px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace;line-height:1.1">'+total.toLocaleString()+'</span>'+
+              '<span style="font-size:9px;color:var(--text3)">ชิ้น</span>'+
+            '</div>'+
+          '</div>'+
+          '<div style="flex:1;min-width:150px">'+legend+'</div>'+
+        '</div>'+
+      '</div>';
+    };
+
+    var gapHtml =
+      '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);padding:14px 16px;margin-bottom:12px">'+
+        '<div style="font-size:11px;color:var(--text3);margin-bottom:14px">🍩 สัดส่วนยอดรับจริง (เข้าคลังแล้ว) · จำนวนชิ้น + %</div>'+
+        '<div style="display:flex;gap:24px;flex-wrap:wrap">'+
+          _donut('ตามแบรนด์หลัก · Nineties / SOON', _famItems)+
+          _donut('ตามไลน์สินค้า · New / Hero / Basic / Adap ...', _lineItems)+
+        '</div>'+
+      '</div>';
+
+    /* ── list: การ์ดแบรนด์ 2 คอลัมน์ (มือถือ 1) เรียงตามรับจริง ── */
+    var _bsort = scopeKeys.slice().sort(function(a,b){ return scopeData[b].actual - scopeData[a].actual; });
+    var cells = _bsort.map(function(b){
       var d = scopeData[b];
       var pct = d.qty>0?Math.round(d.actual/d.qty*100):0;
       var skuPct = d.sku>0?Math.round(d.recvSku/d.sku*100):0;
-      var st = _bst(pct); var fam = /^SOON/i.test(b)?'#0d9488':'#6366f1';
-      var last = i===_bsort.length-1;
-      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px'+(last?'':';border-bottom:1px solid var(--border)')+'">'+
-        '<span style="width:7px;height:7px;border-radius:50%;background:'+fam+';flex:none"></span>'+
-        '<div style="width:150px;flex:none;min-width:0">'+
-          '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b)+'</div>'+
-          '<div style="font-size:10px;color:var(--text3);font-family:ui-monospace,monospace">'+d.recvSku+'/'+d.sku+' SKU · '+skuPct+'%</div>'+
+      var st = _bst(pct); var fam = _fam(b);
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:9px 12px;background:var(--card-bg);display:flex;flex-direction:column;gap:6px">'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<span style="width:7px;height:7px;border-radius:50%;background:'+fam+';flex:none"></span>'+
+          '<span style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0" title="'+esc(b)+'">'+esc(b)+'</span>'+
+          '<span style="font-size:15px;font-weight:800;color:'+st[0]+';font-family:ui-monospace,monospace;line-height:1">'+pct+'%</span>'+
+          '<span style="font-size:9px;font-weight:700;color:'+st[0]+';background:'+st[0]+'1f;border-radius:5px;padding:2px 6px;white-space:nowrap">'+st[1]+'</span>'+
         '</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="height:7px;background:var(--bg4);border-radius:99px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;border-radius:99px;background:'+st[0]+'"></div></div>'+
-          '<div style="font-size:10px;color:var(--text3);font-family:ui-monospace,monospace;margin-top:3px">'+d.actual.toLocaleString()+' / Plan '+d.qty.toLocaleString()+'</div>'+
-        '</div>'+
-        '<div style="width:60px;text-align:right;flex:none">'+
-          '<div style="font-size:15px;font-weight:800;color:'+st[0]+';font-family:ui-monospace,monospace;line-height:1.1">'+pct+'%</div>'+
-          '<div style="font-size:9px;color:'+st[0]+'">'+st[1]+'</div>'+
+        '<div style="height:7px;background:var(--bg4);border-radius:99px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;border-radius:99px;background:'+st[0]+'"></div></div>'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text3);font-family:ui-monospace,monospace">'+
+          '<span>'+d.actual.toLocaleString()+' / Plan '+d.qty.toLocaleString()+'</span>'+
+          '<span>'+d.recvSku+'/'+d.sku+' SKU · '+skuPct+'%</span>'+
         '</div>'+
       '</div>';
     }).join('');
-    brandBoxEl.innerHTML = bhtml;
+    var listHtml = '<style>.trk-bgrid{display:grid;grid-template-columns:1fr;gap:8px}@media(min-width:720px){.trk-bgrid{grid-template-columns:1fr 1fr}}</style>'+
+      '<div class="trk-bgrid">'+cells+'</div>';
+
+    brandBoxEl.innerHTML = gapHtml + listHtml;
   }
 }
 

@@ -8323,14 +8323,13 @@ function renderTrackSummary(){
   var ovHeader = document.getElementById('track-summary-ov');
   if(!ovHeader){ ovHeader=document.createElement('div'); ovHeader.id='track-summary-ov'; ovHeader.style.cssText='margin-bottom:10px'; box.parentNode.insertBefore(ovHeader, box); }
   ovHeader.innerHTML =
-    '<div onclick="window._toggleTrackSection(\'months\')" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(135deg,#3b82f6,#1e40af);color:#fff;border-radius:10px;padding:11px 16px;cursor:pointer;box-shadow:0 2px 8px rgba(59,130,246,0.25)" title="คลิกเพื่อ'+(monthsOpen?'ยุบ':'กาง')+'การ์ดรายเดือน">'+
+    '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:linear-gradient(135deg,#3b82f6,#1e40af);color:#fff;border-radius:10px;padding:11px 16px;box-shadow:0 2px 8px rgba(59,130,246,0.25)">'+
       '<span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.3px">📊 ภาพรวม</span>'+
       '<span style="font-size:12px;opacity:0.9">รับจริง <b style="font-size:17px;font-family:ui-monospace,monospace">'+totalActual.toLocaleString()+'</b> <span style="opacity:0.75">/ Plan '+totalQty.toLocaleString()+'</span></span>'+
       '<div style="flex:1;min-width:120px;height:8px;background:rgba(255,255,255,0.25);border-radius:4px;overflow:hidden"><div style="width:'+Math.min(_ovPct,100)+'%;height:100%;background:#fff"></div></div>'+
       '<span style="font-size:19px;font-weight:800;font-family:ui-monospace,monospace">'+_ovPct+'%</span>'+
       '<span style="font-size:11px;opacity:0.85;font-family:ui-monospace,monospace">'+totalSku.toLocaleString()+' SKU</span>'+
       _selChip+
-      '<span style="font-size:13px;font-weight:700;background:rgba(255,255,255,0.2);border-radius:7px;padding:3px 10px;white-space:nowrap">'+(monthsOpen?'▼':'▶')+' ตามเดือน ('+monthKeys.length+')</span>'+
     '</div>';
 
   /* ── TAB: ตามเดือน / ตามแบรนด์ (ดูทีละอัน) ── */
@@ -8535,17 +8534,12 @@ function renderTrackSummary(){
   hdrEl.style.display = '';
 
   var scopeKeys = brandKeys, scopeData = byBrand;
-  var brandsOpen=(_trkGetView()==='brands');
-  /* หัวข้อ Brand = แถบกดยุบ/กางได้ */
-  hdrEl.style.cssText='margin:2px 0 8px;display:block';
+  /* หัวข้อ Brand = caption บางๆ (tab คุมการแสดงผลแทนแล้ว) */
+  hdrEl.style.cssText='margin:2px 0 10px;display:flex;align-items:center;gap:10px';
   hdrEl.innerHTML =
-    '<div onclick="window._toggleTrackSection(\'brands\')" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 14px;cursor:pointer" title="คลิกเพื่อ'+(brandsOpen?'ยุบ':'กาง')+'การ์ดราย Brand">'+
-      '<span style="font-size:13px;font-weight:800;color:var(--text)">🏷️ ตาม Brand</span>'+
-      '<span style="font-size:11px;color:var(--text3);flex:1">'+scopeKeys.length+' brand · คลิกที่เดือนด้านบนเพื่อดูแยกเดือน</span>'+
-      '<span style="font-size:13px;font-weight:700;color:var(--text2);background:var(--bg3);border-radius:7px;padding:3px 10px;white-space:nowrap">'+(brandsOpen?'▼ ซ่อน':'▶ แสดง')+'</span>'+
-    '</div>';
-  brandBoxEl.style.display = brandsOpen ? 'block' : 'none';
-  if(!brandsOpen) return;
+    '<span style="font-size:11px;color:var(--text3);font-weight:600;white-space:nowrap">🏷️ '+scopeKeys.length+' แบรนด์ · เรียงตามรับจริง</span>'+
+    '<span style="flex:1;height:1px;background:var(--border)"></span>';
+  brandBoxEl.style.display = 'block';
 
   if(!scopeKeys.length){
     brandBoxEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px">ไม่มีข้อมูล Brand</div>';

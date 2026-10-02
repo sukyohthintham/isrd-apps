@@ -8603,9 +8603,9 @@ function renderTrackSummary(){
     };
 
     var gapHtml =
-      '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);padding:14px 16px;margin-bottom:12px">'+
+      '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);padding:14px 16px">'+
         '<div style="font-size:11px;color:var(--text3);margin-bottom:14px">🍩 สัดส่วนยอดรับจริง (เข้าคลังแล้ว) · จำนวนชิ้น + %</div>'+
-        '<div style="display:flex;gap:24px;flex-wrap:wrap">'+
+        '<div style="display:flex;flex-direction:column;gap:18px">'+
           _donut('ตามแบรนด์หลัก · Nineties / SOON', _famItems)+
           _donut('ตามไลน์สินค้า · New / Hero / Basic / Adap ...', _lineItems)+
         '</div>'+
@@ -8620,7 +8620,7 @@ function renderTrackSummary(){
     var _gapMax = _gapTop.length ? _gapTop[0].gap : 1;
     var _gapLegend = '<span style="font-size:10px;color:var(--text3);display:inline-flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:#6366f1"></span>Nineties<span style="width:7px;height:7px;border-radius:50%;background:#0d9488;margin-left:6px"></span>SOON</span>';
     var remainHtml =
-      '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);padding:13px 15px;margin-bottom:12px">'+
+      '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--card-shadow);padding:13px 15px">'+
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
           '<span style="font-size:13px;font-weight:800;color:var(--text)">📦 ค้างรับเข้าคลัง</span>'+
           '<span style="font-size:11px;color:var(--text3)">Plan − รับจริง · เรียงมากไปน้อย</span>'+
@@ -8640,7 +8640,7 @@ function renderTrackSummary(){
           : '<div style="font-size:11px;color:#10b981;text-align:center;padding:6px">✅ รับครบตามแผนทุกแบรนด์แล้ว</div>' )+
       '</div>';
 
-    /* ── list: การ์ดแบรนด์ 2 คอลัมน์ (มือถือ 1) เรียงตามรับจริง ── */
+    /* ── list: การ์ดแบรนด์ คอลัมน์เดียว (อยู่ครึ่งซ้าย) เรียงตามรับจริง ── */
     var _bsort = scopeKeys.slice().sort(function(a,b){ return scopeData[b].actual - scopeData[a].actual; });
     var cells = _bsort.map(function(b){
       var d = scopeData[b];
@@ -8661,10 +8661,15 @@ function renderTrackSummary(){
         '</div>'+
       '</div>';
     }).join('');
-    var listHtml = '<style>.trk-bgrid{display:grid;grid-template-columns:1fr;gap:8px}@media(min-width:720px){.trk-bgrid{grid-template-columns:1fr 1fr}}</style>'+
-      '<div class="trk-bgrid">'+cells+'</div>';
-
-    brandBoxEl.innerHTML = gapHtml + remainHtml + listHtml;
+    /* ── layout: list ซ้าย · กราฟ (โดนัท+ค้างรับ) ขวา — มือถือเรียงลงมา ── */
+    brandBoxEl.innerHTML =
+      '<style>.trk-blayout{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}'+
+      '@media(min-width:860px){.trk-blayout{grid-template-columns:1.15fr 1fr}}'+
+      '.trk-blist{display:flex;flex-direction:column;gap:8px}</style>'+
+      '<div class="trk-blayout">'+
+        '<div class="trk-blist">'+cells+'</div>'+
+        '<div style="display:flex;flex-direction:column;gap:12px">'+gapHtml+remainHtml+'</div>'+
+      '</div>';
   }
 }
 

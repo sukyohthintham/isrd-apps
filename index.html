@@ -367,7 +367,7 @@ body.hide-cost .costcol{display:none!important}
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20261103a'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20261113a'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2385,7 +2385,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20261103a';
+var APP_VERSION = '20261113a';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -3072,7 +3072,7 @@ function populateIbOrderSelect(){
   _ibOrderItems = [];
   /* นับจำนวน SKU ต่อ PO — ใช้ตัดสินว่า inbound ที่ "ไม่มี SKU" จะเหมาว่าตรงได้ไหม (เฉพาะ PO ที่มี SKU เดียว) */
   var _poSku={};
-  DATA.forEach(function(d){ var pn=(d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); if(pn){ (_poSku[pn]=_poSku[pn]||{})[(d.sku||'').trim()]=1; } });
+  DATA.forEach(function(d){ var pn=(d.pod||d.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); if(pn){ var sk=(d.sku||'').trim()||('C:'+(d.model||'')+'|'+(d.color||'')); (_poSku[pn]=_poSku[pn]||{})[sk]=1; } });
   DATA.forEach(function(d,i){
     /* เช็คว่า "PO ใบนี้" รับเข้าคลังแล้วหรือยัง — ต้องดู PO+SKU ให้ตรงเป๊ะ
        ไม่ใช่แค่ model+color (เพราะรุ่น+สีเดียวกันมีได้หลาย PO หลายล็อต)
@@ -3087,7 +3087,9 @@ function populateIbOrderSelect(){
       if(dPodN){
         if(ibPoN!==dPodN) return false;
         if(dSku && ibSku) return ibSku===dSku; /* มี SKU ทั้งคู่ → ต้องตรงกัน */
-        /* ฝั่งใดฝั่งไม่มี SKU → เหมาว่าตรงเฉพาะ PO ที่มี SKU เดียว (กัน PO หลาย SKU โดน inbound ไม่มี SKU บังทั้งหมด) */
+        /* ฝั่งใดฝั่งไม่มี SKU → เทียบ model+color (หลายสีใน PO เดียวกันที่ SKU ว่างต้องแยกกัน)
+           เคสจริง: SL_Delulu 3 สี PO-2610-402 SKU ว่างหมด → รับ DB แล้วเคยเหมาว่า BK/OW รับด้วย เลยหาย */
+        if(ib.model || ib.color) return ib.model===d.model && ib.color===d.color;
         return Object.keys(_poSku[dPodN]||{}).length<=1;
       }
       /* order ไม่มี PO → fallback SKU (ถ้ามี) ไม่งั้น model+color */

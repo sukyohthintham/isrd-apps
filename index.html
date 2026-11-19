@@ -366,7 +366,7 @@ body.hide-cost .costcol{display:none!important}
    - v= ไม่ตรงปัจจุบัน → replace เป็นปัจจุบัน (ดึงไฟล์ใหม่จาก cache)
    APP_VERSION ของจริงประกาศด้านล่าง แต่ฝังเลขไว้ตรงนี้ให้ตรงกันตอน build */
 (function(){
-  var CUR = '20261119a'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
+  var CUR = '20261119b'; /* << sync กับ APP_VERSION ทุกครั้งที่ deploy */
   var m = location.search.match(/[?&]v=([^&]*)/);
   var cur = m ? m[1] : null;
   if(cur !== CUR){
@@ -2384,7 +2384,7 @@ var FB_PATH = 'isrd2026';
    2. เช็ค Firebase /_app_version ตอนเปิดเว็บ + real-time
    3. ถ้า remote > local → แสดง banner + auto reload ใน 5 วินาที
    ────────────────────────────────────────────────────────── */
-var APP_VERSION = '20261119a';
+var APP_VERSION = '20261119b';
 window.APP_VERSION = APP_VERSION;
 console.log('[App] version:', APP_VERSION);
 
@@ -8276,16 +8276,21 @@ function renderTrackSummary(){
     /* รับจริง = ของแผนเดือนนี้ที่ "รับมาแล้วทุกเดือน" (ตรงกับหัวการ์ด + mini card แผนรับมาแล้ว) */
     var act  = getActualQty(x); if(act===null) act=0;
     var skuReceived = act > 0 ? 1 : 0; /* SKU นี้รับมาแล้ว (≥1 ชิ้น ทุกเดือน) */
-    if(!byPlanMonth[pm]) byPlanMonth[pm] = {_plan:0, _recv:0, _skuTotal:0, _skuRecv:0, _brands:{}};
+    if(!byPlanMonth[pm]) byPlanMonth[pm] = {_plan:0, _recv:0, _skuTotal:0, _skuRecv:0, _poSet:{}, _poRecvSet:{}, _brands:{}};
     byPlanMonth[pm]._plan += plan;
     byPlanMonth[pm]._recv += act;
     byPlanMonth[pm]._skuTotal += 1;
     byPlanMonth[pm]._skuRecv += skuReceived;
-    if(!byPlanMonth[pm]._brands[bKey]) byPlanMonth[pm]._brands[bKey] = {plan:0, recv:0, skuTotal:0, skuRecv:0};
+    if(!byPlanMonth[pm]._brands[bKey]) byPlanMonth[pm]._brands[bKey] = {plan:0, recv:0, skuTotal:0, skuRecv:0, _poSet:{}, _poRecvSet:{}};
     byPlanMonth[pm]._brands[bKey].plan += plan;
     byPlanMonth[pm]._brands[bKey].recv += act;
     byPlanMonth[pm]._brands[bKey].skuTotal += 1;
     byPlanMonth[pm]._brands[bKey].skuRecv += skuReceived;
+    var _poK = (x.pod||x.po||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+    if(_poK){
+      byPlanMonth[pm]._poSet[_poK]=1; byPlanMonth[pm]._brands[bKey]._poSet[_poK]=1;
+      if(act>0){ byPlanMonth[pm]._poRecvSet[_poK]=1; byPlanMonth[pm]._brands[bKey]._poRecvSet[_poK]=1; }
+    }
   });
 
   /* ══ PLAN ACCURACY ต่อเดือน — "แผนเข้าเดือนนั้นสำเร็จกี่ %" ══
@@ -8458,10 +8463,13 @@ function renderTrackSummary(){
     var pctTot = planTot>0 ? Math.round(recvTot/planTot*100) : 0;
     var skuTot = pmData._skuTotal||0, skuRecvTot = pmData._skuRecv||0;
     var skuPctTot = skuTot>0 ? Math.round(skuRecvTot/skuTot*100) : 0;
+    var poTot = Object.keys(pmData._poSet||{}).length, poRecvTot = Object.keys(pmData._poRecvSet||{}).length;
+    var poPctTot = poTot>0 ? Math.round(poRecvTot/poTot*100) : 0;
     var rmIdx2 = parseInt((_trackSummaryMonth.match(/M(\d+)/)||[0,1])[1]) - 1;
     var rmCol = monthColors[rmIdx2 % 12] || '#6b7280';
     var totPctCol = pctTot>=100?'#10b981':(pctTot>=80?'#f59e0b':'#ef4444');
     var skuPctCol = skuPctTot>=90?'#10b981':(skuPctTot>=60?'#f59e0b':'#ef4444');
+    var poPctCol = poPctTot>=90?'#10b981':(poPctTot>=60?'#f59e0b':'#ef4444');
 
     var brandRows = Object.keys(pmData._brands).sort(function(a,b){ return pmData._brands[b].recv - pmData._brands[a].recv; }).map(function(bk){
       var bd = pmData._brands[bk];
@@ -8469,6 +8477,9 @@ function renderTrackSummary(){
       var pcCol = pc>=100?'#10b981':(pc>=80?'#f59e0b':(pc>=50?'#f97316':'#ef4444'));
       var skuPc = bd.skuTotal>0 ? Math.round(bd.skuRecv/bd.skuTotal*100) : 0;
       var skuPcCol = skuPc>=90?'#10b981':(skuPc>=60?'#f59e0b':'#ef4444');
+      var bPoTot = Object.keys(bd._poSet||{}).length, bPoRecv = Object.keys(bd._poRecvSet||{}).length;
+      var poPc = bPoTot>0 ? Math.round(bPoRecv/bPoTot*100) : 0;
+      var poPcCol = poPc>=90?'#10b981':(poPc>=60?'#f59e0b':'#ef4444');
       var dot = (typeof bchipColor==='function') ? bchipColor(bk) : '#6366f1';
       var over = bd.recv > bd.plan;
       return '<div onclick="window._showPlanBrandSku(\''+_trackSummaryMonth.replace(/\'/g,"\\'")+'\',\''+String(bk).replace(/\'/g,"\\'")+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background .12s" onmouseover="this.style.background=\'var(--bg2,#f8fafc)\'" onmouseout="this.style.background=\'transparent\'" title="คลิกดูรายการสินค้าในกลุ่มนี้">'+
@@ -8479,6 +8490,8 @@ function renderTrackSummary(){
         '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+pcCol+';font-weight:700;min-width:42px;text-align:right">'+pc+'%</span>'+
         '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right" title="SKU รับแล้ว '+bd.skuRecv+' / ทั้งหมด '+bd.skuTotal+'">'+bd.skuRecv+'/'+bd.skuTotal+'</span>'+
         '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+skuPcCol+';font-weight:700;min-width:42px;text-align:right">'+skuPc+'%</span>'+
+        '<span style="font-size:13px;font-family:ui-monospace,monospace;color:var(--text2);min-width:48px;text-align:right" title="PO รับแล้ว '+bPoRecv+' / ทั้งหมด '+bPoTot+'">'+bPoRecv+'/'+bPoTot+'</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+poPcCol+';font-weight:700;min-width:42px;text-align:right">'+poPc+'%</span>'+
       '</div>';
     }).join('');
 
@@ -8504,6 +8517,11 @@ function renderTrackSummary(){
           '<div style="font-size:34px;font-weight:800;color:'+skuPctCol+';font-family:ui-monospace,monospace;line-height:1">'+skuRecvTot+'<span style="font-size:19px;color:var(--text3)">/'+skuTot+'</span></div>'+
           '<div style="font-size:12px;color:var(--text3);margin-top:2px">= <b style="color:'+skuPctCol+'">'+skuPctTot+'%</b> · คลิกดูที่ยังไม่เข้า</div>'+
         '</div>'+
+        '<div style="border-left:1px solid var(--border);padding-left:24px">'+
+          '<div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">PO (รับ ≥1 ชิ้น)</div>'+
+          '<div style="font-size:34px;font-weight:800;color:'+poPctCol+';font-family:ui-monospace,monospace;line-height:1">'+poRecvTot+'<span style="font-size:19px;color:var(--text3)">/'+poTot+'</span></div>'+
+          '<div style="font-size:12px;color:var(--text3);margin-top:2px">= <b style="color:'+poPctCol+'">'+poPctTot+'%</b></div>'+
+        '</div>'+
       '</div>'+
       /* หัวตาราง */
       '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:2px solid var(--border);font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase">'+
@@ -8514,6 +8532,8 @@ function renderTrackSummary(){
         '<span style="min-width:42px;text-align:right">%ชิ้น</span>'+
         '<span style="min-width:52px;text-align:right">SKU</span>'+
         '<span style="min-width:42px;text-align:right">%SKU</span>'+
+        '<span style="min-width:48px;text-align:right">PO</span>'+
+        '<span style="min-width:42px;text-align:right">%PO</span>'+
       '</div>'+
       brandRows+
       /* แถวรวม */
@@ -8525,6 +8545,8 @@ function renderTrackSummary(){
         '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+totPctCol+';min-width:42px;text-align:right">'+pctTot+'%</span>'+
         '<span style="font-size:14px;font-family:ui-monospace,monospace;color:var(--text2);min-width:52px;text-align:right">'+skuRecvTot+'/'+skuTot+'</span>'+
         '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+skuPctCol+';min-width:42px;text-align:right">'+skuPctTot+'%</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:var(--text2);min-width:48px;text-align:right">'+poRecvTot+'/'+poTot+'</span>'+
+        '<span style="font-size:14px;font-family:ui-monospace,monospace;color:'+poPctCol+';min-width:42px;text-align:right">'+poPctTot+'%</span>'+
       '</div>'+
     '</div>'+ /* ปิดการ์ดซ้าย */
     /* ═══ การ์ดขวา: ภาระที่เข้าคลัง M5 (ยึดเดือนรับ — มาจาก Plan เดือนไหน) ═══ */
